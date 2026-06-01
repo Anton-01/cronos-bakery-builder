@@ -126,7 +126,48 @@ docker compose exec php php artisan migrate --seed
 | PostgreSQL       | localhost:5432                   |
 | Redis            | localhost:6379                   |
 
-The seeder creates an administrator: `admin@cronos.test` / `password`.
+The seeder creates a Super Admin (`superadmin@cronos.test` / `password`), one
+administrator per role (e.g. `production@cronos.test`, `sales@cronos.test`, …)
+and a handful of sample customers — all with the password `password`.
+
+---
+
+## Authentication (Phase 2)
+
+Two fully independent authentication systems, both issuing Sanctum tokens:
+
+### Customers (`/api/auth/*`)
+
+- **Register** with first name, last name, email, phone and password.
+- **Social login** via Google, Facebook and Apple (Laravel Socialite).
+- **Email verification** (signed links) and **password recovery** (forgot/reset),
+  both linking back to the SPA.
+- **Profile management**: update details and change password (which revokes
+  existing tokens).
+
+### Administrators (`/api/admin/*`)
+
+- **Independent `admin` guard** with its own model, token and password broker.
+- **Granular permissions via Spatie Permission** on the `admin` guard, with six
+  seeded roles: Super Admin, Administrador, Producción, Ventas, Marketing,
+  Repartidor. Super Admin bypasses all checks via a `Gate::before` rule.
+- Route protection: `auth:sanctum` + the `admin` middleware, then Spatie's
+  `role:` / `permission:` middleware for fine-grained control.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/api/auth/register` | Customer registration |
+| POST | `/api/auth/login` | Customer login |
+| POST | `/api/auth/password/forgot` · `/reset` | Password recovery |
+| GET | `/api/auth/social/{provider}/redirect` · `/callback` | Social login |
+| GET | `/api/auth/email/verify/{id}/{hash}` | Email verification (signed) |
+| GET/PUT | `/api/auth/profile` · `/profile/password` | Profile management |
+| POST | `/api/admin/login` · `/logout` | Admin auth (independent guard) |
+| GET | `/api/admin/dashboard` | Role-gated example (`super-admin\|administrator`) |
+| GET | `/api/admin/catalog/overview` | Permission-gated example (`manage products`) |
+
+Configure social providers in `backend/.env` (`GOOGLE_*`, `FACEBOOK_*`,
+`APPLE_*`); see `backend/.env.example`.
 
 ---
 

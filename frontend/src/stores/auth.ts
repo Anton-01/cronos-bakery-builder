@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
 
 import { authService } from '@/modules/authentication/services/authService'
-import type { AuthUser, LoginCredentials } from '@/modules/authentication/types'
+import type {
+  AuthSession,
+  AuthUser,
+  LoginCredentials,
+  RegisterPayload,
+} from '@/modules/authentication/types'
 
 interface AuthState {
   user: AuthUser | null
@@ -9,9 +14,8 @@ interface AuthState {
 }
 
 /**
- * Global authentication store. Module-level stores may compose this one, but
- * session/token concerns live here so guards and the HTTP layer share a source
- * of truth.
+ * Global authentication store for customers. Session/token concerns live here
+ * so the router guard and HTTP layer share a single source of truth.
  */
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
@@ -21,14 +25,22 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state): boolean => Boolean(state.token),
+    isVerified: (state): boolean => state.user?.email_verified ?? false,
   },
 
   actions: {
-    async login(credentials: LoginCredentials): Promise<void> {
-      const { user, token } = await authService.login(credentials)
+    setSession({ user, token }: AuthSession): void {
       this.user = user
       this.token = token
       localStorage.setItem('auth_token', token)
+    },
+
+    async register(payload: RegisterPayload): Promise<void> {
+      this.setSession(await authService.register(payload))
+    },
+
+    async login(credentials: LoginCredentials): Promise<void> {
+      this.setSession(await authService.login(credentials))
     },
 
     async fetchCurrentUser(): Promise<void> {

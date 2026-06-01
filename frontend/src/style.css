@@ -137,3 +137,45 @@ button:disabled {
   color: #fff;
   border-radius: 8px;
 }
+
+/* ----- Auth forms -------------------------------------------------------- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.auth-form h2 {
+  margin: 0 0 0.5rem;
+}
+
+.auth-form__error {
+  color: #b3261e;
+  margin: 0.25rem 0;
+}
+
+.auth-form__message {
+  color: #1b7340;
+  margin: 0.25rem 0;
+}
+
+.auth-form__social {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.auth-form__social-btn {
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  text-transform: capitalize;
+}
+
+.auth-form__links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}

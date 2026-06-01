@@ -41,11 +41,15 @@ const router = createRouter({
   routes,
 })
 
-// Simple auth guard — modules flag protected routes with `meta.requiresAuth`.
+// Auth guard — routes flag protection via `meta.requiresAuth` (customers) or
+// `meta.requiresAdmin` (independent admin guard).
 router.beforeEach((to) => {
-  const isAuthenticated = Boolean(localStorage.getItem('auth_token'))
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  if (to.meta.requiresAuth && !localStorage.getItem('auth_token')) {
     return { name: 'auth.login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAdmin && !localStorage.getItem('admin_token')) {
+    return { name: 'admin.login', query: { redirect: to.fullPath } }
   }
 })
 

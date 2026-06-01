@@ -15,9 +15,11 @@ const http: AxiosInstance = axios.create({
   },
 })
 
-// Attach the bearer token (if present) to every outgoing request.
+// Attach the relevant bearer token to every outgoing request. Admin endpoints
+// use an independent token so the two sessions never collide.
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token')
+  const isAdminRoute = (config.url ?? '').startsWith('/admin')
+  const token = localStorage.getItem(isAdminRoute ? 'admin_token' : 'auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
