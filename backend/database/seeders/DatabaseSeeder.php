@@ -8,6 +8,7 @@ use App\Modules\Administration\Domain\Enums\AdminRole;
 use App\Modules\Administration\Domain\Models\Admin;
 use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissionsSeeder;
 use App\Modules\Authentication\Domain\Models\User;
+use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -40,5 +41,8 @@ class DatabaseSeeder extends Seeder
 
         // Sample customers.
         User::factory(5)->create();
+
+        // Dynamic CMS pages with builder blocks.
+        $this->call(CmsContentSeeder::class);
     }
 }

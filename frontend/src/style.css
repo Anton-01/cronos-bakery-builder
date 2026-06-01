@@ -179,3 +179,92 @@ button:disabled {
   margin-top: 1rem;
   font-size: 0.9rem;
 }
+
+/* ----- CMS dynamic blocks ------------------------------------------------ */
+.dynamic-page__state {
+  padding: 3rem;
+  text-align: center;
+  color: #8a7c70;
+}
+
+.block {
+  padding: 3rem 2rem;
+}
+
+.block__cta {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 8px;
+}
+
+.block--hero {
+  background-size: cover;
+  background-position: center;
+  text-align: center;
+  padding: 5rem 2rem;
+}
+
+.block--banner {
+  text-align: center;
+  background: #f3e9dd;
+}
+
+.block--gallery__grid,
+.block--cards__grid,
+.block--testimonials__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.block--gallery__grid img,
+.card img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.card {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.block--faq__item {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 0;
+}
+
+.block--faq__item summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.block--video__frame {
+  position: relative;
+  padding-top: 56.25%;
+}
+
+.block--video__frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
+.block--testimonials blockquote {
+  margin: 0;
+  padding: 1.25rem;
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface);
+}
+
+.block--cta {
+  text-align: center;
+  background: #f3e9dd;
+}

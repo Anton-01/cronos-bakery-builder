@@ -171,6 +171,38 @@ Configure social providers in `backend/.env` (`GOOGLE_*`, `FACEBOOK_*`,
 
 ---
 
+## Enterprise CMS (Phase 3)
+
+A fully administrable, block-based CMS. Administrators create dynamic,
+SEO-aware pages without touching code; the Vue frontend renders them from
+stored configuration.
+
+- **Dynamic pages** with title, slug, type (Inicio, Nosotros, Contacto, FAQ,
+  Políticas, Blog, Landing), SEO meta (`meta_title` / `meta_description`),
+  rich-text content and publication status (draft / published / archived).
+- **Page builder** — pages are composed of ordered, configurable blocks:
+  **Hero, Banner, Galería, Cards, Texto, Video, CTA, FAQ, Testimonios**. Each
+  block carries a free-form `config` payload interpreted by its frontend
+  renderer.
+- **Reusable section library** — blocks can be saved once and referenced from
+  many pages; per-page inline `config` overrides the reusable defaults.
+- **Frontend rendering** — `GET /p/:slug` loads the published page and renders
+  each block via a type → component registry (`BlockRenderer`), applying SEO
+  metadata to the document head.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/cms/pages` · `/cms/pages/{slug}` | Public published pages (frontend) |
+| GET/POST/PUT/DELETE | `/api/admin/cms/pages` | Page CRUD (admin) |
+| POST/PUT/DELETE | `/api/admin/cms/pages/{page}/blocks…` | Manage builder blocks |
+| PUT | `/api/admin/cms/pages/{page}/blocks/reorder` | Reorder blocks |
+| GET/POST/PUT/DELETE | `/api/admin/cms/sections` | Reusable section library |
+
+Admin CMS endpoints require the `admin` guard plus the `manage cms` permission
+(granted to Super Admin, Administrador and Marketing).
+
+---
+
 ## Local development (without Docker)
 
 ```bash
