@@ -236,6 +236,39 @@ permission (granted to Super Admin, Administrador and Marketing).
 
 ---
 
+## Product Builder — central engine (Phase 5)
+
+A fully dynamic configurator: any configurable product (Muse Blanc, Studio Cake,
+Coquette Cake, Signature Cake…) is created from the admin panel, and the
+frontend generates its configurator automatically — no per-product code.
+
+- **Option types**: `select`, `radio`, `checkbox`, `color`, `image`, `text`,
+  `textarea`. Choice types own a list of values; text/textarea capture free
+  input (with optional `max_length`).
+- **Dynamic pricing**: each option value applies a modifier to the running
+  total — **add**, **subtract** or **set** (fija el precio base, e.g. la forma
+  determina el precio). Pricing is computed authoritatively server-side.
+- **Conditional dependencies**: rules show/hide options based on another
+  option's value — e.g. *Si Forma = Domo, mostrar Perlas*. Operators: `equals`,
+  `not_equals`, `in`. Hidden options contribute no price and are not validated;
+  chained rules resolve to a fixed point.
+- **Auto-generated UI**: the Vue configurator renders a field per option by
+  type, evaluates visibility client-side (mirroring the server), and re-prices
+  via the quote endpoint with a live breakdown.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/product-builder/products` · `/products/{slug}` | List / full config (public) |
+| POST | `/api/product-builder/products/{slug}/quote` | Validate + price selections |
+| … | `/api/admin/product-builder/products` | Product CRUD (admin) |
+| … | `/products/{product}/options[/{option}/values]` | Options & values |
+| … | `/products/{product}/rules` | Conditional rules |
+
+Admin Product Builder endpoints require the `admin` guard plus the
+`manage products` permission (Super Admin, Administrador).
+
+---
+
 ## Local development (without Docker)
 
 ```bash

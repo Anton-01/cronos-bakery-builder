@@ -10,6 +10,7 @@ use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissio
 use App\Modules\Authentication\Domain\Models\User;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
+use App\Modules\ProductBuilder\Infrastructure\Database\Seeders\ProductBuilderSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -48,5 +49,8 @@ class DatabaseSeeder extends Seeder
 
         // Theme Builder: active theme, navigation menu and banners.
         $this->call(ThemeBuilderSeeder::class);
+
+        // Product Builder: configurable cakes with options, pricing and rules.
+        $this->call(ProductBuilderSeeder::class);
     }
 }
