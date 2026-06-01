@@ -9,6 +9,7 @@ use App\Modules\Administration\Domain\Models\Admin;
 use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissionsSeeder;
 use App\Modules\Authentication\Domain\Models\User;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
+use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -44,5 +45,8 @@ class DatabaseSeeder extends Seeder
 
         // Dynamic CMS pages with builder blocks.
         $this->call(CmsContentSeeder::class);
+
+        // Theme Builder: active theme, navigation menu and banners.
+        $this->call(ThemeBuilderSeeder::class);
     }
 }

@@ -203,6 +203,39 @@ Admin CMS endpoints require the `admin` guard plus the `manage cms` permission
 
 ---
 
+## Theme Builder (Phase 4)
+
+Fully dynamic branding — administrators restyle the storefront without
+redeploying. The Vue frontend reads the active configuration from the API and
+applies it at runtime.
+
+- **Branding**: logo, favicon, corporate palette (primary, secondary, accent,
+  success, warning, danger) and Google Fonts (heading + body). Colours are
+  injected as CSS custom properties; fonts are loaded on the fly; the favicon is
+  swapped in the document head.
+- **Footer**: structured visual editor (columns of links + copyright).
+- **Dynamic menus**: location-bound (header/footer) with unlimited nesting
+  (e.g. Pasteles → Floral, Moderno, Mini Cakes), rendered by a recursive
+  `MenuTree` component.
+- **Banners**: administrable per placement (home top/middle, sidebar, catalog),
+  with optional scheduling (`starts_at` / `ends_at`); only "live" banners are
+  served publicly.
+- Multiple themes can coexist; exactly one is active at a time.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/theme` | Active theme (frontend) |
+| GET | `/api/menus/{location}` | Nested menu tree by location |
+| GET | `/api/banners/{placement}` | Live banners for a placement |
+| GET/POST/PUT | `/api/admin/themes` · `/themes/{id}/activate` | Theme CRUD + activation |
+| … | `/api/admin/menus` · `/menus/{menu}/items` | Menus & nested items |
+| … | `/api/admin/banners` | Banner management |
+
+Admin Theme Builder endpoints require the `admin` guard plus the `manage theme`
+permission (granted to Super Admin, Administrador and Marketing).
+
+---
+
 ## Local development (without Docker)
 
 ```bash
