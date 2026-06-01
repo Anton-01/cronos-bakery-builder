@@ -1,2 +1,162 @@
-# cronos-bakery-builder
-A platform specializing in the customization, production, and sale of artisanal cakes.
+# Cronos Bakery Builder
+
+A platform specializing in the customization, production, and sale of artisanal
+cakes.
+
+This repository contains the **Phase 1** foundation: an enterprise-grade,
+Domain-Driven Design architecture for a Laravel 12 API and a Vue 3 SPA, fully
+containerized for local development.
+
+---
+
+## Tech stack
+
+| Layer        | Technology                                              |
+| ------------ | ------------------------------------------------------- |
+| Backend      | Laravel 12 (PHP 8.4), PSR-12, Sanctum                   |
+| Frontend     | Vue 3 + TypeScript + Vite, Pinia, Vue Router, Axios     |
+| Database     | PostgreSQL 16                                            |
+| Cache/Queue  | Redis 7                                                  |
+| Object store | MinIO (S3-compatible)                                    |
+| Mail         | Mailpit                                                  |
+| Web server   | Nginx + PHP-FPM                                          |
+
+---
+
+## Architecture overview
+
+The backend follows **Domain-Driven Design** with decoupled, modular bounded
+contexts. Each module is self-contained and wired into the framework through its
+own service provider.
+
+```
+backend/app/
+├── Domains/            # Shared domain primitives reused across modules
+│   ├── Enums/          #   e.g. Currency
+│   └── ValueObjects/   #   e.g. Money
+├── Shared/             # Shared kernel — base abstractions for every module
+│   ├── Application/DTO/             # DataTransferObject base
+│   ├── Domain/Contracts/           # RepositoryInterface
+│   ├── Domain/Events/              # DomainEvent base
+│   ├── Infrastructure/Repositories/# AbstractEloquentRepository
+│   └── Providers/                  # ModuleServiceProvider base
+└── Modules/            # Feature modules (bounded contexts)
+    ├── Authentication
+    ├── CMS
+    ├── Catalog
+    ├── ProductBuilder
+    ├── Orders
+    ├── Payments
+    ├── Calendar
+    ├── Notifications
+    └── Administration
+```
+
+### Anatomy of a module
+
+Every module follows the same layered layout (the **Catalog** and
+**Authentication** modules are fully implemented as reference; the rest are
+scaffolded and ready for development):
+
+```
+Modules/<Module>/
+├── Application/
+│   ├── DTO/            # Immutable input objects (extend DataTransferObject)
+│   └── Services/       # Use-case orchestration (Service Layer)
+├── Domain/
+│   ├── Models/         # Eloquent aggregate roots
+│   ├── Repositories/   # Repository interfaces (persistence contracts)
+│   ├── Events/         # Domain events
+│   └── Policies/       # Authorization rules
+├── Infrastructure/
+│   ├── Repositories/   # Eloquent repository implementations
+│   ├── Database/       # Migrations + factories
+│   ├── Jobs/           # Queued jobs
+│   └── Listeners/      # Event listeners (often queued)
+├── Presentation/
+│   └── Http/           # Controllers, Form Requests, API Resources, routes.php
+└── Providers/          # <Module>ServiceProvider (routes, bindings, policies)
+```
+
+This realises the patterns requested for Phase 1: **Repository Pattern**,
+**Service Layer**, **DTOs**, **Policies**, **Events**, **Queues** and **Jobs**.
+
+The frontend mirrors the same modular decomposition:
+
+```
+frontend/src/
+├── modules/<module>/   # Per-module components, pages, stores, services, types, routes
+├── components/         # Shared UI components
+├── layouts/            # DefaultLayout, AdminLayout, AuthLayout
+├── pages/              # Top-level pages (Home, NotFound)
+├── stores/             # Global Pinia stores (auth)
+├── services/           # Shared services (http client)
+└── router/             # Route composition
+```
+
+---
+
+## Getting started
+
+### With Docker (recommended)
+
+```bash
+# 1. Copy environment files
+cp .env.example .env                 # docker-compose variables
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+# 2. Build & start the stack
+docker compose up -d --build
+
+# 3. Generate app key, run migrations & seed
+docker compose exec php php artisan key:generate
+docker compose exec php php artisan migrate --seed
+```
+
+### Service endpoints
+
+| Service          | URL                              |
+| ---------------- | -------------------------------- |
+| API (Nginx)      | http://localhost:8080            |
+| API health       | http://localhost:8080/api/status |
+| Frontend (Vite)  | http://localhost:5173            |
+| MinIO console    | http://localhost:9001            |
+| Mailpit UI       | http://localhost:8025            |
+| PostgreSQL       | localhost:5432                   |
+| Redis            | localhost:6379                   |
+
+The seeder creates an administrator: `admin@cronos.test` / `password`.
+
+---
+
+## Local development (without Docker)
+
+```bash
+# Backend
+cd backend
+composer install
+cp .env.example .env && php artisan key:generate
+php artisan migrate --seed
+php artisan serve
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Quality
+
+```bash
+# Backend — tests + PSR-12 style
+cd backend
+php artisan test
+./vendor/bin/pint --test
+
+# Frontend — type-check + build
+cd frontend
+npm run build
+```

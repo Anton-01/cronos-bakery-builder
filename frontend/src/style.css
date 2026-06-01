@@ -1,0 +1,139 @@
+:root {
+  --color-bg: #fdf8f3;
+  --color-surface: #ffffff;
+  --color-text: #2c2420;
+  --color-primary: #b8693d;
+  --color-border: #ece3d8;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ----- Layout shells ----------------------------------------------------- */
+.layout--default {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.layout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.layout__brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.layout__nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.layout__content {
+  flex: 1;
+  padding: 2rem;
+}
+
+.layout__footer {
+  padding: 1rem 2rem;
+  border-top: 1px solid var(--color-border);
+  color: #8a7c70;
+}
+
+.layout--admin {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.layout__sidebar {
+  padding: 1.5rem;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.layout__sidebar .layout__nav {
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.layout__main {
+  padding: 2rem;
+}
+
+.layout--auth {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+
+.layout__card {
+  width: min(380px, 90vw);
+  padding: 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+/* ----- Forms ------------------------------------------------------------- */
+form label {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+form input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+button {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.home__cta {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 8px;
+}

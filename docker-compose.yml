@@ -1,0 +1,194 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Nginx — reverse proxy / web server for the Laravel backend
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: cronos_nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    volumes:
+      - ./backend:/var/www/html:cached
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # PHP-FPM — Laravel 12 application runtime
+  # ---------------------------------------------------------------------------
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: cronos_php
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html:cached
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/zz-custom.ini:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # Queue worker — processes jobs from the Redis queue
+  # ---------------------------------------------------------------------------
+  queue:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: cronos_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --tries=3 --sleep=3 --max-time=3600
+    volumes:
+      - ./backend:/var/www/html:cached
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — runs Laravel's schedule every minute
+  # ---------------------------------------------------------------------------
+  scheduler:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: cronos_scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan schedule:work
+    volumes:
+      - ./backend:/var/www/html:cached
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # Vite dev server — Vue 3 frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: node:22-alpine
+    container_name: cronos_frontend
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — primary relational datastore
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cronos_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-cronos}
+      POSTGRES_USER: ${DB_USERNAME:-cronos}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-cronos} -d ${DB_DATABASE:-cronos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # Redis — cache, sessions and queue backend
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: cronos_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage (product images, assets)
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: cronos_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # createbuckets — bootstraps the default MinIO bucket on startup
+  # ---------------------------------------------------------------------------
+  createbuckets:
+    image: minio/mc:latest
+    container_name: cronos_createbuckets
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio} ${MINIO_ROOT_PASSWORD:-minio123}) do echo 'waiting for minio...' && sleep 2; done;
+      /usr/bin/mc mb --ignore-existing local/${MINIO_BUCKET:-cronos};
+      /usr/bin/mc anonymous set download local/${MINIO_BUCKET:-cronos};
+      exit 0;
+      "
+    networks:
+      - cronos
+
+  # ---------------------------------------------------------------------------
+  # Mailpit — local SMTP catcher + web UI for outgoing mail
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: cronos_mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - cronos
+
+networks:
+  cronos:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
