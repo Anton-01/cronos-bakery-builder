@@ -269,6 +269,41 @@ Admin Product Builder endpoints require the `admin` guard plus the
 
 ---
 
+## Catalog & dynamic filters (Phase 6)
+
+A dynamic, SEO-driven catalog with admin-configurable filters — no code per
+filter.
+
+- **Taxonomy**: hierarchical **categories** (Floral, Moderno, Mini, Signature),
+  **collections**, **tags**, and admin-defined **attributes** (Tamaño, Sabor,
+  Color…). Marking an attribute *filterable* surfaces it as a catalog facet
+  automatically.
+- **Dynamic filtering**: by category, collection, tag, price range and any
+  number of attributes (AND across attributes, OR within each), plus full-text
+  search and sorting — paginated and indexed for fast lookups.
+- **Facets endpoint** returns the available filters (categories tree,
+  collections, filterable attributes with values, price bounds) so the UI is
+  generated from configuration.
+- **SEO**: friendly URLs `/categoria/floral` and `/pastel/muse-blanc`,
+  per-entity meta title/description applied to the document head, and
+  **breadcrumb** trails built from the category hierarchy.
+- **Responsive** filter sidebar, product grid, sorting and pagination on the
+  Vue frontend.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/catalog/browse` | Filtered, paginated products |
+| GET | `/api/catalog/facets` | Configurable filter facets |
+| GET | `/api/catalog/categories/{slug}` | Category landing + breadcrumbs + products |
+| GET | `/api/catalog/detail/{slug}` | Product detail + breadcrumbs |
+| … | `/api/admin/catalog/categories\|collections\|attributes` | Taxonomy CRUD |
+| PUT | `/api/admin/catalog/products/{product}/taxonomy` | Classify a product |
+
+Admin catalog endpoints require the `admin` guard plus the `manage products`
+permission.
+
+---
+
 ## Local development (without Docker)
 
 ```bash

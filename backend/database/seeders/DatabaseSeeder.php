@@ -8,6 +8,7 @@ use App\Modules\Administration\Domain\Enums\AdminRole;
 use App\Modules\Administration\Domain\Models\Admin;
 use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissionsSeeder;
 use App\Modules\Authentication\Domain\Models\User;
+use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
 use App\Modules\ProductBuilder\Infrastructure\Database\Seeders\ProductBuilderSeeder;
@@ -52,5 +53,8 @@ class DatabaseSeeder extends Seeder
 
         // Product Builder: configurable cakes with options, pricing and rules.
         $this->call(ProductBuilderSeeder::class);
+
+        // Catalog: categories, collections, attributes and classified products.
+        $this->call(CatalogTaxonomySeeder::class);
     }
 }
