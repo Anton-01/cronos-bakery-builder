@@ -27,6 +27,8 @@ class RolesAndPermissionsSeeder extends Seeder
         'view dashboard',
         'manage admins',
         'manage roles',
+        'manage users',
+        'view audit',
         'manage products',
         'view products',
         'manage orders',
@@ -53,7 +55,8 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     private const ROLE_PERMISSIONS = [
         AdminRole::Administrator->value => [
-            'view dashboard', 'manage products', 'view products', 'manage orders',
+            'view dashboard', 'manage users', 'view audit', 'manage admins', 'manage roles',
+            'manage products', 'view products', 'manage orders',
             'view orders', 'update order status', 'manage payments', 'manage production',
             'view production', 'manage calendar', 'manage cms', 'manage theme', 'manage marketing',
             'manage notifications', 'manage deliveries', 'view deliveries', 'view reports',

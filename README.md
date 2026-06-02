@@ -432,6 +432,36 @@ Admin notification endpoints require the `admin` guard plus the
 
 ---
 
+## Enterprise admin panel (Phase 11)
+
+A complete administration panel with an analytical dashboard, user & role
+management and advanced auditing.
+
+- **Analytical dashboard**: aggregated **sales** (revenue, paid payments, average
+  order value), **orders** (totals + by status), **production** (in-production,
+  ready, upcoming pickups), **conversion** (cart→order, order→paid) and
+  **customers** (total, new, with orders).
+- **Audit trail — every action logged**: a global middleware automatically
+  records every *mutating* admin request (who, method, path, status, IP, payload
+  with sensitive fields redacted) to `audit_logs`, viewable in the panel.
+- **User management**: search and view customers.
+- **Access control**: list roles + their permissions, create administrators and
+  assign roles (Super Admin / Administrador only).
+- The Vue admin SPA provides the panel shell (sidebar nav, dashboard cards,
+  audit table, users and roles views); the remaining sections (CMS, Theme,
+  Products, Orders, Calendar, Payments, Automations) are driven by the admin
+  APIs built in earlier phases.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/admin/dashboard` | Aggregated metrics (`view dashboard`) |
+| GET | `/api/admin/audit-logs` | Audit trail (`view audit`) |
+| GET | `/api/admin/users[/{user}]` | Customer management (`manage users`) |
+| GET/POST | `/api/admin/roles` · `/admins` | Roles + admin management (Super/Admin role) |
+| PUT | `/api/admin/admins/{admin}/roles` | Assign roles |
+
+---
+
 ## Local development (without Docker)
 
 ```bash

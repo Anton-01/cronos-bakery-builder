@@ -61,28 +61,29 @@ class AdminAuthTest extends TestCase
         $this->getJson('/api/admin/me')->assertForbidden();
     }
 
-    public function test_role_gated_dashboard_enforces_roles(): void
+    public function test_role_gated_access_control_enforces_roles(): void
     {
+        // Access-control endpoints are gated to Super Admin / Administrador.
         Sanctum::actingAs($this->admin(AdminRole::Courier));
-        $this->getJson('/api/admin/dashboard')->assertForbidden();
+        $this->getJson('/api/admin/roles')->assertForbidden();
 
         Sanctum::actingAs($this->admin(AdminRole::Administrator));
-        $this->getJson('/api/admin/dashboard')->assertOk();
+        $this->getJson('/api/admin/roles')->assertOk();
     }
 
     public function test_super_admin_bypasses_all_permission_checks(): void
     {
-        // Super Admin is not explicitly granted "manage products" but Gate::before
+        // Super Admin is not explicitly granted "manage users" but Gate::before
         // grants everything.
         Sanctum::actingAs($this->admin(AdminRole::SuperAdmin));
 
-        $this->getJson('/api/admin/catalog/overview')->assertOk();
+        $this->getJson('/api/admin/users')->assertOk();
     }
 
     public function test_permission_gated_route_blocks_roles_without_the_permission(): void
     {
         Sanctum::actingAs($this->admin(AdminRole::Courier));
 
-        $this->getJson('/api/admin/catalog/overview')->assertForbidden();
+        $this->getJson('/api/admin/users')->assertForbidden();
     }
 }
