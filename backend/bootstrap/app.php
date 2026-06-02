@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Administration\Presentation\Http\Middleware\EnsureAdmin;
 use App\Modules\Administration\Presentation\Http\Middleware\LogAdminActivity;
+use App\Shared\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,8 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust the load balancer / CDN / WAF in front of the app.
+        $middleware->trustProxies(at: '*');
+
         // Enable Sanctum's SPA authentication for stateful, cookie-based requests.
         $middleware->statefulApi();
+
+        // Hardening headers (WAF-ready) on every response.
+        $middleware->append(SecurityHeaders::class);
 
         // Audit every mutating admin action (self-filters inside the middleware).
         $middleware->appendToGroup('api', LogAdminActivity::class);

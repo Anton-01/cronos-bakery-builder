@@ -14,6 +14,7 @@ const sections = [
   { label: 'Usuarios', to: '/admin/users' },
   { label: 'Roles', to: '/admin/roles' },
   { label: 'Auditoría', to: '/admin/audit' },
+  { label: 'Seguridad (2FA)', to: '/admin/security' },
 ]
 
 const apiManaged = [

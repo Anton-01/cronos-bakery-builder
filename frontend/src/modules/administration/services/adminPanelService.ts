@@ -41,9 +41,32 @@ interface Paginated<T> {
   meta?: { current_page: number; last_page: number; total: number }
 }
 
+export interface TwoFactorSetup {
+  secret: string
+  otpauth_url: string
+}
+
 export const adminPanelService = {
   dashboard(): Promise<DashboardMetrics> {
     return request<Wrapped<DashboardMetrics>>({ url: '/admin/dashboard', method: 'GET' }).then((r) => r.data)
+  },
+
+  metrics(): Promise<Record<string, unknown>> {
+    return request<Wrapped<Record<string, unknown>>>({ url: '/admin/metrics', method: 'GET' }).then(
+      (r) => r.data,
+    )
+  },
+
+  enableTwoFactor(): Promise<TwoFactorSetup> {
+    return request<Wrapped<TwoFactorSetup>>({ url: '/admin/2fa/enable', method: 'POST' }).then((r) => r.data)
+  },
+
+  confirmTwoFactor(code: string): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/2fa/confirm', method: 'POST', data: { code } })
+  },
+
+  disableTwoFactor(): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/2fa/disable', method: 'POST' })
   },
 
   auditLogs(): Promise<Paginated<AuditLog>> {

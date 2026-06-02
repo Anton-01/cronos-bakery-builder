@@ -75,6 +75,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Structured JSON logs for shipping to a log aggregator / observability
+        // stack (e.g. ELK, Loki, CloudWatch).
+        'json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/structured.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

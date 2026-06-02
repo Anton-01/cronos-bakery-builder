@@ -39,15 +39,17 @@ services:
 
   # ---------------------------------------------------------------------------
   # Queue worker — processes jobs from the Redis queue
+  # Queue processing via Laravel Horizon (Redis-backed, auto-balancing workers).
   # ---------------------------------------------------------------------------
-  queue:
+  horizon:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: cronos_queue
+    container_name: cronos_horizon
     restart: unless-stopped
     working_dir: /var/www/html
-    command: php artisan queue:work --tries=3 --sleep=3 --max-time=3600
+    command: php artisan horizon
+    stop_signal: SIGTERM
     volumes:
       - ./backend:/var/www/html:cached
     depends_on:

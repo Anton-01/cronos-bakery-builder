@@ -19,12 +19,16 @@ final class AdminAuthService
 {
     private const BROKER = 'admins';
 
+    public function __construct(private readonly TwoFactorService $twoFactor)
+    {
+    }
+
     /**
      * @return array{admin: Admin, token: string}
      *
      * @throws ValidationException
      */
-    public function login(string $email, string $password): array
+    public function login(string $email, string $password, ?string $code = null): array
     {
         /** @var Admin|null $admin */
         $admin = Admin::query()->where('email', $email)->first();
@@ -39,6 +43,19 @@ final class AdminAuthService
             throw ValidationException::withMessages([
                 'email' => ['This administrator account is disabled.'],
             ]);
+        }
+
+        // Enforce the second factor when enabled.
+        if ($admin->hasTwoFactorEnabled()) {
+            if ($code === null || $code === '') {
+                throw ValidationException::withMessages([
+                    'code' => ['A two-factor code is required.'],
+                ])->status(423);
+            }
+
+            if (! $this->twoFactor->verify($admin, $code)) {
+                throw ValidationException::withMessages(['code' => ['The two-factor code is invalid.']]);
+            }
         }
 
         $token = $admin->createToken('admin', ['admin'])->plainTextToken;

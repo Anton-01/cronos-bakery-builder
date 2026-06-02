@@ -31,4 +31,10 @@ export const administrationRoutes: RouteRecordRaw[] = [
     component: () => import('./pages/AuditLogPage.vue'),
     meta: { layout: 'admin', requiresAdmin: true },
   },
+  {
+    path: '/admin/security',
+    name: 'admin.security',
+    component: () => import('./pages/SecurityPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
 ]

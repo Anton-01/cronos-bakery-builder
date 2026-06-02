@@ -462,6 +462,48 @@ management and advanced auditing.
 
 ---
 
+## Scalability & production (Phase 12)
+
+The platform is hardened and ready for cloud-scale deployment.
+
+**Infrastructure**
+- **Docker** stack with a dedicated **Laravel Horizon** service for Redis-backed
+  queue processing (auto-balancing workers, graceful restarts).
+- **Redis** for cache, sessions and queues; **S3/MinIO** object storage with an
+  optional **CDN** (`ASSET_URL`).
+- **Automated backups** (Spatie) scheduled nightly (`backup:run` / `backup:clean`
+  / `backup:monitor`) to the configured disk (S3 by default).
+
+**Observability**
+- Public **health probe** `GET /api/health` (database + cache checks) for load
+  balancers, and an admin **metrics** snapshot `GET /api/admin/metrics` (queue
+  depth, orders, payments, notifications) for monitoring/alerting.
+- **Structured JSON logs** channel for shipping to an aggregator; Slack channel
+  for critical alerts.
+
+**Security**
+- **Two-factor authentication (TOTP)** for administrators — enrol/confirm/disable
+  endpoints, enforced at admin login (HTTP 423 when a code is required).
+- **Rate limiting** on authentication endpoints; a per-user/IP `api` limiter.
+- **WAF-ready**: hardening response headers on every response
+  (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy`, HSTS over TLS) and trusted-proxy support behind a
+  load balancer / CDN / WAF.
+- **Audit logs** of every administrative action (Phase 11), with sensitive
+  fields redacted.
+
+**Deployment**: `scripts/deploy.sh` installs production dependencies, migrates,
+caches config/routes/events/views, gracefully restarts Horizon and builds the
+frontend.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/health` | Liveness/readiness probe (public) |
+| GET | `/api/admin/metrics` | Operational metrics (admin) |
+| POST | `/api/admin/2fa/enable` · `/confirm` · `/disable` | Two-factor enrolment |
+
+---
+
 ## Local development (without Docker)
 
 ```bash

@@ -2,28 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Modules\Administration\Providers\AdministrationServiceProvider;
-use App\Modules\Authentication\Providers\AuthenticationServiceProvider;
-use App\Modules\Calendar\Providers\CalendarServiceProvider;
-use App\Modules\Catalog\Providers\CatalogServiceProvider;
-use App\Modules\CMS\Providers\CMSServiceProvider;
-use App\Modules\Notifications\Providers\NotificationsServiceProvider;
-use App\Modules\Orders\Providers\OrdersServiceProvider;
-use App\Modules\Payments\Providers\PaymentsServiceProvider;
-use App\Modules\ProductBuilder\Providers\ProductBuilderServiceProvider;
-use App\Providers\AppServiceProvider;
-
 return [
-    AppServiceProvider::class,
-
-    // Feature modules (Domain-Driven Design bounded contexts)
-    AuthenticationServiceProvider::class,
-    CMSServiceProvider::class,
-    CatalogServiceProvider::class,
-    ProductBuilderServiceProvider::class,
-    OrdersServiceProvider::class,
-    PaymentsServiceProvider::class,
-    CalendarServiceProvider::class,
-    NotificationsServiceProvider::class,
-    AdministrationServiceProvider::class,
+    App\Modules\Administration\Providers\AdministrationServiceProvider::class,
+    App\Modules\Authentication\Providers\AuthenticationServiceProvider::class,
+    App\Modules\CMS\Providers\CMSServiceProvider::class,
+    App\Modules\Calendar\Providers\CalendarServiceProvider::class,
+    App\Modules\Catalog\Providers\CatalogServiceProvider::class,
+    App\Modules\Notifications\Providers\NotificationsServiceProvider::class,
+    App\Modules\Orders\Providers\OrdersServiceProvider::class,
+    App\Modules\Payments\Providers\PaymentsServiceProvider::class,
+    App\Modules\ProductBuilder\Providers\ProductBuilderServiceProvider::class,
+    App\Providers\AppServiceProvider::class,
+    App\Providers\HorizonServiceProvider::class,
 ];

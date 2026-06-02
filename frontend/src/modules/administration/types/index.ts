@@ -10,6 +10,7 @@ export interface Admin {
 export interface AdminCredentials {
   email: string
   password: string
+  code?: string
 }
 
 export interface AdminSession {

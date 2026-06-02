@@ -56,6 +56,9 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // CDN base URL for served assets (the asset() helper uses this when set).
+    'asset_url' => env('ASSET_URL'),
+
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
     /*

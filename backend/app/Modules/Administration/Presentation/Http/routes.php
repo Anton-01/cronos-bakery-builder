@@ -7,6 +7,8 @@ use App\Modules\Administration\Presentation\Http\Controllers\AccessControlContro
 use App\Modules\Administration\Presentation\Http\Controllers\AdminAuthController;
 use App\Modules\Administration\Presentation\Http\Controllers\AuditLogController;
 use App\Modules\Administration\Presentation\Http\Controllers\DashboardController;
+use App\Modules\Administration\Presentation\Http\Controllers\HealthController;
+use App\Modules\Administration\Presentation\Http\Controllers\TwoFactorController;
 use App\Modules\Administration\Presentation\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 | Administration API routes (independent admin guard)
 |--------------------------------------------------------------------------
 */
+
+// Public observability probe for load balancers / uptime monitoring.
+Route::get('health', [HealthController::class, 'health']);
 
 Route::prefix('admin')->group(function (): void {
     // --- Guest --------------------------------------------------------------
@@ -26,6 +31,15 @@ Route::prefix('admin')->group(function (): void {
     Route::middleware(['auth:sanctum', 'admin'])->group(function (): void {
         Route::get('me', [AdminAuthController::class, 'me']);
         Route::post('logout', [AdminAuthController::class, 'logout']);
+
+        // Two-factor authentication enrolment.
+        Route::post('2fa/enable', [TwoFactorController::class, 'enable']);
+        Route::post('2fa/confirm', [TwoFactorController::class, 'confirm']);
+        Route::post('2fa/disable', [TwoFactorController::class, 'disable']);
+
+        // Operational metrics snapshot.
+        Route::middleware('permission:view dashboard')
+            ->get('metrics', [HealthController::class, 'metrics']);
 
         // Analytical dashboard (available to every administrator).
         Route::middleware('permission:view dashboard')
