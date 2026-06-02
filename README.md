@@ -399,6 +399,39 @@ permission. Production SDK calls plug into each strategy's `createCharge()`.
 
 ---
 
+## Automation engine (Phase 10)
+
+An event-driven notification engine with admin-configurable templates and
+automatic reminders, processed asynchronously via **Laravel Queues + Scheduler**.
+
+- **Configurable email templates** per event (subject, body with `{{ variable }}`
+  placeholders, documented variables), toggled active/inactive by the admin.
+- **Events**: `order.placed`, `payment.approved`, `production.started`,
+  `order.ready`, `order.reminder`. Owning modules raise a single decoupled
+  `AutomationTriggered` event; a listener resolves the active template, renders
+  it and queues delivery (`SendNotificationJob`).
+- **Automatic reminders**: configurable offset rules (24h / 12h / 2h before
+  pickup). A scheduled command (`notifications:dispatch-reminders`, hourly) fires
+  due reminders, idempotent per order/offset.
+- **Full traceability + idempotency**: every dispatch is recorded in
+  `notification_logs` with a dedupe key.
+- Integrated end-to-end: checkout → `order.placed`; payment reconciliation →
+  `payment.approved`; admin order-status transitions → `production.started` /
+  `order.ready`.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET/POST/PUT/DELETE | `/api/admin/notifications/templates` | Email templates |
+| GET/POST/PUT/DELETE | `/api/admin/notifications/reminders` | Reminder offset rules |
+| GET | `/api/admin/notifications/logs` | Delivery traceability |
+| PUT | `/api/admin/orders/{order}/status` | Transition status (fires automations) |
+
+Admin notification endpoints require the `admin` guard plus the
+`manage notifications` permission. The scheduler runs
+`notifications:dispatch-reminders` hourly.
+
+---
+
 ## Local development (without Docker)
 
 ```bash

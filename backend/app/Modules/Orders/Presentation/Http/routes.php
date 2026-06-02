@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Orders\Presentation\Http\Controllers\AddressController;
+use App\Modules\Orders\Presentation\Http\Controllers\Admin\OrderAdminController;
 use App\Modules\Orders\Presentation\Http\Controllers\BranchController;
 use App\Modules\Orders\Presentation\Http\Controllers\CartController;
 use App\Modules\Orders\Presentation\Http\Controllers\CheckoutController;
@@ -41,3 +42,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('orders', [OrderController::class, 'index']);
     Route::get('orders/{order}', [OrderController::class, 'show']);
 });
+
+// Admin order management: list + status transitions (fire automations).
+Route::prefix('admin/orders')
+    ->middleware(['auth:sanctum', 'admin', 'permission:update order status'])
+    ->group(function (): void {
+        Route::get('/', [OrderAdminController::class, 'index']);
+        Route::put('{order}/status', [OrderAdminController::class, 'updateStatus']);
+    });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Orders\Application\Services;
 
 use App\Modules\Authentication\Domain\Models\User;
+use App\Modules\Notifications\Domain\Events\AutomationTriggered;
 use App\Modules\Orders\Domain\Enums\FulfillmentType;
 use App\Modules\Orders\Domain\Enums\OrderStatus;
 use App\Modules\Orders\Domain\Models\Branch;
@@ -42,7 +43,7 @@ final class CheckoutService
         $type = FulfillmentType::from($payload['fulfillment_type']);
         $fulfillment = $this->resolveFulfillment($user, $type, $payload);
 
-        return DB::transaction(function () use ($user, $cart, $type, $fulfillment, $payload): Order {
+        $order = DB::transaction(function () use ($user, $cart, $type, $fulfillment, $payload): Order {
             $subtotal = $cart->subtotalAmount();
 
             $order = Order::create([
@@ -77,6 +78,20 @@ final class CheckoutService
 
             return $order->load(['items', 'branch']);
         });
+
+        // Fire the "order placed" automation (decoupled, queued delivery).
+        AutomationTriggered::dispatch(
+            'order.placed',
+            [
+                'customer_name' => $user->name,
+                'order_number' => $order->number,
+                'total' => number_format($order->total_amount / 100, 2),
+                'status' => $order->status->label(),
+            ],
+            (string) $user->email,
+        );
+
+        return $order;
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Modules\Calendar\Infrastructure\Database\Seeders\CalendarSeeder;
 use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
+use App\Modules\Notifications\Infrastructure\Database\Seeders\NotificationSeeder;
 use App\Modules\Orders\Infrastructure\Database\Seeders\BranchSeeder;
 use App\Modules\Payments\Infrastructure\Database\Seeders\PaymentGatewaySeeder;
 use App\Modules\ProductBuilder\Infrastructure\Database\Seeders\ProductBuilderSeeder;
@@ -68,5 +69,8 @@ class DatabaseSeeder extends Seeder
 
         // Payments: multi-gateway configuration (sandbox).
         $this->call(PaymentGatewaySeeder::class);
+
+        // Notifications: default templates + reminder rules (24h/12h/2h).
+        $this->call(NotificationSeeder::class);
     }
 }

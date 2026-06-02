@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Application\Services;
 
+use App\Modules\Notifications\Domain\Events\AutomationTriggered;
 use App\Modules\Orders\Domain\Enums\OrderStatus;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
 use App\Modules\Payments\Domain\Models\Payment;
@@ -79,5 +80,19 @@ final class ReconciliationService
             default => $order->status,
         };
         $order->save();
+
+        // Notify the customer when their payment is approved.
+        if ($status === PaymentStatus::Paid && $order->user !== null) {
+            AutomationTriggered::dispatch(
+                'payment.approved',
+                [
+                    'customer_name' => $order->user->name,
+                    'order_number' => $order->number,
+                    'total' => number_format($order->total_amount / 100, 2),
+                    'status' => $order->status->label(),
+                ],
+                (string) $order->user->email,
+            );
+        }
     }
 }
