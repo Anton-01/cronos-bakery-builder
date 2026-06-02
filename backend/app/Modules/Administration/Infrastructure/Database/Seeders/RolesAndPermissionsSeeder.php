@@ -34,6 +34,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'update order status',
         'manage production',
         'view production',
+        'manage calendar',
         'manage cms',
         'manage theme',
         'manage marketing',
@@ -52,12 +53,12 @@ class RolesAndPermissionsSeeder extends Seeder
         AdminRole::Administrator->value => [
             'view dashboard', 'manage products', 'view products', 'manage orders',
             'view orders', 'update order status', 'manage production', 'view production',
-            'manage cms', 'manage theme', 'manage marketing', 'manage deliveries', 'view deliveries',
-            'view reports',
+            'manage calendar', 'manage cms', 'manage theme', 'manage marketing',
+            'manage deliveries', 'view deliveries', 'view reports',
         ],
         AdminRole::Production->value => [
             'view dashboard', 'view products', 'manage production', 'view production',
-            'view orders',
+            'manage calendar', 'view orders',
         ],
         AdminRole::Sales->value => [
             'view dashboard', 'view products', 'manage orders', 'view orders',

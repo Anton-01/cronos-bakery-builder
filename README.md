@@ -334,6 +334,36 @@ customer (`auth:sanctum`).
 
 ---
 
+## Smart scheduling calendar (Phase 8)
+
+An advanced delivery/pickup scheduling engine. Each product has independent
+production rules, and the engine computes valid dates automatically.
+
+- **Production rules per product**: lead time in hours (24h / 48h / 72h / 7d),
+  with a global default rule as fallback.
+- **Admin-controlled availability**: weekly schedule (open days + daily
+  capacity), bookable time slots (each with its own capacity), **holidays**
+  (festivos, one-off or recurring) and **blackouts** (bloqueos, full-day or a
+  single slot).
+- **Engine** computes the **minimum available date/slot** and the set of
+  available days, honouring: production lead time, open days, holidays,
+  blackouts and day/slot capacity (consumed by bookings), over a search window.
+- The Vue `AvailabilityPicker` consumes the engine and is wired into checkout
+  pickup — customers can only pick valid dates/slots.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/calendar/availability?product={slug}` | Minimum date + available days/slots |
+| GET/PUT | `/api/admin/calendar/schedule` | Weekly schedule + capacity |
+| … | `/api/admin/calendar/slots` | Time-slot CRUD |
+| POST/DELETE | `/api/admin/calendar/holidays` · `/blackouts` | Holidays & blackouts |
+| PUT | `/api/admin/calendar/production-rules` | Per-product / default lead time |
+
+Admin calendar endpoints require the `admin` guard plus the `manage calendar`
+permission (Super Admin, Administrador, Producción).
+
+---
+
 ## Local development (without Docker)
 
 ```bash

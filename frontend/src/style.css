@@ -499,3 +499,20 @@ h1, h2, h3, h4 {
 .orders__item a { display: flex; justify-content: space-between; gap: 1rem; width: 100%; color: inherit; text-decoration: none; }
 .orders__status { margin-left: 0.5rem; color: var(--color-primary, #b8693d); }
 .order-detail__items li { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
+
+/* ----- Smart calendar availability picker -------------------------------- */
+.availability__min { color: var(--color-text); margin: 0.5rem 0 1rem; }
+.availability__days { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.availability__day {
+  border: 1px solid var(--color-border); border-radius: 8px; background: #fff;
+  padding: 0.4rem 0.75rem; cursor: pointer; text-transform: capitalize;
+}
+.availability__day--active { background: var(--color-primary, #b8693d); color: #fff; border-color: transparent; }
+.availability__slots { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.availability__slot {
+  border: 1px solid var(--color-border); border-radius: 8px; background: #fff;
+  padding: 0.4rem 0.75rem; cursor: pointer;
+}
+.availability__slot--active { background: var(--color-accent, #e0a458); color: #2c2420; border-color: transparent; }
+.availability__slot small { color: #8a7c70; }
+.checkout__chosen { margin-top: 0.5rem; color: var(--color-success, #1b7340); font-weight: 600; }

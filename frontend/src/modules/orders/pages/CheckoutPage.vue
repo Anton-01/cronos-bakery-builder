@@ -2,12 +2,20 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AvailabilityPicker from '@/modules/calendar/components/AvailabilityPicker.vue'
+import type { SlotSelection } from '@/modules/calendar/types'
 import { orderService, type AddressPayload } from '../services/orderService'
 import { useCartStore } from '../stores/cart'
 import type { Address, Branch, CheckoutPayload } from '../types'
 
 const cart = useCartStore()
 const router = useRouter()
+
+/** The scheduling engine drives the pickup date/time selection. */
+function onSlotSelected(selection: SlotSelection): void {
+  form.pickup_date = selection.date
+  form.pickup_time = selection.start_time
+}
 
 const addresses = ref<Address[]>([])
 const branches = ref<Branch[]>([])
@@ -84,8 +92,12 @@ onMounted(async () => {
               <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </label>
-          <label>Fecha <input type="date" v-model="form.pickup_date" required /></label>
-          <label>Hora <input type="time" v-model="form.pickup_time" required /></label>
+
+          <!-- Smart calendar: only valid dates/slots from the engine. -->
+          <AvailabilityPicker @select="onSlotSelected" />
+          <p v-if="form.pickup_date" class="checkout__chosen">
+            Seleccionado: {{ form.pickup_date }} a las {{ form.pickup_time }}
+          </p>
         </fieldset>
 
         <!-- Delivery -->

@@ -8,6 +8,7 @@ use App\Modules\Administration\Domain\Enums\AdminRole;
 use App\Modules\Administration\Domain\Models\Admin;
 use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissionsSeeder;
 use App\Modules\Authentication\Domain\Models\User;
+use App\Modules\Calendar\Infrastructure\Database\Seeders\CalendarSeeder;
 use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
@@ -60,5 +61,8 @@ class DatabaseSeeder extends Seeder
 
         // Orders: pickup branches (sucursales).
         $this->call(BranchSeeder::class);
+
+        // Calendar: scheduling engine configuration (schedule, slots, rules).
+        $this->call(CalendarSeeder::class);
     }
 }
