@@ -466,3 +466,36 @@ h1, h2, h3, h4 {
   display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem;
   background: var(--color-primary, #b8693d); color: #fff; border-radius: 8px; text-decoration: none;
 }
+
+/* ----- Cart / checkout / orders ------------------------------------------ */
+.layout__cart { position: relative; }
+.layout__cart-badge {
+  background: var(--color-primary, #b8693d); color: #fff; border-radius: 999px;
+  padding: 0 0.45rem; font-size: 0.75rem; margin-left: 0.25rem;
+}
+
+.cart__items, .orders__list, .order-detail__items { list-style: none; padding: 0; margin: 0; }
+.cart__item, .orders__item {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+  padding: 1rem 0; border-bottom: 1px solid var(--color-border);
+}
+.cart__item-config span { display: inline-block; margin-right: 0.75rem; color: #8a7c70; font-size: 0.85rem; }
+.cart__item-actions { display: flex; align-items: center; gap: 1rem; }
+.cart__item-actions input { width: 60px; padding: 0.3rem; border: 1px solid var(--color-border); border-radius: 6px; }
+.cart__summary { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; align-items: flex-end; }
+
+.checkout__grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start; }
+@media (max-width: 768px) { .checkout__grid { grid-template-columns: 1fr; } }
+.checkout__form fieldset { border: 1px solid var(--color-border); border-radius: 10px; margin-bottom: 1rem; padding: 1rem; }
+.checkout__form legend { font-weight: 600; padding: 0 0.5rem; }
+.checkout__form label { display: block; margin: 0.4rem 0; }
+.checkout__address { display: flex; gap: 0.5rem; align-items: center; }
+.checkout__add { background: none; border: 1px dashed var(--color-border); border-radius: 8px; padding: 0.4rem 0.75rem; cursor: pointer; margin-top: 0.5rem; }
+.checkout__new-address { margin-top: 0.75rem; display: grid; gap: 0.5rem; }
+.checkout__summary { padding: 1.5rem; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.checkout__summary ul { list-style: none; padding: 0; }
+.checkout__summary li { display: flex; justify-content: space-between; padding: 0.3rem 0; }
+
+.orders__item a { display: flex; justify-content: space-between; gap: 1rem; width: 100%; color: inherit; text-decoration: none; }
+.orders__status { margin-left: 0.5rem; color: var(--color-primary, #b8693d); }
+.order-detail__items li { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }

@@ -2,18 +2,42 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\JsonResponse;
+use App\Modules\Orders\Presentation\Http\Controllers\AddressController;
+use App\Modules\Orders\Presentation\Http\Controllers\BranchController;
+use App\Modules\Orders\Presentation\Http\Controllers\CartController;
+use App\Modules\Orders\Presentation\Http\Controllers\CheckoutController;
+use App\Modules\Orders\Presentation\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Orders API routes
 |--------------------------------------------------------------------------
-| Placeholder route confirming the module is wired up. Replace with the
-| module's controllers as features are implemented.
 */
 
-Route::get('orders/health', fn (): JsonResponse => response()->json([
-    'module' => 'Orders',
-    'status' => 'ok',
-]));
+// Public: list of pickup branches (sucursales).
+Route::get('branches', [BranchController::class, 'index']);
+
+/*
+ * All cart, checkout, address and order endpoints require an authenticated
+ * customer — purchases are not allowed for guests.
+ */
+Route::middleware('auth:sanctum')->group(function (): void {
+    // Cart.
+    Route::get('cart', [CartController::class, 'show']);
+    Route::post('cart/items', [CartController::class, 'store']);
+    Route::put('cart/items/{item}', [CartController::class, 'update']);
+    Route::delete('cart/items/{item}', [CartController::class, 'destroyItem']);
+    Route::delete('cart', [CartController::class, 'clear']);
+
+    // Addresses.
+    Route::get('addresses', [AddressController::class, 'index']);
+    Route::post('addresses', [AddressController::class, 'store']);
+    Route::put('addresses/{address}', [AddressController::class, 'update']);
+    Route::delete('addresses/{address}', [AddressController::class, 'destroy']);
+
+    // Checkout + order history.
+    Route::post('checkout', [CheckoutController::class, 'store']);
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::get('orders/{order}', [OrderController::class, 'show']);
+});

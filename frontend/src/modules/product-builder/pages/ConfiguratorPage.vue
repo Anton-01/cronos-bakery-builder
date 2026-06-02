@@ -1,18 +1,43 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
+import { useCartStore } from '@/modules/orders/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 import OptionField from '../components/OptionField.vue'
 import { resolveVisibleKeys } from '../dependencies'
 import { builderService } from '../services/builderService'
 import type { ConfigurableProduct, Quote, Selections } from '../types'
 
 const route = useRoute()
+const router = useRouter()
+const cart = useCartStore()
+const auth = useAuthStore()
 const product = ref<ConfigurableProduct | null>(null)
 const selections = reactive<Selections>({})
 const quote = ref<Quote | null>(null)
 const loading = ref(true)
+const addingToCart = ref(false)
 const errors = ref<Record<string, string[]>>({})
+
+/**
+ * Add the current configuration to the cart. Purchasing requires login, so
+ * unauthenticated customers are sent to sign in first.
+ */
+async function addToCart(): Promise<void> {
+  if (!product.value) return
+  if (!auth.isAuthenticated) {
+    await router.push({ name: 'auth.login', query: { redirect: route.fullPath } })
+    return
+  }
+  addingToCart.value = true
+  try {
+    await cart.add(product.value.slug, { ...selections })
+    await router.push({ name: 'cart' })
+  } finally {
+    addingToCart.value = false
+  }
+}
 
 /** Pre-select default values so the configurator opens fully priced. */
 function seedDefaults(p: ConfigurableProduct): void {
@@ -105,7 +130,9 @@ watch(selections, refreshQuote, { deep: true })
             <strong>Total</strong>
             <strong>{{ formatMoney(quote.price.total, quote.price.currency) }}</strong>
           </p>
-          <button type="button" class="configurator__cta" :disabled="!quote">Agregar al carrito</button>
+          <button type="button" class="configurator__cta" :disabled="!quote || addingToCart" @click="addToCart">
+            {{ addingToCart ? 'Agregando…' : 'Agregar al carrito' }}
+          </button>
         </aside>
       </div>
     </template>

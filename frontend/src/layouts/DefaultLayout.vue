@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import MenuTree from '@/modules/cms/components/MenuTree.vue'
+import { useCartStore } from '@/modules/orders/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
 const { theme, headerMenu, footer, logo } = storeToRefs(themeStore)
+
+const auth = useAuthStore()
+const cart = useCartStore()
+
+// Mirror the persistent cart for the badge once a customer is signed in.
+onMounted(() => {
+  if (auth.isAuthenticated) {
+    void cart.load()
+  }
+})
 </script>
 
 <template>
@@ -24,6 +37,9 @@ const { theme, headerMenu, footer, logo } = storeToRefs(themeStore)
           <RouterLink to="/catalog">Catalog</RouterLink>
           <RouterLink to="/builder">Build a Cake</RouterLink>
         </template>
+        <RouterLink to="/carrito" class="layout__cart">
+          Carrito<span v-if="cart.itemCount" class="layout__cart-badge">{{ cart.itemCount }}</span>
+        </RouterLink>
       </nav>
     </header>
 

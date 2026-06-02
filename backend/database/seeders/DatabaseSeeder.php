@@ -11,6 +11,7 @@ use App\Modules\Authentication\Domain\Models\User;
 use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
+use App\Modules\Orders\Infrastructure\Database\Seeders\BranchSeeder;
 use App\Modules\ProductBuilder\Infrastructure\Database\Seeders\ProductBuilderSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -56,5 +57,8 @@ class DatabaseSeeder extends Seeder
 
         // Catalog: categories, collections, attributes and classified products.
         $this->call(CatalogTaxonomySeeder::class);
+
+        // Orders: pickup branches (sucursales).
+        $this->call(BranchSeeder::class);
     }
 }

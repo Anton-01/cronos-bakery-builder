@@ -304,6 +304,36 @@ permission.
 
 ---
 
+## Cart & checkout (Phase 7)
+
+Persistent cart and **authenticated checkout — no guest purchases**.
+
+- **Persistent cart** (one per customer, server-side): adding a configured cake
+  re-validates and re-prices it through the Product Builder's
+  `ConfiguratorService`, then stores a **full configuration snapshot** (selections,
+  visibility and priced breakdown) plus the authoritative unit price.
+- **Saved addresses** labelled Casa / Trabajo / Otra, with a single default per
+  customer.
+- **Fulfillment**: delivery to a saved address (snapshotted onto the order) or
+  **pickup at a branch (sucursal) with date + time**.
+- **Checkout** snapshots line items into an immutable order, generates a human
+  order number and clears the cart — all inside a transaction.
+- **Order history** and detailed summaries, scoped to the authenticated
+  customer.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/branches` | Pickup branches (public) |
+| GET/POST/PUT/DELETE | `/api/cart` · `/cart/items[/{item}]` | Persistent cart |
+| GET/POST/PUT/DELETE | `/api/addresses` | Saved addresses |
+| POST | `/api/checkout` | Place an order (delivery or pickup) |
+| GET | `/api/orders` · `/orders/{order}` | Order history + detail |
+
+Every cart, address, checkout and order endpoint requires an authenticated
+customer (`auth:sanctum`).
+
+---
+
 ## Local development (without Docker)
 
 ```bash
