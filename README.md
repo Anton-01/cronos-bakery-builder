@@ -364,6 +364,41 @@ permission (Super Admin, Administrador, Producción).
 
 ---
 
+## Multi-gateway payments (Phase 9)
+
+A decoupled payment architecture using the **Strategy pattern**, supporting
+**MercadoPago, Stripe and OpenPay**.
+
+- **Strategy per gateway** behind a common `PaymentGateway` contract, resolved
+  by a `PaymentGatewayManager` — the application layer never depends on a
+  concrete provider.
+- **Sandbox / Production** modes and credentials are configured **per gateway
+  from administration** (encrypted at rest), switchable without a deploy.
+- **Mandatory webhooks**: each provider posts to
+  `/api/payments/webhooks/{gateway}`; the signature is verified (Stripe's
+  `t=…,v1=…` HMAC scheme; HMAC-of-body for MercadoPago/OpenPay) before the
+  status is applied.
+- **Reconciliation**: webhook events drive the authoritative payment status and
+  update the related order (paid → confirmed).
+- **Retries**: a queued `RetryPaymentStatusJob` (with exponential backoff)
+  re-checks non-final payments.
+- **Full traceability**: every initiation, webhook, status change, retry and
+  reconciliation is recorded in `payment_events`.
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/api/payments/gateways` | Active gateways for checkout |
+| POST | `/api/payments/initiate` | Start a payment for an order |
+| GET | `/api/payments/{payment}` | Payment status + event trail |
+| POST | `/api/payments/webhooks/{gateway}` | Provider webhook (signature-verified) |
+| GET/PUT | `/api/admin/payments/gateways[/{gateway}]` | Configure gateways + mode |
+| GET/POST | `/api/admin/payments` · `/{payment}/retry` | Traceability + reconcile retry |
+
+Admin payment endpoints require the `admin` guard plus the `manage payments`
+permission. Production SDK calls plug into each strategy's `createCharge()`.
+
+---
+
 ## Local development (without Docker)
 
 ```bash

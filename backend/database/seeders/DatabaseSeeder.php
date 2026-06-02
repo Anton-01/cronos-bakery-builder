@@ -13,6 +13,7 @@ use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
 use App\Modules\Orders\Infrastructure\Database\Seeders\BranchSeeder;
+use App\Modules\Payments\Infrastructure\Database\Seeders\PaymentGatewaySeeder;
 use App\Modules\ProductBuilder\Infrastructure\Database\Seeders\ProductBuilderSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -64,5 +65,8 @@ class DatabaseSeeder extends Seeder
 
         // Calendar: scheduling engine configuration (schedule, slots, rules).
         $this->call(CalendarSeeder::class);
+
+        // Payments: multi-gateway configuration (sandbox).
+        $this->call(PaymentGatewaySeeder::class);
     }
 }

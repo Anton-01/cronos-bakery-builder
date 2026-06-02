@@ -52,7 +52,8 @@ async function submit(): Promise<void> {
   try {
     const order = await orderService.checkout(form)
     cart.reset()
-    await router.push({ name: 'orders.detail', params: { id: order.id } })
+    // Proceed to the payment step for the newly placed order.
+    await router.push({ name: 'payments.pay', params: { id: order.id } })
   } catch (e: unknown) {
     error.value = 'No se pudo completar el pedido. Revisa los datos e intenta de nuevo.'
   } finally {

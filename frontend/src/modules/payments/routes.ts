@@ -2,9 +2,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const paymentsRoutes: RouteRecordRaw[] = [
   {
-    path: '/checkout',
-    name: 'payments.checkout',
-    component: () => import('./pages/PaymentsPage.vue'),
+    // Payment step for a placed order (gateway selection + initiation).
+    path: '/orders/:id/pay',
+    name: 'payments.pay',
+    component: () => import('./pages/PaymentPage.vue'),
     meta: { layout: 'default', requiresAuth: true },
   },
 ]
