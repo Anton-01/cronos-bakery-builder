@@ -20,10 +20,6 @@ const loading = ref(true)
 const addingToCart = ref(false)
 const errors = ref<Record<string, string[]>>({})
 
-/**
- * Add the current configuration to the cart. Purchasing requires login, so
- * unauthenticated customers are sent to sign in first.
- */
 async function addToCart(): Promise<void> {
   if (!product.value) return
   if (!auth.isAuthenticated) {
@@ -39,7 +35,6 @@ async function addToCart(): Promise<void> {
   }
 }
 
-/** Pre-select default values so the configurator opens fully priced. */
 function seedDefaults(p: ConfigurableProduct): void {
   for (const option of p.options) {
     const defaults = option.values.filter((v) => v.is_default).map((v) => v.value)
@@ -62,7 +57,6 @@ function formatMoney(amount: number, currency: string): string {
 
 let timer: ReturnType<typeof setTimeout> | undefined
 
-/** Debounced authoritative price request. */
 function refreshQuote(): void {
   if (!product.value) return
   clearTimeout(timer)
@@ -91,13 +85,12 @@ onMounted(async () => {
   }
 })
 
-// Re-price whenever any selection changes.
 watch(selections, refreshQuote, { deep: true })
 </script>
 
 <template>
   <section class="configurator">
-    <p v-if="loading" class="configurator__state">Cargando configurador…</p>
+    <p v-if="loading" class="configurator__state">Cargando configurador...</p>
     <p v-else-if="!product" class="configurator__state">Producto no encontrado.</p>
 
     <template v-else>
@@ -107,7 +100,6 @@ watch(selections, refreshQuote, { deep: true })
       </header>
 
       <div class="configurator__grid">
-        <!-- Auto-generated form: one field per visible option, by type. -->
         <form class="configurator__form" @submit.prevent>
           <div v-for="option in visibleOptions" :key="option.id" class="configurator__option">
             <OptionField v-model="selections[option.key]" :option="option" />
@@ -117,7 +109,6 @@ watch(selections, refreshQuote, { deep: true })
           </div>
         </form>
 
-        <!-- Live pricing summary. -->
         <aside class="configurator__summary">
           <h2>Resumen</h2>
           <ul v-if="quote" class="configurator__lines">
@@ -131,7 +122,7 @@ watch(selections, refreshQuote, { deep: true })
             <strong>{{ formatMoney(quote.price.total, quote.price.currency) }}</strong>
           </p>
           <button type="button" class="configurator__cta" :disabled="!quote || addingToCart" @click="addToCart">
-            {{ addingToCart ? 'Agregando…' : 'Agregar al carrito' }}
+            {{ addingToCart ? 'Agregando...' : 'Agregar al Carrito' }}
           </button>
         </aside>
       </div>

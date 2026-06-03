@@ -23,8 +23,8 @@ onMounted(async () => {
 
 <template>
   <section class="product-list">
-    <h1>Arma tu pastel</h1>
-    <p v-if="loading">Cargando…</p>
+    <h1>Arma tu Pastel</h1>
+    <p v-if="loading" class="configurator__state">Cargando...</p>
 
     <div v-else class="product-list__grid">
       <RouterLink
@@ -34,11 +34,19 @@ onMounted(async () => {
         class="product-list__card"
       >
         <img v-if="product.image" :src="product.image" :alt="product.name" />
-        <h3>{{ product.name }}</h3>
-        <p class="product-list__price">
-          desde {{ formatMoney(product.base_price.amount, product.base_price.currency) }}
-        </p>
+        <div v-else class="product-list__card-placeholder"></div>
+        <div class="product-list__card-content">
+          <div class="product-list__card-label">{{ product.name }}</div>
+        </div>
       </RouterLink>
     </div>
   </section>
 </template>
+
+<style scoped>
+.product-list__card-placeholder {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--color-surface-warm);
+}
+</style>
