@@ -5,7 +5,7 @@ export const ordersRoutes: RouteRecordRaw[] = [
     path: '/carrito',
     name: 'cart',
     component: () => import('./pages/CartPage.vue'),
-    meta: { layout: 'default', requiresAuth: true },
+    meta: { layout: 'default' },
   },
   {
     path: '/checkout',

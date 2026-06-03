@@ -32,11 +32,15 @@ onMounted(() => {
       <nav class="layout__nav">
         <MenuTree v-if="headerMenu" :items="headerMenu.items" />
         <template v-else>
-          <RouterLink to="/catalog">Catalog</RouterLink>
-          <RouterLink to="/builder">Build a Cake</RouterLink>
+          <RouterLink to="/catalog">Catalogo</RouterLink>
+          <RouterLink to="/builder">Arma tu Pastel</RouterLink>
         </template>
-        <RouterLink to="/carrito" class="layout__cart">
-          Cart<span v-if="cart.itemCount" class="layout__cart-badge">{{ cart.itemCount }}</span>
+        <RouterLink to="/carrito" class="layout__cart-link" aria-label="Carrito de compras">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <span v-if="cart.itemCount" class="layout__cart-badge">{{ cart.itemCount }}</span>
         </RouterLink>
       </nav>
     </header>
@@ -76,6 +80,37 @@ onMounted(() => {
   font-family: var(--font-script);
   font-size: 2rem;
   color: var(--color-primary);
+}
+
+.layout__cart-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  color: var(--color-text);
+  transition: color 0.2s ease;
+}
+
+.layout__cart-link:hover {
+  color: var(--color-primary);
+}
+
+.layout__cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 600;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .layout__footer-inner {
