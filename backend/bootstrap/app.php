@@ -28,9 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->statefulApi();
 
-        // Public API endpoints that accept POST but don't require a session.
         $middleware->validateCsrfTokens(except: [
-            'api/product-builder/products/*/quote',
+            'api/*',
         ]);
 
         $middleware->append(SecurityHeaders::class);
