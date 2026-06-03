@@ -1,13 +1,9 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 
-/**
- * Centralised Axios instance used by every module service.
- *
- * Base URL is driven by `VITE_API_URL` so the same build can target local,
- * staging and production APIs without code changes.
- */
+const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+
 const http: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api',
+  baseURL,
   withCredentials: true,
   headers: {
     Accept: 'application/json',
@@ -15,8 +11,6 @@ const http: AxiosInstance = axios.create({
   },
 })
 
-// Attach the relevant bearer token to every outgoing request. Admin endpoints
-// use an independent token so the two sessions never collide.
 http.interceptors.request.use((config) => {
   const isAdminRoute = (config.url ?? '').startsWith('/admin')
   const token = localStorage.getItem(isAdminRoute ? 'admin_token' : 'auth_token')
@@ -26,7 +20,6 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-// Surface auth failures globally so the UI can react (e.g. redirect to login).
 http.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -37,7 +30,26 @@ http.interceptors.response.use(
   },
 )
 
-export function request<T>(config: AxiosRequestConfig): Promise<T> {
+let csrfReady: Promise<void> | null = null
+
+function ensureCsrf(): Promise<void> {
+  if (csrfReady) return csrfReady
+
+  const cookieOrigin = baseURL.replace(/\/api\/?$/, '')
+  csrfReady = axios
+    .get(`${cookieOrigin}/sanctum/csrf-cookie`, { withCredentials: true })
+    .then(() => {})
+    .catch(() => {
+      csrfReady = null
+    })
+  return csrfReady
+}
+
+export async function request<T>(config: AxiosRequestConfig): Promise<T> {
+  const method = (config.method ?? 'GET').toUpperCase()
+  if (method !== 'GET' && method !== 'HEAD') {
+    await ensureCsrf()
+  }
   return http.request<T>(config).then((res) => res.data)
 }
 
