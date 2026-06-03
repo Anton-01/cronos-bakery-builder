@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
+import { useToast } from '@/composables/useToast'
 import {
   adminPanelService,
   type AdminPayment,
   type PaymentGateway,
   type Paginated,
 } from '../services/adminPanelService'
+
+const { success, error } = useToast()
 
 type Tab = 'payments' | 'gateways'
 
@@ -76,6 +79,9 @@ async function retryPayment(payment: AdminPayment): Promise<void> {
         paymentsResponse.value.data[idx] = updated
       }
     }
+    success('Pago reintentado exitosamente')
+  } catch {
+    error('Error al reintentar el pago')
   } finally {
     retryingId.value = null
   }
@@ -89,6 +95,9 @@ async function toggleGateway(gw: PaymentGateway): Promise<void> {
     if (idx !== -1) {
       gateways.value[idx] = updated
     }
+    success(updated.is_active ? 'Pasarela activada' : 'Pasarela desactivada')
+  } catch {
+    error('Error al actualizar la pasarela')
   } finally {
     togglingId.value = null
   }

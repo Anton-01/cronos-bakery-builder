@@ -2,10 +2,12 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { useToast } from '@/composables/useToast'
 import { useAdminAuthStore } from '../stores/adminAuth'
 
 const adminAuth = useAdminAuthStore()
 const router = useRouter()
+const { success, warning } = useToast()
 
 const form = reactive({ email: '', password: '', code: '' })
 const error = ref<string | null>(null)
@@ -17,12 +19,14 @@ async function submit(): Promise<void> {
   loading.value = true
   try {
     await adminAuth.login({ ...form, code: form.code || undefined })
+    success('Bienvenido al panel de administracion')
     await router.push({ name: 'admin.dashboard' })
   } catch (e: unknown) {
     const status = (e as { response?: { status?: number } }).response?.status
     if (status === 423) {
       needsCode.value = true
       error.value = 'Ingresa tu codigo de autenticacion en dos pasos.'
+      warning('Se requiere verificacion en dos pasos')
     } else {
       error.value = needsCode.value
         ? 'Codigo invalido. Intenta de nuevo.'

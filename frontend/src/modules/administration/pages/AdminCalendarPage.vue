@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 
+import { useToast } from '@/composables/useToast'
 import {
   adminPanelService,
   type AdminOrder,
@@ -8,6 +9,8 @@ import {
   type DeliverySlot,
   type Holiday,
 } from '../services/adminPanelService'
+
+const { success, error } = useToast()
 
 const activeTab = ref<'calendar' | 'schedule' | 'slots' | 'holidays'>('calendar')
 
@@ -208,6 +211,9 @@ async function saveSchedule(): Promise<void> {
   scheduleSaving.value = true
   try {
     schedule.value = await adminPanelService.updateSchedule(schedule.value)
+    success('Horario guardado exitosamente')
+  } catch {
+    error('Error al guardar el horario')
   } finally {
     scheduleSaving.value = false
   }
@@ -229,17 +235,27 @@ async function loadSlots(): Promise<void> {
 
 async function createSlot(): Promise<void> {
   if (!newSlot.label || !newSlot.starts_at || !newSlot.ends_at) return
-  const created = await adminPanelService.createSlot({ ...newSlot })
-  slots.value.push(created)
-  newSlot.label = ''
-  newSlot.starts_at = ''
-  newSlot.ends_at = ''
-  newSlot.max_orders = 10
+  try {
+    const created = await adminPanelService.createSlot({ ...newSlot })
+    slots.value.push(created)
+    newSlot.label = ''
+    newSlot.starts_at = ''
+    newSlot.ends_at = ''
+    newSlot.max_orders = 10
+    success('Slot de entrega creado')
+  } catch {
+    error('Error al crear el slot')
+  }
 }
 
 async function deleteSlot(id: string): Promise<void> {
-  await adminPanelService.deleteSlot(id)
-  slots.value = slots.value.filter((s) => s.id !== id)
+  try {
+    await adminPanelService.deleteSlot(id)
+    slots.value = slots.value.filter((s) => s.id !== id)
+    success('Slot eliminado')
+  } catch {
+    error('Error al eliminar el slot')
+  }
 }
 
 // ── Dias Feriados ──────────────────────────────────────────────────────────
@@ -258,15 +274,25 @@ async function loadHolidays(): Promise<void> {
 
 async function createHoliday(): Promise<void> {
   if (!newHoliday.date || !newHoliday.name) return
-  const created = await adminPanelService.createHoliday({ ...newHoliday })
-  holidays.value.push(created)
-  newHoliday.date = ''
-  newHoliday.name = ''
+  try {
+    const created = await adminPanelService.createHoliday({ ...newHoliday })
+    holidays.value.push(created)
+    newHoliday.date = ''
+    newHoliday.name = ''
+    success('Feriado agregado')
+  } catch {
+    error('Error al agregar el feriado')
+  }
 }
 
 async function deleteHoliday(id: string): Promise<void> {
-  await adminPanelService.deleteHoliday(id)
-  holidays.value = holidays.value.filter((h) => h.id !== id)
+  try {
+    await adminPanelService.deleteHoliday(id)
+    holidays.value = holidays.value.filter((h) => h.id !== id)
+    success('Feriado eliminado')
+  } catch {
+    error('Error al eliminar el feriado')
+  }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
+import { useToast } from '@/composables/useToast'
 import { adminPanelService, type AdminProduct } from '../services/adminPanelService'
+
+const { success, error } = useToast()
 
 const products = ref<AdminProduct[]>([])
 const loading = ref(true)
@@ -29,33 +32,48 @@ async function load(): Promise<void> {
 }
 
 async function submitCreate(): Promise<void> {
-  const created = await adminPanelService.createProduct({
-    name: form.name,
-    slug: form.slug,
-    base_price: { amount: form.base_price_amount, currency: form.base_price_currency },
-    is_active: form.is_active,
-  })
-  products.value.push(created)
-  showForm.value = false
-  form.name = ''
-  form.slug = ''
-  form.base_price_amount = 0
-  form.base_price_currency = 'CRC'
-  form.is_active = true
+  try {
+    const created = await adminPanelService.createProduct({
+      name: form.name,
+      slug: form.slug,
+      base_price: { amount: form.base_price_amount, currency: form.base_price_currency },
+      is_active: form.is_active,
+    })
+    products.value.push(created)
+    showForm.value = false
+    form.name = ''
+    form.slug = ''
+    form.base_price_amount = 0
+    form.base_price_currency = 'CRC'
+    form.is_active = true
+    success('Producto creado exitosamente')
+  } catch {
+    error('Error al crear el producto')
+  }
 }
 
 async function toggleActive(product: AdminProduct): Promise<void> {
-  const updated = await adminPanelService.updateProduct(product.id, { is_active: !product.is_active })
-  const idx = products.value.findIndex((p) => p.id === product.id)
-  if (idx !== -1) {
-    products.value[idx] = updated
+  try {
+    const updated = await adminPanelService.updateProduct(product.id, { is_active: !product.is_active })
+    const idx = products.value.findIndex((p) => p.id === product.id)
+    if (idx !== -1) {
+      products.value[idx] = updated
+    }
+    success(`Producto ${updated.is_active ? 'activado' : 'desactivado'}`)
+  } catch {
+    error('Error al actualizar el producto')
   }
 }
 
 async function deleteProduct(product: AdminProduct): Promise<void> {
   if (!confirm(`¿Eliminar el producto "${product.name}"?`)) return
-  await adminPanelService.deleteProduct(product.id)
-  products.value = products.value.filter((p) => p.id !== product.id)
+  try {
+    await adminPanelService.deleteProduct(product.id)
+    products.value = products.value.filter((p) => p.id !== product.id)
+    success('Producto eliminado')
+  } catch {
+    error('Error al eliminar el producto')
+  }
 }
 
 onMounted(load)

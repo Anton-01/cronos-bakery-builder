@@ -2,6 +2,9 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import { adminPanelService, type EmailTemplate, type ReminderRule } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error } = useToast()
 
 const templates = ref<EmailTemplate[]>([])
 const reminderRules = ref<ReminderRule[]>([])
@@ -50,6 +53,9 @@ async function saveTemplate(template: EmailTemplate): Promise<void> {
       templates.value[idx] = updated
     }
     state.active = false
+    success('Plantilla actualizada exitosamente')
+  } catch {
+    error('Error al guardar la plantilla')
   } finally {
     state.saving = false
   }

@@ -2,6 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { adminPanelService, type AdminOrder, type Paginated } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error } = useToast()
 
 const ordersResponse = ref<Paginated<AdminOrder> | null>(null)
 const loading = ref(true)
@@ -76,8 +79,10 @@ async function updateStatus(order: AdminOrder, newStatus: string): Promise<void>
       if (idx !== -1) ordersResponse.value.data[idx] = updated
     }
     if (selectedOrder.value?.id === order.id) selectedOrder.value = updated
+    success('Pedido #' + order.number + ' actualizado a ' + newStatus)
   } catch {
     order.status = oldStatus
+    error('Error al actualizar el estado del pedido')
   }
 }
 

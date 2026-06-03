@@ -2,6 +2,9 @@
 import { onMounted, ref, reactive } from 'vue'
 
 import { adminPanelService, type CmsMenu, type CmsMenuItem } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error } = useToast()
 
 const menus = ref<CmsMenu[]>([])
 const loading = ref(true)
@@ -33,6 +36,9 @@ async function createMenu(): Promise<void> {
     newForm.name = ''
     newForm.location = 'header'
     showNewForm.value = false
+    success('Menu creado exitosamente')
+  } catch {
+    error('Error al crear el menu')
   } finally {
     saving.value = false
   }
@@ -61,6 +67,9 @@ async function saveEdit(menu: CmsMenu): Promise<void> {
     const idx = menus.value.findIndex((m) => m.id === menu.id)
     if (idx !== -1) menus.value[idx] = updated
     cancelEdit()
+    success('Menu actualizado')
+  } catch {
+    error('Error al actualizar el menu')
   } finally {
     saving.value = false
   }
@@ -68,8 +77,13 @@ async function saveEdit(menu: CmsMenu): Promise<void> {
 
 async function deleteMenu(id: string): Promise<void> {
   if (!confirm('¿Eliminar este menu? Esta accion no se puede deshacer.')) return
-  await adminPanelService.deleteMenu(id)
-  menus.value = menus.value.filter((m) => m.id !== id)
+  try {
+    await adminPanelService.deleteMenu(id)
+    menus.value = menus.value.filter((m) => m.id !== id)
+    success('Menu eliminado')
+  } catch {
+    error('Error al eliminar el menu')
+  }
 }
 
 function locationLabel(location: string): string {

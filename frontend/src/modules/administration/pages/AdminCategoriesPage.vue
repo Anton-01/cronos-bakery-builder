@@ -2,6 +2,9 @@
 import { onMounted, ref, reactive } from 'vue'
 
 import { adminPanelService, type AdminCategory } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error } = useToast()
 
 const categories = ref<AdminCategory[]>([])
 const loading = ref(true)
@@ -68,9 +71,12 @@ async function save(): Promise<void> {
     } else {
       await adminPanelService.createCategory(data)
     }
+    success(editingId.value ? 'Categoria actualizada' : 'Categoria creada exitosamente')
     showForm.value = false
     editingId.value = null
     await load()
+  } catch {
+    error('Error al guardar la categoria')
   } finally {
     saving.value = false
   }
@@ -78,8 +84,13 @@ async function save(): Promise<void> {
 
 async function deleteCategory(id: string): Promise<void> {
   if (!confirm('¿Eliminar esta categoria?')) return
-  await adminPanelService.deleteCategory(id)
-  await load()
+  try {
+    await adminPanelService.deleteCategory(id)
+    await load()
+    success('Categoria eliminada')
+  } catch {
+    error('Error al eliminar la categoria')
+  }
 }
 
 onMounted(load)

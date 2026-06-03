@@ -2,6 +2,9 @@
 import { onMounted, ref, computed } from 'vue'
 
 import { adminPanelService, type CmsSection, type CmsPage } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error } = useToast()
 
 const sections = ref<CmsSection[]>([])
 const pages = ref<CmsPage[]>([])
@@ -80,22 +83,35 @@ async function saveForm(): Promise<void> {
       const created = await adminPanelService.cmsCreatePage(data)
       pages.value.push(created)
     }
+    success(editingPage.value ? 'Pagina actualizada' : 'Pagina creada exitosamente')
     cancelForm()
+  } catch {
+    error('Error al guardar la pagina')
   } finally {
     formSaving.value = false
   }
 }
 
 async function togglePublish(page: CmsPage): Promise<void> {
-  const updated = await adminPanelService.cmsUpdatePage(page.id, { is_published: !page.is_published })
-  const idx = pages.value.findIndex((p) => p.id === page.id)
-  if (idx !== -1) pages.value[idx] = updated
+  try {
+    const updated = await adminPanelService.cmsUpdatePage(page.id, { is_published: !page.is_published })
+    const idx = pages.value.findIndex((p) => p.id === page.id)
+    if (idx !== -1) pages.value[idx] = updated
+    success(updated.is_published ? 'Pagina publicada' : 'Pagina despublicada')
+  } catch {
+    error('Error al actualizar la pagina')
+  }
 }
 
 async function deletePage(page: CmsPage): Promise<void> {
   if (!confirm(`¿Eliminar la pagina "${page.title}"?`)) return
-  await adminPanelService.cmsDeletePage(page.id)
-  pages.value = pages.value.filter((p) => p.id !== page.id)
+  try {
+    await adminPanelService.cmsDeletePage(page.id)
+    pages.value = pages.value.filter((p) => p.id !== page.id)
+    success('Pagina eliminada')
+  } catch {
+    error('Error al eliminar la pagina')
+  }
 }
 
 onMounted(load)

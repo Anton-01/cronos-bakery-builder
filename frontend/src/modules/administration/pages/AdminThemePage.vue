@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue'
 
 import { adminPanelService, type Theme, type CmsBanner } from '../services/adminPanelService'
+import { useToast } from '@/composables/useToast'
+
+const { success, error, warning } = useToast()
 
 const themes = ref<Theme[]>([])
 const banners = ref<CmsBanner[]>([])
@@ -38,6 +41,9 @@ async function activateTheme(id: string): Promise<void> {
   try {
     await adminPanelService.updateTheme(id, { is_active: true })
     await loadThemes()
+    success('Tema activado exitosamente')
+  } catch {
+    error('Error al activar el tema')
   } finally {
     savingTheme.value[id] = false
   }
@@ -50,11 +56,15 @@ async function saveSettings(theme: Theme): Promise<void> {
     try {
       parsed = JSON.parse(settingsJson.value[theme.id] ?? '{}')
     } catch {
-      alert('JSON inválido. Revisa el formato antes de guardar.')
+      warning('JSON invalido. Revisa el formato antes de guardar.')
+      savingTheme.value[theme.id] = false
       return
     }
     await adminPanelService.updateTheme(theme.id, { settings: parsed })
     await loadThemes()
+    success('Configuracion guardada')
+  } catch {
+    error('Error al guardar la configuracion')
   } finally {
     savingTheme.value[theme.id] = false
   }
