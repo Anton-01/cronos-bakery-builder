@@ -131,10 +131,12 @@ const confirmBtnClass = computed(() => {
 }
 
 .confirm-dialog__title {
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--admin-text, #2a3547);
   margin: 0 0 0.5rem;
+  line-height: 1.3;
 }
 
 .confirm-dialog__message {

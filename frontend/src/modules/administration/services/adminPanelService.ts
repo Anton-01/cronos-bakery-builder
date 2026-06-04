@@ -79,6 +79,33 @@ export interface AdminProduct {
 
 export interface AdminProductDetail extends AdminProduct {
   gallery: ProductImage[]
+  options?: PbOption[]
+}
+
+export type PbOptionType = 'select' | 'radio' | 'checkbox' | 'color' | 'image' | 'text' | 'textarea'
+
+export interface PbOptionValue {
+  id: string
+  label: string
+  value: string
+  price_modifier_type: 'none' | 'add' | 'subtract' | 'set'
+  price_modifier_amount: number
+  metadata: Record<string, unknown> | null
+  is_default: boolean
+  position: number
+}
+
+export interface PbOption {
+  id: string
+  product_id: string
+  key: string
+  label: string
+  type: PbOptionType
+  help_text: string | null
+  is_required: boolean
+  position: number
+  config: Record<string, unknown> | null
+  values: PbOptionValue[]
 }
 
 // --- Orders types ---
@@ -258,6 +285,31 @@ export const adminPanelService = {
 
   deleteProductImage(productId: string, imageId: string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/images/${imageId}`, method: 'DELETE' })
+  },
+
+  // --- Options (per product) ---
+  createOption(productId: string, data: Partial<PbOption>): Promise<PbOption> {
+    return request<Wrapped<PbOption>>({ url: `/admin/product-builder/products/${productId}/options`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateOption(productId: string, optionId: string, data: Partial<PbOption>): Promise<PbOption> {
+    return request<Wrapped<PbOption>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteOption(productId: string, optionId: string): Promise<void> {
+    return request({ url: `/admin/product-builder/products/${productId}/options/${optionId}`, method: 'DELETE' })
+  },
+
+  createOptionValue(productId: string, optionId: string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
+    return request<Wrapped<PbOptionValue>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateOptionValue(productId: string, optionId: string, valueId: string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
+    return request<Wrapped<PbOptionValue>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values/${valueId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteOptionValue(productId: string, optionId: string, valueId: string): Promise<void> {
+    return request({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values/${valueId}`, method: 'DELETE' })
   },
 
   // --- Orders ---

@@ -810,6 +810,9 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
 }
 
 .admin-datatable__search input {
@@ -896,6 +899,13 @@
   cursor: default;
 }
 
+.admin-datatable__page-btn svg {
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
 /* Table action icon buttons */
 .admin-action-btn {
   display: inline-flex;
@@ -909,6 +919,8 @@
   cursor: pointer;
   transition: all 0.15s ease;
   color: var(--admin-text-secondary);
+  padding: 0;
+  line-height: 1;
 }
 
 .admin-action-btn:hover {
@@ -934,6 +946,10 @@
 .admin-action-btn svg {
   width: 18px;
   height: 18px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
 }
 
 /* ---- Product form page ---- */
@@ -1033,14 +1049,22 @@
 
 .admin-drop-zone__preview {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-bg);
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  padding: 1rem;
+  min-height: 160px;
 }
 
 .admin-drop-zone__preview img {
   max-width: 100%;
-  max-height: 200px;
+  max-height: 280px;
   border-radius: 8px;
   object-fit: contain;
+  display: block;
 }
 
 .admin-drop-zone__remove {
