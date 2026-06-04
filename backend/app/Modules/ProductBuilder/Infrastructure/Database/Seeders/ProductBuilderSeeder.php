@@ -8,6 +8,7 @@ use App\Modules\ProductBuilder\Domain\Enums\OptionType;
 use App\Modules\ProductBuilder\Domain\Enums\PriceModifierType;
 use App\Modules\ProductBuilder\Domain\Enums\RuleAction;
 use App\Modules\ProductBuilder\Domain\Enums\RuleOperator;
+use App\Modules\ProductBuilder\Domain\Models\OptionTemplate;
 use App\Modules\ProductBuilder\Domain\Models\Product;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -26,6 +27,8 @@ class ProductBuilderSeeder extends Seeder
         foreach (['Muse Blanc', 'Studio Cake', 'Coquette Cake'] as $position => $name) {
             $this->seedSimpleCake($name, 3000 + $position * 500, $position + 1);
         }
+
+        $this->seedOptionTemplates();
     }
 
     private function seedSignatureCake(): void
@@ -101,6 +104,67 @@ class ProductBuilderSeeder extends Seeder
             'value' => 'domo',
             'action' => RuleAction::Show->value,
             'position' => 0,
+        ]);
+    }
+
+    private function seedOptionTemplates(): void
+    {
+        // Forma (radio, required) — drives the base price via "set".
+        $forma = OptionTemplate::create([
+            'key' => 'forma', 'label' => 'Forma', 'type' => OptionType::Radio->value,
+            'is_required' => true, 'position' => 0,
+        ]);
+        $forma->values()->createMany([
+            ['label' => 'Redondo', 'value' => 'redondo', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 4000, 'is_default' => true, 'position' => 0],
+            ['label' => 'Cuadrado', 'value' => 'cuadrado', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 4500, 'position' => 1],
+            ['label' => 'Domo', 'value' => 'domo', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 5500, 'position' => 2],
+        ]);
+
+        // Color (color swatch).
+        $color = OptionTemplate::create([
+            'key' => 'color', 'label' => 'Color', 'type' => OptionType::Color->value, 'position' => 1,
+        ]);
+        $color->values()->createMany([
+            ['label' => 'Blanco', 'value' => '#FFFFFF', 'position' => 0],
+            ['label' => 'Rosa', 'value' => '#F8B4C8', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 300, 'position' => 1],
+            ['label' => 'Azul Cielo', 'value' => '#87CEEB', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 600, 'position' => 2],
+        ]);
+
+        // Paleta Floral (select).
+        $paleta = OptionTemplate::create([
+            'key' => 'paleta-floral', 'label' => 'Paleta Floral', 'type' => OptionType::Select->value, 'position' => 2,
+        ]);
+        $paleta->values()->createMany([
+            ['label' => 'Sin flores', 'value' => 'sin-flores', 'is_default' => true, 'position' => 0],
+            ['label' => 'Rosas', 'value' => 'rosas', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 800, 'position' => 1],
+            ['label' => 'Mixta', 'value' => 'mixta', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 900, 'position' => 2],
+        ]);
+
+        // Decoraciones (checkbox, multiple).
+        $deco = OptionTemplate::create([
+            'key' => 'decoraciones', 'label' => 'Decoraciones', 'type' => OptionType::Checkbox->value, 'position' => 3,
+        ]);
+        $deco->values()->createMany([
+            ['label' => 'Sprinkles', 'value' => 'sprinkles', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 500, 'position' => 0],
+            ['label' => 'Macarons', 'value' => 'macarons', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 1200, 'position' => 1],
+        ]);
+
+        // Perlas (checkbox).
+        $perlas = OptionTemplate::create([
+            'key' => 'perlas', 'label' => 'Perlas', 'type' => OptionType::Checkbox->value, 'position' => 4,
+        ]);
+        $perlas->values()->createMany([
+            ['label' => 'Con perlas', 'value' => 'con-perlas', 'price_modifier_type' => PriceModifierType::Add->value, 'price_modifier_amount' => 700, 'position' => 0],
+        ]);
+
+        // Tamaño (select).
+        $tamano = OptionTemplate::create([
+            'key' => 'tamano', 'label' => 'Tamaño', 'type' => OptionType::Select->value, 'position' => 5,
+        ]);
+        $tamano->values()->createMany([
+            ['label' => 'Chico', 'value' => 'chico', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 3500, 'is_default' => true, 'position' => 0],
+            ['label' => 'Mediano', 'value' => 'mediano', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 4500, 'position' => 1],
+            ['label' => 'Grande', 'value' => 'grande', 'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 6000, 'position' => 2],
         ]);
     }
 

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionRuleController;
+use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionTemplateController;
+use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionTemplateValueController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionValueController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductController;
+use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductOptionLinkController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\ConfiguratorController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,4 +44,21 @@ Route::prefix('admin/product-builder')
         // Conditional rules.
         Route::post('products/{product}/rules', [OptionRuleController::class, 'store']);
         Route::delete('products/{product}/rules/{rule}', [OptionRuleController::class, 'destroy']);
+
+        // Option Templates (global, independent of products).
+        Route::get('option-templates', [OptionTemplateController::class, 'index']);
+        Route::post('option-templates', [OptionTemplateController::class, 'store']);
+        Route::put('option-templates/{template}', [OptionTemplateController::class, 'update']);
+        Route::delete('option-templates/{template}', [OptionTemplateController::class, 'destroy']);
+
+        // Option Template Values.
+        Route::post('option-templates/{template}/values', [OptionTemplateValueController::class, 'store']);
+        Route::put('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'update']);
+        Route::delete('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'destroy']);
+
+        // Product-Option Links.
+        Route::get('products/{product}/option-links', [ProductOptionLinkController::class, 'index']);
+        Route::post('products/{product}/option-links', [ProductOptionLinkController::class, 'store']);
+        Route::put('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'update']);
+        Route::delete('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'destroy']);
     });

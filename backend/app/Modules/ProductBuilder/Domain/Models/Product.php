@@ -72,6 +72,14 @@ class Product extends Model
     }
 
     /**
+     * @return HasMany<ProductOptionLink, $this>
+     */
+    public function optionLinks(): HasMany
+    {
+        return $this->hasMany(ProductOptionLink::class)->orderBy('position');
+    }
+
+    /**
      * @param  Builder<Product>  $query
      */
     public function scopeActive(Builder $query): void

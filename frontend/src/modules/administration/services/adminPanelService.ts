@@ -108,6 +108,42 @@ export interface PbOption {
   values: PbOptionValue[]
 }
 
+// --- Option Templates (global, independent of products) ---
+export interface OptionTemplateValue {
+  id: string
+  template_id: string
+  label: string
+  value: string
+  price_modifier_type: 'none' | 'add' | 'subtract' | 'set'
+  price_modifier_amount: number
+  metadata: Record<string, unknown> | null
+  is_default: boolean
+  position: number
+}
+
+export interface OptionTemplate {
+  id: string
+  key: string
+  label: string
+  type: PbOptionType
+  help_text: string | null
+  is_required: boolean
+  position: number
+  config: Record<string, unknown> | null
+  values: OptionTemplateValue[]
+}
+
+// --- Product-Option Links ---
+export interface ProductOptionLink {
+  id: string
+  product_id: string
+  template_id: string
+  legend: string | null
+  enabled_value_ids: string[] | null
+  position: number
+  template?: OptionTemplate
+}
+
 // --- Orders types ---
 export interface AdminOrder {
   id: string; number: string; status: string; status_label: string
@@ -310,6 +346,52 @@ export const adminPanelService = {
 
   deleteOptionValue(productId: string, optionId: string, valueId: string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values/${valueId}`, method: 'DELETE' })
+  },
+
+  // --- Option Templates (global) ---
+  optionTemplates(): Promise<OptionTemplate[]> {
+    return request<Wrapped<OptionTemplate[]>>({ url: '/admin/product-builder/option-templates', method: 'GET' }).then((r) => r.data)
+  },
+
+  createOptionTemplate(data: Partial<OptionTemplate>): Promise<OptionTemplate> {
+    return request<Wrapped<OptionTemplate>>({ url: '/admin/product-builder/option-templates', method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateOptionTemplate(id: string, data: Partial<OptionTemplate>): Promise<OptionTemplate> {
+    return request<Wrapped<OptionTemplate>>({ url: `/admin/product-builder/option-templates/${id}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteOptionTemplate(id: string): Promise<void> {
+    return request({ url: `/admin/product-builder/option-templates/${id}`, method: 'DELETE' })
+  },
+
+  createTemplateValue(templateId: string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
+    return request<Wrapped<OptionTemplateValue>>({ url: `/admin/product-builder/option-templates/${templateId}/values`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateTemplateValue(templateId: string, valueId: string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
+    return request<Wrapped<OptionTemplateValue>>({ url: `/admin/product-builder/option-templates/${templateId}/values/${valueId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteTemplateValue(templateId: string, valueId: string): Promise<void> {
+    return request({ url: `/admin/product-builder/option-templates/${templateId}/values/${valueId}`, method: 'DELETE' })
+  },
+
+  // --- Product-Option Links ---
+  productOptionLinks(productId: string): Promise<ProductOptionLink[]> {
+    return request<Wrapped<ProductOptionLink[]>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'GET' }).then((r) => r.data)
+  },
+
+  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; enabled_value_ids?: string[] }): Promise<ProductOptionLink> {
+    return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateProductOptionLink(productId: string, linkId: string, data: Partial<ProductOptionLink>): Promise<ProductOptionLink> {
+    return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteProductOptionLink(productId: string, linkId: string): Promise<void> {
+    return request({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'DELETE' })
   },
 
   // --- Orders ---

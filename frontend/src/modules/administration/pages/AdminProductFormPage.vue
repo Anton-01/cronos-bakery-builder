@@ -6,12 +6,30 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
-import { adminPanelService, type ProductImage, type PbOption, type PbOptionValue } from '../services/adminPanelService'
+import {
+  adminPanelService,
+  type ProductImage,
+  type OptionTemplate,
+  type ProductOptionLink,
+} from '../services/adminPanelService'
 
 const route = useRoute()
 const router = useRouter()
 const { success, error } = useToast()
+const {
+  visible: confirmVisible,
+  title: confirmTitle,
+  message: confirmMessage,
+  action: confirmAction,
+  confirmText,
+  cancelText,
+  confirm,
+  handleConfirm,
+  handleCancel,
+} = useConfirm()
 
 const productId = computed(() => route.params.id as string | undefined)
 const isEdit = computed(() => !!productId.value)
@@ -127,19 +145,129 @@ function removeGalleryImage(idx: number) {
   gallery.value.splice(idx, 1)
 }
 
-// Options
-const productOptions = ref<PbOption[]>([])
+// --- Option Links ---
+const optionLinks = ref<ProductOptionLink[]>([])
+const allTemplates = ref<OptionTemplate[]>([])
 const showPreview = ref(false)
+const showAddOption = ref(false)
+const addOptionTemplateId = ref('')
 
-const previewSelections = ref<Record<string, string>>({})
+const availableTemplates = computed(() => {
+  const linkedIds = new Set(optionLinks.value.map((l) => l.template_id))
+  return allTemplates.value.filter((t) => !linkedIds.has(t.id))
+})
+
+// Legend modal
+const legendModal = ref(false)
+const legendLinkId = ref<string | null>(null)
+const legendEditor = useEditor({
+  extensions: [
+    StarterKit,
+    Underline,
+    Placeholder.configure({ placeholder: 'Escribe la leyenda para esta opción en este producto...' }),
+  ],
+  content: '',
+})
+
+function openLegendModal(link: ProductOptionLink) {
+  legendLinkId.value = link.id
+  legendEditor.value?.commands.setContent(link.legend || '')
+  legendModal.value = true
+}
+
+async function saveLegend() {
+  if (!legendLinkId.value || !productId.value) return
+  const html = legendEditor.value?.getHTML() || ''
+  const content = html === '<p></p>' ? null : html
+  try {
+    const updated = await adminPanelService.updateProductOptionLink(productId.value, legendLinkId.value, { legend: content })
+    const idx = optionLinks.value.findIndex((l) => l.id === legendLinkId.value)
+    if (idx !== -1) optionLinks.value[idx] = updated
+    legendModal.value = false
+    success('Leyenda actualizada')
+  } catch {
+    error('Error al guardar la leyenda')
+  }
+}
+
+function closeLegendModal() {
+  legendModal.value = false
+  legendLinkId.value = null
+}
 
 function getOptionTypeLabel(type: string): string {
   const map: Record<string, string> = { select: 'Selector', radio: 'Radio', checkbox: 'Checkbox', color: 'Color', image: 'Imagen', text: 'Texto', textarea: 'Área de texto' }
   return map[type] ?? type
 }
 
-function selectPreviewValue(optionId: string, value: string) {
-  previewSelections.value[optionId] = value
+function isValueEnabled(link: ProductOptionLink, valueId: string): boolean {
+  if (!link.enabled_value_ids) return true
+  return link.enabled_value_ids.includes(valueId)
+}
+
+async function toggleValue(link: ProductOptionLink, valueId: string) {
+  if (!productId.value || !link.template) return
+  const allIds = link.template.values.map((v) => v.id)
+  let current = link.enabled_value_ids ? [...link.enabled_value_ids] : [...allIds]
+
+  if (current.includes(valueId)) {
+    current = current.filter((id) => id !== valueId)
+  } else {
+    current.push(valueId)
+  }
+
+  const enabledIds = current.length === allIds.length ? null : current
+
+  try {
+    const updated = await adminPanelService.updateProductOptionLink(productId.value, link.id, { enabled_value_ids: enabledIds })
+    const idx = optionLinks.value.findIndex((l) => l.id === link.id)
+    if (idx !== -1) optionLinks.value[idx] = updated
+  } catch {
+    error('Error al actualizar valores')
+  }
+}
+
+async function addOptionLink() {
+  if (!productId.value || !addOptionTemplateId.value) return
+  try {
+    const link = await adminPanelService.createProductOptionLink(productId.value, { template_id: addOptionTemplateId.value })
+    optionLinks.value.push(link)
+    addOptionTemplateId.value = ''
+    showAddOption.value = false
+    success('Opción vinculada al producto')
+  } catch {
+    error('Error al vincular opción')
+  }
+}
+
+async function removeOptionLink(link: ProductOptionLink) {
+  const tplName = link.template?.label || 'esta opción'
+  const ok = await confirm({
+    title: 'Desvincular opción',
+    message: `Se eliminará la vinculación de "${tplName}" con este producto. Los valores configurados se perderán.`,
+    action: 'delete',
+    confirmText: 'Desvincular',
+  })
+  if (!ok || !productId.value) return
+
+  try {
+    await adminPanelService.deleteProductOptionLink(productId.value, link.id)
+    optionLinks.value = optionLinks.value.filter((l) => l.id !== link.id)
+    success('Opción desvinculada')
+  } catch {
+    error('Error al desvincular opción')
+  }
+}
+
+// Expanded link panels
+const expandedLinks = ref<Set<string>>(new Set())
+
+function toggleLinkExpand(linkId: string) {
+  if (expandedLinks.value.has(linkId)) {
+    expandedLinks.value.delete(linkId)
+  } else {
+    expandedLinks.value.add(linkId)
+  }
 }
 
 async function loadProduct() {
@@ -155,12 +283,25 @@ async function loadProduct() {
     form.base_price_currency = p.base_price.currency
     thumbnail.value = p.image ?? null
     gallery.value = (p.gallery ?? []).map((img) => ({ ...img }))
-    productOptions.value = p.options ?? []
     editor.value?.commands.setContent(form.description)
   } catch {
     error('Error al cargar el producto')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadOptionLinks() {
+  if (!productId.value) return
+  try {
+    const [links, templates] = await Promise.all([
+      adminPanelService.productOptionLinks(productId.value),
+      adminPanelService.optionTemplates(),
+    ])
+    optionLinks.value = links
+    allTemplates.value = templates
+  } catch {
+    // silently fail, options are secondary
   }
 }
 
@@ -190,8 +331,14 @@ async function submitForm() {
   }
 }
 
-onMounted(loadProduct)
-onBeforeUnmount(() => editor.value?.destroy())
+onMounted(() => {
+  loadProduct()
+  loadOptionLinks()
+})
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+  legendEditor.value?.destroy()
+})
 </script>
 
 <template>
@@ -424,54 +571,11 @@ onBeforeUnmount(() => editor.value?.destroy())
             </div>
           </div>
         </div>
-
-        <!-- Options assigned (Plantilla) -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">Opciones del Producto</h3>
-            <button v-if="isEdit" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="router.push('/admin/options')">
-              Gestionar Opciones
-            </button>
-          </div>
-          <div class="admin-content-card__body">
-            <p v-if="!isEdit" style="font-size: 0.85rem; color: var(--admin-text-secondary);">
-              Guarda el producto primero para poder asignar opciones.
-            </p>
-            <template v-else>
-              <p v-if="!productOptions.length" style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-bottom: 0;">
-                Este producto aún no tiene opciones asignadas. Ve a
-                <a href="/admin/options" @click.prevent="router.push('/admin/options')" style="color: var(--admin-primary); font-weight: 500;">Opciones</a>
-                para crear y asignar opciones a este producto.
-              </p>
-              <div v-else class="product-options-list">
-                <div v-for="option in productOptions" :key="option.id" class="product-option-item">
-                  <div class="product-option-item__header">
-                    <span class="product-option-item__label">{{ option.label }}</span>
-                    <span class="admin-badge admin-badge--info" style="font-size: 0.65rem;">{{ getOptionTypeLabel(option.type) }}</span>
-                    <span v-if="option.is_required" class="admin-badge admin-badge--error" style="font-size: 0.6rem;">Requerido</span>
-                  </div>
-                  <p v-if="option.help_text" class="product-option-item__help">{{ option.help_text }}</p>
-                  <div v-if="option.values.length" class="product-option-item__values">
-                    <template v-if="option.type === 'color'">
-                      <span v-for="val in option.values" :key="val.id" class="product-option-value-color" :title="val.label">
-                        <span class="product-option-value-color__swatch" :style="{ background: (val.metadata?.hex as string) || '#ccc' }"></span>
-                        <span class="product-option-value-color__name">{{ val.label }}</span>
-                      </span>
-                    </template>
-                    <template v-else>
-                      <span v-for="val in option.values" :key="val.id" class="product-option-value-tag">{{ val.label }}</span>
-                    </template>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
       </div>
 
       <!-- RIGHT COLUMN — Sidebar -->
       <div>
-        <!-- Status -->
+        <!-- Status + Preview integrated -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
           <div class="admin-content-card__header">
             <h3 class="admin-content-card__title">Estado</h3>
@@ -487,6 +591,143 @@ onBeforeUnmount(() => editor.value?.destroy())
                 {{ statusOptions.find(o => o.value === form.status)?.desc }}
               </p>
             </div>
+
+            <hr class="product-section-divider" />
+
+            <!-- Vista Previa inline -->
+            <div class="product-preview-mini">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--admin-text-secondary);">Vista Previa</span>
+                <button v-if="isEdit" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showPreview = !showPreview">
+                  {{ showPreview ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+              <div v-if="showPreview || !isEdit">
+                <div class="product-preview-mini__thumb">
+                  <img v-if="thumbnail" :src="thumbnail" alt="" />
+                  <div v-else class="product-preview-mini__placeholder">Sin imagen</div>
+                </div>
+                <h4 class="product-preview-mini__name">{{ form.name || 'Sin nombre' }}</h4>
+                <span class="product-preview-mini__slug">/{{ form.slug || '...' }}</span>
+                <p class="product-preview-mini__price">
+                  {{ form.base_price_currency }} {{ form.base_price_amount.toLocaleString('es-MX') }}
+                </p>
+                <span
+                  class="admin-badge"
+                  :class="form.status === 'public' ? 'admin-badge--success' : form.status === 'private' ? 'admin-badge--warning' : 'admin-badge--default'"
+                >
+                  {{ statusOptions.find(o => o.value === form.status)?.label }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opciones del Producto (above Detalles) -->
+        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+          <div class="admin-content-card__header">
+            <h3 class="admin-content-card__title">Opciones del Producto</h3>
+            <button v-if="isEdit && availableTemplates.length" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showAddOption = !showAddOption">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Vincular
+            </button>
+          </div>
+          <div class="admin-content-card__body">
+            <p v-if="!isEdit" style="font-size: 0.85rem; color: var(--admin-text-secondary);">
+              Guarda el producto primero para poder asignar opciones.
+            </p>
+            <template v-else>
+              <!-- Add option selector -->
+              <div v-if="showAddOption" class="option-link-add">
+                <select v-model="addOptionTemplateId" class="admin-product-form__select">
+                  <option value="">Selecciona una opción...</option>
+                  <option v-for="tpl in availableTemplates" :key="tpl.id" :value="tpl.id">
+                    {{ tpl.label }} ({{ getOptionTypeLabel(tpl.type) }})
+                  </option>
+                </select>
+                <div style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
+                  <button type="button" class="admin-btn admin-btn--sm admin-btn--primary" :disabled="!addOptionTemplateId" @click="addOptionLink">
+                    Agregar
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showAddOption = false; addOptionTemplateId = ''">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="!optionLinks.length && !showAddOption" style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-bottom: 0;">
+                Este producto aún no tiene opciones asignadas.
+              </p>
+
+              <!-- Option links list -->
+              <div v-if="optionLinks.length" class="option-links-list">
+                <div v-for="link in optionLinks" :key="link.id" class="option-link-item">
+                  <!-- Header row: name + actions -->
+                  <div class="option-link-item__header">
+                    <button type="button" class="option-link-item__toggle" @click="toggleLinkExpand(link.id)">
+                      <svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        :style="{ transform: expandedLinks.has(link.id) ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }"
+                      ><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                    <span class="option-link-item__name">{{ link.template?.label ?? '...' }}</span>
+                    <span class="admin-badge admin-badge--info" style="font-size: 0.6rem;">{{ getOptionTypeLabel(link.template?.type ?? '') }}</span>
+                    <div class="option-link-item__actions">
+                      <button type="button" class="option-link-action-btn" title="Leyenda" @click="openLegendModal(link)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                      </button>
+                      <button type="button" class="option-link-action-btn option-link-action-btn--delete" title="Desvincular" @click="removeOptionLink(link)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Expanded: details + value tree -->
+                  <div v-if="expandedLinks.has(link.id) && link.template" class="option-link-item__body">
+                    <div v-if="link.template.help_text" class="option-link-item__help">
+                      {{ link.template.help_text }}
+                    </div>
+                    <div v-if="link.legend" class="option-link-item__legend">
+                      <span class="option-link-item__legend-label">Leyenda:</span>
+                      <div class="option-link-item__legend-content" v-html="link.legend"></div>
+                    </div>
+
+                    <!-- Values tree -->
+                    <div v-if="link.template.values.length" class="option-link-values-tree">
+                      <div
+                        v-for="val in link.template.values"
+                        :key="val.id"
+                        class="option-link-value-row"
+                        :class="{ 'option-link-value-row--disabled': !isValueEnabled(link, val.id) }"
+                      >
+                        <label class="option-link-value-check">
+                          <input
+                            type="checkbox"
+                            :checked="isValueEnabled(link, val.id)"
+                            @change="toggleValue(link, val.id)"
+                          />
+                          <span class="option-link-value-check__mark"></span>
+                        </label>
+                        <template v-if="link.template!.type === 'color' && val.metadata?.hex">
+                          <span class="option-link-value-swatch" :style="{ background: (val.metadata.hex as string) }"></span>
+                        </template>
+                        <span class="option-link-value-label">{{ val.label }}</span>
+                        <span v-if="val.price_modifier_type !== 'none'" class="option-link-value-price">
+                          {{ val.price_modifier_type === 'add' ? '+' : val.price_modifier_type === 'subtract' ? '-' : '=' }}{{ (val.price_modifier_amount / 100).toFixed(2) }}
+                        </span>
+                      </div>
+                    </div>
+                    <p v-else style="font-size: 0.75rem; color: var(--admin-text-muted); margin: 0;">
+                      Sin valores configurados
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -511,64 +752,61 @@ onBeforeUnmount(() => editor.value?.destroy())
             </div>
           </div>
         </div>
+      </div>
+    </form>
 
-        <!-- Preview card -->
-        <div class="admin-content-card">
-          <div class="admin-content-card__header">
-            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-              <h3 class="admin-content-card__title">Vista Previa</h3>
-              <button v-if="isEdit" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showPreview = !showPreview">
-                {{ showPreview ? 'Ocultar' : 'Mostrar' }}
-              </button>
+    <!-- Legend modal -->
+    <Teleport to="body">
+      <Transition name="confirm-fade">
+        <div v-if="legendModal" class="legend-modal-backdrop" @click.self="closeLegendModal">
+          <div class="legend-modal">
+            <div class="legend-modal__header">
+              <h3 class="legend-modal__title">Leyenda de la Opción</h3>
+              <button type="button" class="legend-modal__close" @click="closeLegendModal">&times;</button>
             </div>
-          </div>
-          <div v-if="showPreview || !isEdit" class="admin-content-card__body product-preview-mini">
-            <div class="product-preview-mini__thumb">
-              <img v-if="thumbnail" :src="thumbnail" alt="" />
-              <div v-else class="product-preview-mini__placeholder">Sin imagen</div>
-            </div>
-            <h4 class="product-preview-mini__name">{{ form.name || 'Sin nombre' }}</h4>
-            <span class="product-preview-mini__slug">/{{ form.slug || '...' }}</span>
-            <p class="product-preview-mini__price">
-              {{ form.base_price_currency }} {{ form.base_price_amount.toLocaleString('es-MX') }}
-            </p>
-            <span
-              class="admin-badge"
-              :class="form.status === 'public' ? 'admin-badge--success' : form.status === 'private' ? 'admin-badge--warning' : 'admin-badge--default'"
-            >
-              {{ statusOptions.find(o => o.value === form.status)?.label }}
-            </span>
-
-            <!-- Options preview -->
-            <div v-if="productOptions.length" class="product-preview-options">
-              <div v-for="option in productOptions" :key="option.id" class="product-preview-option">
-                <span class="product-preview-option__label">{{ option.label }}</span>
-                <template v-if="option.type === 'color' && option.values.length">
-                  <div class="product-preview-option__colors">
-                    <button
-                      v-for="val in option.values"
-                      :key="val.id"
-                      type="button"
-                      class="product-preview-color-btn"
-                      :class="{ 'product-preview-color-btn--selected': previewSelections[option.id] === val.value }"
-                      :style="{ background: (val.metadata?.hex as string) || '#ccc' }"
-                      :title="val.label"
-                      @click="selectPreviewValue(option.id, val.value)"
-                    ></button>
-                  </div>
-                </template>
-                <template v-else-if="option.values.length">
-                  <select class="product-preview-option__select" @change="selectPreviewValue(option.id, ($event.target as HTMLSelectElement).value)">
-                    <option value="">Seleccionar...</option>
-                    <option v-for="val in option.values" :key="val.id" :value="val.value">{{ val.label }}</option>
-                  </select>
-                </template>
+            <div class="legend-modal__body">
+              <p style="font-size: 0.78rem; color: var(--admin-text-muted); margin: 0 0 0.75rem;">
+                Nota interna del administrador sobre esta opción para este producto específico.
+              </p>
+              <div class="tiptap-editor-wrapper">
+                <div v-if="legendEditor" class="tiptap-toolbar">
+                  <button type="button" :class="{ 'is-active': legendEditor.isActive('bold') }" @click="legendEditor.chain().focus().toggleBold().run()">
+                    <strong>B</strong>
+                  </button>
+                  <button type="button" :class="{ 'is-active': legendEditor.isActive('italic') }" @click="legendEditor.chain().focus().toggleItalic().run()">
+                    <em>I</em>
+                  </button>
+                  <button type="button" :class="{ 'is-active': legendEditor.isActive('underline') }" @click="legendEditor.chain().focus().toggleUnderline().run()">
+                    <u>U</u>
+                  </button>
+                  <span class="tiptap-toolbar__sep"></span>
+                  <button type="button" :class="{ 'is-active': legendEditor.isActive('bulletList') }" @click="legendEditor.chain().focus().toggleBulletList().run()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+                  </button>
+                </div>
+                <EditorContent :editor="legendEditor" class="tiptap-content" />
               </div>
+            </div>
+            <div class="legend-modal__footer">
+              <button type="button" class="admin-btn admin-btn--outline" @click="closeLegendModal">Cancelar</button>
+              <button type="button" class="admin-btn admin-btn--primary" @click="saveLegend">Guardar</button>
             </div>
           </div>
         </div>
-      </div>
-    </form>
+      </Transition>
+    </Teleport>
+
+    <!-- Confirm dialog -->
+    <ConfirmDialog
+      :visible="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :action="confirmAction"
+      :confirm-text="confirmText"
+      :cancel-text="cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 
@@ -587,6 +825,12 @@ onBeforeUnmount(() => editor.value?.destroy())
   color: var(--admin-text-muted);
   margin-top: 0.35rem;
   margin-bottom: 0;
+}
+
+.product-section-divider {
+  border: none;
+  border-top: 1px solid var(--admin-border);
+  margin: 1rem 0;
 }
 
 /* TipTap editor */
@@ -731,125 +975,298 @@ onBeforeUnmount(() => editor.value?.destroy())
   margin: -0.1rem 0 0.4rem;
 }
 
-/* Options in product form */
-.product-options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.product-option-item {
+/* Option links */
+.option-link-add {
   background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--admin-border);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.product-option-item__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.product-option-item__label {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--admin-text);
-}
-
-.product-option-item__help {
-  font-size: 0.75rem;
-  color: var(--admin-text-muted);
-  margin: 0.25rem 0 0;
-}
-
-.product-option-item__values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-}
-
-.product-option-value-tag {
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: 4px;
-  padding: 0.15rem 0.5rem;
-  font-size: 0.75rem;
-  color: var(--admin-text-secondary);
-}
-
-.product-option-value-color {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-}
-
-.product-option-value-color__swatch {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid var(--admin-border);
-  display: inline-block;
-}
-
-.product-option-value-color__name {
-  color: var(--admin-text-secondary);
-}
-
-/* Preview options */
-.product-preview-options {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--admin-border);
+.option-links-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
-.product-preview-option__label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--admin-text-secondary);
-  margin-bottom: 0.25rem;
+.option-link-item {
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.product-preview-option__colors {
+.option-link-item__header {
   display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
 }
 
-.product-preview-color-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid var(--admin-border);
+.option-link-item__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
   cursor: pointer;
+  padding: 0;
+  color: var(--admin-text-muted);
+  flex-shrink: 0;
+}
+
+.option-link-item__toggle svg {
+  display: block;
+  stroke: currentColor;
+  fill: none;
+}
+
+.option-link-item__name {
+  font-weight: 600;
+  font-size: 0.83rem;
+  color: var(--admin-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.option-link-item__actions {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.option-link-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--admin-primary);
   transition: all 0.15s ease;
   padding: 0;
 }
 
-.product-preview-color-btn:hover {
-  transform: scale(1.15);
+.option-link-action-btn svg {
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
 }
 
-.product-preview-color-btn--selected {
-  border-color: var(--admin-primary);
-  box-shadow: 0 0 0 2px var(--admin-primary-light);
+.option-link-action-btn:hover {
+  background: var(--admin-primary-light);
 }
 
-.product-preview-option__select {
-  width: 100%;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--admin-border);
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-family: var(--admin-font);
-  color: var(--admin-text);
+.option-link-action-btn--delete {
+  color: var(--admin-danger, #dc3545);
+}
+
+.option-link-action-btn--delete:hover {
+  background: rgba(220, 53, 69, 0.08);
+}
+
+.option-link-item__body {
+  padding: 0 0.75rem 0.75rem;
+  border-top: 1px solid var(--admin-border);
+}
+
+.option-link-item__help {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin: 0.5rem 0 0;
+}
+
+.option-link-item__legend {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
   background: var(--admin-surface);
+  border-radius: 6px;
+  border: 1px dashed var(--admin-border);
+}
+
+.option-link-item__legend-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.option-link-item__legend-content {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--admin-text-secondary);
+}
+
+.option-link-item__legend-content :deep(p) {
+  margin: 0 0 0.3rem;
+}
+
+/* Values tree */
+.option-link-values-tree {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.option-link-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  transition: opacity 0.15s ease;
+}
+
+.option-link-value-row--disabled {
+  opacity: 0.45;
+}
+
+.option-link-value-check {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.option-link-value-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.option-link-value-check__mark {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--admin-border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-surface);
+  transition: all 0.15s ease;
+}
+
+.option-link-value-check input:checked + .option-link-value-check__mark {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+}
+
+.option-link-value-check input:checked + .option-link-value-check__mark::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -1px;
+}
+
+.option-link-value-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--admin-border);
+  flex-shrink: 0;
+}
+
+.option-link-value-label {
+  font-size: 0.8rem;
+  color: var(--admin-text);
+  flex: 1;
+}
+
+.option-link-value-price {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+/* Legend modal */
+.legend-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  padding: 2rem;
+}
+
+.legend-modal {
+  background: var(--admin-surface, #fff);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+}
+
+.legend-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.legend-modal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--admin-text);
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+}
+
+.legend-modal__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--admin-text-muted);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.legend-modal__close:hover {
+  background: var(--admin-bg);
+}
+
+.legend-modal__body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.legend-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--admin-border);
 }
 </style>
