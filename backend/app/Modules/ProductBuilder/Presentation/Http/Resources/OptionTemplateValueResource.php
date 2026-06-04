@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\ProductBuilder\Presentation\Http\Resources;
 
-use App\Modules\ProductBuilder\Domain\Models\OptionValue;
+use App\Modules\ProductBuilder\Domain\Models\OptionTemplateValue;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin OptionValue
+ * @mixin OptionTemplateValue
  */
-class OptionValueResource extends JsonResource
+class OptionTemplateValueResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

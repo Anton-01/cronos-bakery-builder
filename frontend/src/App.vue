@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { Toaster } from 'vue-sonner'
 
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -30,6 +31,19 @@ onMounted(() => {
 </script>
 
 <template>
+  <Toaster
+    position="top-right"
+    :toastOptions="{
+      style: {
+        fontFamily: 'var(--admin-font, Plus Jakarta Sans, sans-serif)',
+        fontSize: '0.85rem',
+        borderRadius: '10px',
+        padding: '12px 16px',
+      },
+    }"
+    richColors
+    :offset="16"
+  />
   <component :is="layout">
     <RouterView />
   </component>

@@ -53,6 +53,15 @@ class ThemeBuilderSeeder extends Seeder
                 ],
                 'copyright' => '© ' . date('Y') . ' Cronos Bakery. Todos los derechos reservados.',
             ],
+            'settings' => [
+                'currency' => 'MXN',
+                'currency_symbol' => '$',
+                'locale' => 'es-MX',
+                'country' => 'MX',
+                'tax_rate' => 16,
+                'tax_name' => 'IVA',
+                'timezone' => 'America/Mexico_City',
+            ],
         ]);
     }
 

@@ -18,28 +18,40 @@ const selections = reactive<Selections>({})
 const quote = ref<Quote | null>(null)
 const loading = ref(true)
 const addingToCart = ref(false)
+const addedMessage = ref(false)
 const errors = ref<Record<string, string[]>>({})
 
-/**
- * Add the current configuration to the cart. Purchasing requires login, so
- * unauthenticated customers are sent to sign in first.
- */
 async function addToCart(): Promise<void> {
-  if (!product.value) return
-  if (!auth.isAuthenticated) {
-    await router.push({ name: 'auth.login', query: { redirect: route.fullPath } })
-    return
-  }
+  if (!product.value || !quote.value) return
+
   addingToCart.value = true
   try {
-    await cart.add(product.value.slug, { ...selections })
-    await router.push({ name: 'cart' })
+    if (auth.isAuthenticated) {
+      await cart.add(product.value.slug, { ...selections })
+    } else {
+      cart.addLocal({
+        product_slug: product.value.slug,
+        product_name: product.value.name,
+        configuration: {
+          selections: { ...selections },
+          price: { items: quote.value.price.items.map((i) => ({ label: i.label, delta: i.delta })) },
+        },
+        unit_price: { amount: quote.value.price.total, currency: quote.value.price.currency },
+        quantity: 1,
+        line_total: { amount: quote.value.price.total, currency: quote.value.price.currency },
+      })
+    }
+    addedMessage.value = true
+    setTimeout(() => { addedMessage.value = false }, 3000)
   } finally {
     addingToCart.value = false
   }
 }
 
-/** Pre-select default values so the configurator opens fully priced. */
+function goToCart(): void {
+  router.push({ name: 'cart' })
+}
+
 function seedDefaults(p: ConfigurableProduct): void {
   for (const option of p.options) {
     const defaults = option.values.filter((v) => v.is_default).map((v) => v.value)
@@ -62,7 +74,6 @@ function formatMoney(amount: number, currency: string): string {
 
 let timer: ReturnType<typeof setTimeout> | undefined
 
-/** Debounced authoritative price request. */
 function refreshQuote(): void {
   if (!product.value) return
   clearTimeout(timer)
@@ -91,13 +102,12 @@ onMounted(async () => {
   }
 })
 
-// Re-price whenever any selection changes.
 watch(selections, refreshQuote, { deep: true })
 </script>
 
 <template>
   <section class="configurator">
-    <p v-if="loading" class="configurator__state">Cargando configurador…</p>
+    <p v-if="loading" class="configurator__state">Cargando configurador...</p>
     <p v-else-if="!product" class="configurator__state">Producto no encontrado.</p>
 
     <template v-else>
@@ -107,7 +117,6 @@ watch(selections, refreshQuote, { deep: true })
       </header>
 
       <div class="configurator__grid">
-        <!-- Auto-generated form: one field per visible option, by type. -->
         <form class="configurator__form" @submit.prevent>
           <div v-for="option in visibleOptions" :key="option.id" class="configurator__option">
             <OptionField v-model="selections[option.key]" :option="option" />
@@ -117,7 +126,6 @@ watch(selections, refreshQuote, { deep: true })
           </div>
         </form>
 
-        <!-- Live pricing summary. -->
         <aside class="configurator__summary">
           <h2>Resumen</h2>
           <ul v-if="quote" class="configurator__lines">
@@ -131,10 +139,44 @@ watch(selections, refreshQuote, { deep: true })
             <strong>{{ formatMoney(quote.price.total, quote.price.currency) }}</strong>
           </p>
           <button type="button" class="configurator__cta" :disabled="!quote || addingToCart" @click="addToCart">
-            {{ addingToCart ? 'Agregando…' : 'Agregar al carrito' }}
+            {{ addingToCart ? 'Agregando...' : 'Agregar al Carrito' }}
           </button>
+
+          <div v-if="addedMessage" class="configurator__added">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Agregado al carrito</span>
+            <button type="button" class="configurator__go-cart" @click="goToCart">Ver carrito</button>
+          </div>
         </aside>
       </div>
     </template>
   </section>
 </template>
+
+<style scoped>
+.configurator__added {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f0faf4;
+  border: 1px solid #b8e6c8;
+  color: #1b7340;
+  font-size: 0.85rem;
+}
+
+.configurator__go-cart {
+  margin-left: auto;
+  background: none;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 0.3rem 0.75rem;
+  font-size: 0.7rem;
+}
+
+.configurator__go-cart:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+</style>

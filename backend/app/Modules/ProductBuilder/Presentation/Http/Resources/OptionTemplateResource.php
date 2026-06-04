@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\ProductBuilder\Presentation\Http\Resources;
 
-use App\Modules\ProductBuilder\Domain\Models\OptionValue;
+use App\Modules\ProductBuilder\Domain\Models\OptionTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin OptionValue
+ * @mixin OptionTemplate
  */
-class OptionValueResource extends JsonResource
+class OptionTemplateResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -20,13 +20,14 @@ class OptionValueResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'key' => $this->key,
             'label' => $this->label,
-            'value' => $this->value,
-            'price_modifier_type' => $this->price_modifier_type->value,
-            'price_modifier_amount' => $this->price_modifier_amount,
-            'metadata' => $this->metadata,
-            'is_default' => $this->is_default,
+            'type' => $this->type->value,
+            'help_text' => $this->help_text,
+            'is_required' => $this->is_required,
             'position' => $this->position,
+            'config' => $this->config,
+            'values' => OptionTemplateValueResource::collection($this->whenLoaded('values')),
         ];
     }
 }

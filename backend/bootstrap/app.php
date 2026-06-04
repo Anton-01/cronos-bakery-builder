@@ -8,10 +8,12 @@ use App\Shared\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,16 +24,16 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust the load balancer / CDN / WAF in front of the app.
         $middleware->trustProxies(at: '*');
 
-        // Enable Sanctum's SPA authentication for stateful, cookie-based requests.
         $middleware->statefulApi();
 
-        // Hardening headers (WAF-ready) on every response.
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+
         $middleware->append(SecurityHeaders::class);
 
-        // Audit every mutating admin action (self-filters inside the middleware).
         $middleware->appendToGroup('api', LogAdminActivity::class);
 
         $middleware->alias([
@@ -45,4 +47,25 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Never expose stack traces or internal details to API consumers.
+        $exceptions->respond(function (JsonResponse $response, \Throwable $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return $response;
+            }
+
+            $status = $e instanceof HttpExceptionInterface
+                ? $e->getStatusCode()
+                : 500;
+
+            $body = ['message' => $e instanceof HttpExceptionInterface
+                ? $e->getMessage()
+                : 'Server Error'];
+
+            if ($status === 422 && method_exists($e, 'errors')) {
+                $body['errors'] = $e->errors();
+            }
+
+            return new JsonResponse($body, $status);
+        });
     })->create();
