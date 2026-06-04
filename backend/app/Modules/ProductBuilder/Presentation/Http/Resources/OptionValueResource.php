@@ -22,10 +22,8 @@ class OptionValueResource extends JsonResource
             'id' => $this->id,
             'label' => $this->label,
             'value' => $this->value,
-            'price_modifier' => [
-                'type' => $this->price_modifier_type->value,
-                'amount' => $this->price_modifier_amount,
-            ],
+            'price_modifier_type' => $this->price_modifier_type->value,
+            'price_modifier_amount' => $this->price_modifier_amount,
             'metadata' => $this->metadata,
             'is_default' => $this->is_default,
             'position' => $this->position,

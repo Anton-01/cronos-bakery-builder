@@ -35,16 +35,14 @@ onMounted(() => {
     position="top-right"
     :toastOptions="{
       style: {
-        fontFamily: 'var(--admin-font, inherit)',
-        fontSize: '0.875rem',
+        fontFamily: 'var(--admin-font, Plus Jakarta Sans, sans-serif)',
+        fontSize: '0.85rem',
         borderRadius: '10px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-        border: '1px solid rgba(0,0,0,0.04)',
-        padding: '14px 18px',
+        padding: '12px 16px',
       },
-      class: 'cronos-toast',
     }"
     richColors
+    :offset="16"
   />
   <component :is="layout">
     <RouterView />

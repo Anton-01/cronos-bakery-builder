@@ -706,7 +706,7 @@ onBeforeUnmount(() => {
                         </template>
                         <span class="option-link-value-label">{{ val.label }}</span>
                         <span v-if="val.price_modifier_type !== 'none'" class="option-link-value-price">
-                          {{ val.price_modifier_type === 'add' ? '+' : val.price_modifier_type === 'subtract' ? '-' : '=' }}{{ (val.price_modifier_amount / 100).toFixed(2) }}
+                          {{ val.price_modifier_type === 'add' ? '+' : val.price_modifier_type === 'subtract' ? '-' : '=' }}{{ ((val.price_modifier_amount ?? 0) / 100).toFixed(2) }}
                         </span>
                       </div>
                     </div>

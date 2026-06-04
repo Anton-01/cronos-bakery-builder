@@ -22,13 +22,17 @@ class ProductBuilderSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->seedSignatureCake();
+        if (Product::where('slug', 'signature-cake')->doesntExist()) {
+            $this->seedSignatureCake();
 
-        foreach (['Muse Blanc', 'Studio Cake', 'Coquette Cake'] as $position => $name) {
-            $this->seedSimpleCake($name, 3000 + $position * 500, $position + 1);
+            foreach (['Muse Blanc', 'Studio Cake', 'Coquette Cake'] as $position => $name) {
+                $this->seedSimpleCake($name, 3000 + $position * 500, $position + 1);
+            }
         }
 
-        $this->seedOptionTemplates();
+        if (OptionTemplate::count() === 0) {
+            $this->seedOptionTemplates();
+        }
     }
 
     private function seedSignatureCake(): void

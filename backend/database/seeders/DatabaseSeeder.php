@@ -29,11 +29,13 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesAndPermissionsSeeder::class);
 
         // Super administrator.
-        $superAdmin = Admin::factory()->create([
-            'name' => 'Cronos Super Admin',
-            'email' => 'superadmin@cronos.test',
-        ]);
-        $superAdmin->assignRole(AdminRole::SuperAdmin->value);
+        $superAdmin = Admin::firstOrCreate(
+            ['email' => 'superadmin@cronos.test'],
+            Admin::factory()->raw(['name' => 'Cronos Super Admin']),
+        );
+        if (!$superAdmin->hasRole(AdminRole::SuperAdmin->value)) {
+            $superAdmin->assignRole(AdminRole::SuperAdmin->value);
+        }
 
         // One administrator per remaining role for convenience.
         foreach (AdminRole::cases() as $role) {
@@ -41,13 +43,19 @@ class DatabaseSeeder extends Seeder
                 continue;
             }
 
-            Admin::factory()
-                ->create(['email' => "{$role->value}@cronos.test"])
-                ->assignRole($role->value);
+            $admin = Admin::firstOrCreate(
+                ['email' => "{$role->value}@cronos.test"],
+                Admin::factory()->raw(),
+            );
+            if (!$admin->hasRole($role->value)) {
+                $admin->assignRole($role->value);
+            }
         }
 
         // Sample customers.
-        User::factory(5)->create();
+        if (User::count() === 0) {
+            User::factory(5)->create();
+        }
 
         // Dynamic CMS pages with builder blocks.
         $this->call(CmsContentSeeder::class);
