@@ -148,7 +148,6 @@ function removeGalleryImage(idx: number) {
 // --- Option Links ---
 const optionLinks = ref<ProductOptionLink[]>([])
 const allTemplates = ref<OptionTemplate[]>([])
-const showPreview = ref(false)
 const showAddOption = ref(false)
 const addOptionTemplateId = ref('')
 
@@ -594,31 +593,21 @@ onBeforeUnmount(() => {
 
             <hr class="product-section-divider" />
 
-            <!-- Vista Previa inline -->
-            <div class="product-preview-mini">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.8rem; font-weight: 600; color: var(--admin-text-secondary);">Vista Previa</span>
-                <button v-if="isEdit" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showPreview = !showPreview">
-                  {{ showPreview ? 'Ocultar' : 'Mostrar' }}
-                </button>
-              </div>
-              <div v-if="showPreview || !isEdit">
-                <div class="product-preview-mini__thumb">
-                  <img v-if="thumbnail" :src="thumbnail" alt="" />
-                  <div v-else class="product-preview-mini__placeholder">Sin imagen</div>
-                </div>
-                <h4 class="product-preview-mini__name">{{ form.name || 'Sin nombre' }}</h4>
-                <span class="product-preview-mini__slug">/{{ form.slug || '...' }}</span>
-                <p class="product-preview-mini__price">
-                  {{ form.base_price_currency }} {{ form.base_price_amount.toLocaleString('es-MX') }}
-                </p>
-                <span
-                  class="admin-badge"
-                  :class="form.status === 'public' ? 'admin-badge--success' : form.status === 'private' ? 'admin-badge--warning' : 'admin-badge--default'"
-                >
-                  {{ statusOptions.find(o => o.value === form.status)?.label }}
-                </span>
-              </div>
+            <!-- Vista Previa link -->
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 0.8rem; font-weight: 600; color: var(--admin-text-secondary);">Vista Previa</span>
+              <button
+                v-if="isEdit && form.slug"
+                type="button"
+                class="admin-btn admin-btn--sm admin-btn--outline"
+                @click="router.push(`/productos/${form.slug}`)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                Ver como usuario
+              </button>
+              <span v-else style="font-size: 0.75rem; color: var(--admin-text-muted);">
+                Guarda primero para ver la vista previa
+              </span>
             </div>
           </div>
         </div>
@@ -926,54 +915,6 @@ onBeforeUnmount(() => {
 .tiptap-content :deep(.tiptap ul),
 .tiptap-content :deep(.tiptap ol) { padding-left: 1.5rem; margin: 0.25rem 0 0.5rem; }
 .tiptap-content :deep(.tiptap li) { margin-bottom: 0.2rem; }
-
-/* Mini preview */
-.product-preview-mini__thumb {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--admin-bg);
-  margin-bottom: 0.75rem;
-}
-
-.product-preview-mini__thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-preview-mini__placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
-}
-
-.product-preview-mini__name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0 0 0.25rem;
-  color: var(--admin-text);
-}
-
-.product-preview-mini__price {
-  font-size: 0.85rem;
-  color: var(--admin-text-secondary);
-  margin: 0 0 0.5rem;
-}
-
-.product-preview-mini__slug {
-  font-size: 0.72rem;
-  color: var(--admin-primary);
-  opacity: 0.6;
-  font-family: monospace;
-  display: block;
-  margin: -0.1rem 0 0.4rem;
-}
 
 /* Option links */
 .option-link-add {

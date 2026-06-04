@@ -37,7 +37,7 @@ const hasValues = (type: PbOptionType) => ['select', 'radio', 'checkbox', 'color
 // Template form
 const showTemplateForm = ref(false)
 const editingTemplateId = ref<string | null>(null)
-const tplForm = reactive({ key: '', label: '', type: 'select' as PbOptionType, help_text: '', is_required: false })
+const tplForm = reactive({ key: '', label: '', type: 'select' as PbOptionType, is_required: false })
 
 // Value form
 const showValueForm = ref(false)
@@ -66,13 +66,13 @@ function toggle(id: string) { expandedId.value = expandedId.value === id ? null 
 // Template CRUD
 function openNewTemplate() {
   editingTemplateId.value = null
-  tplForm.key = ''; tplForm.label = ''; tplForm.type = 'select'; tplForm.help_text = ''; tplForm.is_required = false
+  tplForm.key = ''; tplForm.label = ''; tplForm.type = 'select'; tplForm.is_required = false
   showTemplateForm.value = true
 }
 
 function openEditTemplate(t: OptionTemplate) {
   editingTemplateId.value = t.id
-  tplForm.key = t.key; tplForm.label = t.label; tplForm.type = t.type; tplForm.help_text = t.help_text ?? ''; tplForm.is_required = t.is_required
+  tplForm.key = t.key; tplForm.label = t.label; tplForm.type = t.type; tplForm.is_required = t.is_required
   showTemplateForm.value = true
 }
 
@@ -80,7 +80,7 @@ function onTplLabelInput() { if (!editingTemplateId.value) tplForm.key = genKey(
 
 async function submitTemplate() {
   try {
-    const payload = { key: tplForm.key, label: tplForm.label, type: tplForm.type, help_text: tplForm.help_text || null, is_required: tplForm.is_required }
+    const payload = { key: tplForm.key, label: tplForm.label, type: tplForm.type, is_required: tplForm.is_required }
     if (editingTemplateId.value) {
       await adminPanelService.updateOptionTemplate(editingTemplateId.value, payload)
       success('Opción actualizada')
@@ -345,13 +345,11 @@ onMounted(load)
                 </select>
               </div>
               <div class="opt-modal__field">
-                <label>Texto de ayuda (opcional)</label>
-                <input v-model="tplForm.help_text" type="text" placeholder="Ej: Selecciona la forma deseada" />
-              </div>
-              <div class="opt-modal__field">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                  <input v-model="tplForm.is_required" type="checkbox" /> Requerido
-                </label>
+                <label>Requerido al comprar</label>
+                <select v-model="tplForm.is_required">
+                  <option :value="false">No — Opcional</option>
+                  <option :value="true">Sí — Obligatorio</option>
+                </select>
               </div>
               <div class="opt-modal__actions">
                 <button type="button" class="admin-btn admin-btn--outline" @click="showTemplateForm = false">Cancelar</button>
@@ -402,9 +400,11 @@ onMounted(load)
                 </div>
               </div>
               <div class="opt-modal__field">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                  <input v-model="valForm.is_default" type="checkbox" /> Valor por defecto
-                </label>
+                <label>Valor por defecto</label>
+                <select v-model="valForm.is_default">
+                  <option :value="false">No</option>
+                  <option :value="true">Sí</option>
+                </select>
               </div>
               <div class="opt-modal__actions">
                 <button type="button" class="admin-btn admin-btn--outline" @click="showValueForm = false">Cancelar</button>
