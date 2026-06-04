@@ -3,8 +3,22 @@ import { onMounted, ref, reactive } from 'vue'
 
 import { adminPanelService, type AdminCategory } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
+
+const {
+  visible: confirmVisible,
+  title: confirmTitle,
+  message: confirmMessage,
+  action: confirmAction,
+  confirmText,
+  cancelText,
+  confirm,
+  handleConfirm,
+  handleCancel,
+} = useConfirm()
 
 const categories = ref<AdminCategory[]>([])
 const loading = ref(true)
@@ -83,7 +97,13 @@ async function save(): Promise<void> {
 }
 
 async function deleteCategory(id: string): Promise<void> {
-  if (!confirm('¿Eliminar esta categoria?')) return
+  const ok = await confirm({
+    title: 'Eliminar categoria',
+    message: '¿Eliminar esta categoria?',
+    action: 'delete',
+    confirmText: 'Eliminar',
+  })
+  if (!ok) return
   try {
     await adminPanelService.deleteCategory(id)
     await load()
@@ -203,6 +223,17 @@ onMounted(load)
         </template>
       </div>
     </div>
+
+    <ConfirmDialog
+      :visible="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :action="confirmAction"
+      :confirm-text="confirmText"
+      :cancel-text="cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 

@@ -32,6 +32,18 @@ export const administrationRoutes: RouteRecordRaw[] = [
     meta: { layout: 'admin', requiresAdmin: true },
   },
   {
+    path: '/admin/productos/new',
+    name: 'admin.products.create',
+    component: () => import('./pages/AdminProductFormPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/productos/:id',
+    name: 'admin.products.edit',
+    component: () => import('./pages/AdminProductFormPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
     path: '/admin/options',
     name: 'admin.options',
     component: () => import('./pages/AdminOptionsPage.vue'),

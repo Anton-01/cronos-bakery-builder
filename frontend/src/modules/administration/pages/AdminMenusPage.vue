@@ -3,8 +3,22 @@ import { onMounted, ref, reactive } from 'vue'
 
 import { adminPanelService, type CmsMenu, type CmsMenuItem } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
+
+const {
+  visible: confirmVisible,
+  title: confirmTitle,
+  message: confirmMessage,
+  action: confirmAction,
+  confirmText,
+  cancelText,
+  confirm,
+  handleConfirm,
+  handleCancel,
+} = useConfirm()
 
 const menus = ref<CmsMenu[]>([])
 const loading = ref(true)
@@ -76,7 +90,13 @@ async function saveEdit(menu: CmsMenu): Promise<void> {
 }
 
 async function deleteMenu(id: string): Promise<void> {
-  if (!confirm('¿Eliminar este menu? Esta accion no se puede deshacer.')) return
+  const ok = await confirm({
+    title: 'Eliminar menu',
+    message: '¿Eliminar este menu? Esta accion no se puede deshacer.',
+    action: 'delete',
+    confirmText: 'Eliminar',
+  })
+  if (!ok) return
   try {
     await adminPanelService.deleteMenu(id)
     menus.value = menus.value.filter((m) => m.id !== id)
@@ -255,6 +275,17 @@ function locationLabel(location: string): string {
         </div>
       </div>
     </template>
+
+    <ConfirmDialog
+      :visible="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :action="confirmAction"
+      :confirm-text="confirmText"
+      :cancel-text="cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 

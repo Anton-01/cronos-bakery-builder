@@ -3,8 +3,22 @@ import { onMounted, ref, computed } from 'vue'
 
 import { adminPanelService, type CmsSection, type CmsPage } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
+
+const {
+  visible: confirmVisible,
+  title: confirmTitle,
+  message: confirmMessage,
+  action: confirmAction,
+  confirmText,
+  cancelText,
+  confirm,
+  handleConfirm,
+  handleCancel,
+} = useConfirm()
 
 const sections = ref<CmsSection[]>([])
 const pages = ref<CmsPage[]>([])
@@ -104,7 +118,13 @@ async function togglePublish(page: CmsPage): Promise<void> {
 }
 
 async function deletePage(page: CmsPage): Promise<void> {
-  if (!confirm(`¿Eliminar la pagina "${page.title}"?`)) return
+  const ok = await confirm({
+    title: 'Eliminar pagina',
+    message: `¿Eliminar la pagina "${page.title}"?`,
+    action: 'delete',
+    confirmText: 'Eliminar',
+  })
+  if (!ok) return
   try {
     await adminPanelService.cmsDeletePage(page.id)
     pages.value = pages.value.filter((p) => p.id !== page.id)
@@ -242,6 +262,17 @@ onMounted(load)
         </template>
       </div>
     </div>
+
+    <ConfirmDialog
+      :visible="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :action="confirmAction"
+      :confirm-text="confirmText"
+      :cancel-text="cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 

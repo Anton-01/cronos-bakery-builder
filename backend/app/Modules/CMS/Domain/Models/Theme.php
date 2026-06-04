@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property array<string, string> $colors
  * @property array<string, mixed> $fonts
  * @property array<string, mixed>|null $footer
+ * @property array<string, mixed>|null $settings
  * @property bool $is_active
  */
 class Theme extends Model
@@ -36,6 +37,7 @@ class Theme extends Model
         'colors',
         'fonts',
         'footer',
+        'settings',
         'is_active',
     ];
 
@@ -43,6 +45,7 @@ class Theme extends Model
         'colors' => 'array',
         'fonts' => 'array',
         'footer' => 'array',
+        'settings' => 'array',
         'is_active' => 'boolean',
     ];
 

@@ -1,26 +1,69 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 
-import { adminPanelService, type Theme, type CmsBanner } from '../services/adminPanelService'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
+import { adminPanelService, type Theme, type CmsBanner } from '../services/adminPanelService'
 
 const { success, error, warning } = useToast()
+const {
+  visible: confirmVisible,
+  title: confirmTitle,
+  message: confirmMessage,
+  action: confirmAction,
+  confirmText,
+  cancelText,
+  confirm,
+  handleConfirm,
+  handleCancel,
+} = useConfirm()
 
 const themes = ref<Theme[]>([])
 const banners = ref<CmsBanner[]>([])
 const loadingThemes = ref(true)
 const loadingBanners = ref(true)
-
-// Per-theme editable settings JSON
-const settingsJson = ref<Record<string, string>>({})
 const savingTheme = ref<Record<string, boolean>>({})
+
+interface StoreSettings {
+  currency: string
+  currency_symbol: string
+  locale: string
+  country: string
+  tax_rate: number
+  tax_name: string
+  timezone: string
+}
+
+const settingsForms = ref<Record<string, StoreSettings>>({})
+
+function defaultSettings(): StoreSettings {
+  return {
+    currency: 'MXN',
+    currency_symbol: '$',
+    locale: 'es-MX',
+    country: 'MX',
+    tax_rate: 16,
+    tax_name: 'IVA',
+    timezone: 'America/Mexico_City',
+  }
+}
 
 async function loadThemes(): Promise<void> {
   loadingThemes.value = true
   try {
     themes.value = await adminPanelService.themes()
     for (const theme of themes.value) {
-      settingsJson.value[theme.id] = JSON.stringify(theme.settings, null, 2)
+      const s = theme.settings as Partial<StoreSettings> | null
+      settingsForms.value[theme.id] = {
+        currency: s?.currency ?? 'MXN',
+        currency_symbol: s?.currency_symbol ?? '$',
+        locale: s?.locale ?? 'es-MX',
+        country: s?.country ?? 'MX',
+        tax_rate: s?.tax_rate ?? 16,
+        tax_name: s?.tax_name ?? 'IVA',
+        timezone: s?.timezone ?? 'America/Mexico_City',
+      }
     }
   } finally {
     loadingThemes.value = false
@@ -37,6 +80,14 @@ async function loadBanners(): Promise<void> {
 }
 
 async function activateTheme(id: string): Promise<void> {
+  const ok = await confirm({
+    title: '¿Activar este tema?',
+    message: 'El tema seleccionado se aplicará a toda la tienda.',
+    action: 'activate',
+    confirmText: 'Activar',
+  })
+  if (!ok) return
+
   savingTheme.value[id] = true
   try {
     await adminPanelService.updateTheme(id, { is_active: true })
@@ -49,22 +100,22 @@ async function activateTheme(id: string): Promise<void> {
   }
 }
 
+function onCurrencyChange(themeId: string) {
+  const form = settingsForms.value[themeId]
+  if (form.currency === 'MXN') form.currency_symbol = '$'
+  else if (form.currency === 'USD') form.currency_symbol = 'US$'
+}
+
 async function saveSettings(theme: Theme): Promise<void> {
   savingTheme.value[theme.id] = true
   try {
-    let parsed: Record<string, unknown>
-    try {
-      parsed = JSON.parse(settingsJson.value[theme.id] ?? '{}')
-    } catch {
-      warning('JSON invalido. Revisa el formato antes de guardar.')
-      savingTheme.value[theme.id] = false
-      return
-    }
-    await adminPanelService.updateTheme(theme.id, { settings: parsed })
+    const form = settingsForms.value[theme.id]
+    const merged = { ...theme.settings, ...form }
+    await adminPanelService.updateTheme(theme.id, { settings: merged })
     await loadThemes()
-    success('Configuracion guardada')
+    success('Configuración guardada')
   } catch {
-    error('Error al guardar la configuracion')
+    error('Error al guardar la configuración')
   } finally {
     savingTheme.value[theme.id] = false
   }
@@ -117,27 +168,61 @@ onMounted(() => {
           </div>
         </div>
         <div class="admin-content-card__body">
-          <!-- Settings display -->
-          <dl class="admin-settings-list">
-            <template v-for="(val, key) in theme.settings" :key="key">
-              <dt>{{ key }}</dt>
-              <dd>{{ JSON.stringify(val) }}</dd>
-            </template>
-          </dl>
-
-          <!-- Editable settings -->
-          <div style="margin-top: 1rem;">
-            <label style="font-size: 0.8rem; font-weight: 500; color: var(--admin-text-muted);">
-              Configuración (JSON)
-            </label>
-            <textarea
-              v-model="settingsJson[theme.id]"
-              rows="6"
-              style="width: 100%; margin-top: 0.25rem; padding: 0.5rem 0.75rem; border: 1px solid var(--admin-border); border-radius: 6px; font-size: 0.8rem; font-family: monospace; resize: vertical;"
-            />
+          <!-- Structured settings form -->
+          <div v-if="settingsForms[theme.id]" class="theme-settings-grid">
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Moneda</label>
+              <select
+                v-model="settingsForms[theme.id].currency"
+                class="theme-settings-select"
+                @change="onCurrencyChange(theme.id)"
+              >
+                <option value="MXN">MXN — Peso Mexicano</option>
+                <option value="USD">USD — Dólar Estadounidense</option>
+              </select>
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Símbolo</label>
+              <input v-model="settingsForms[theme.id].currency_symbol" class="theme-settings-input" />
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Idioma / Locale</label>
+              <select v-model="settingsForms[theme.id].locale" class="theme-settings-select">
+                <option value="es-MX">es-MX — Español (México)</option>
+                <option value="es-CR">es-CR — Español (Costa Rica)</option>
+                <option value="en-US">en-US — English (US)</option>
+              </select>
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">País</label>
+              <select v-model="settingsForms[theme.id].country" class="theme-settings-select">
+                <option value="MX">México</option>
+                <option value="CR">Costa Rica</option>
+                <option value="US">Estados Unidos</option>
+              </select>
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Impuesto (%)</label>
+              <input v-model.number="settingsForms[theme.id].tax_rate" type="number" min="0" max="100" class="theme-settings-input" />
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Nombre del impuesto</label>
+              <input v-model="settingsForms[theme.id].tax_name" class="theme-settings-input" placeholder="IVA" />
+            </div>
+            <div class="theme-settings-field">
+              <label class="theme-settings-label">Zona horaria</label>
+              <select v-model="settingsForms[theme.id].timezone" class="theme-settings-select">
+                <option value="America/Mexico_City">America/Mexico_City</option>
+                <option value="America/Cancun">America/Cancun</option>
+                <option value="America/Tijuana">America/Tijuana</option>
+                <option value="America/Costa_Rica">America/Costa_Rica</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="America/Los_Angeles">America/Los_Angeles</option>
+              </select>
+            </div>
           </div>
 
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+          <div style="display: flex; gap: 0.5rem; margin-top: 1.25rem; flex-wrap: wrap;">
             <button
               class="admin-btn admin-btn--sm admin-btn--primary"
               :disabled="savingTheme[theme.id]"
@@ -147,7 +232,7 @@ onMounted(() => {
             </button>
             <button
               v-if="!theme.is_active"
-              class="admin-btn admin-btn--sm admin-btn--primary"
+              class="admin-btn admin-btn--sm admin-btn--success"
               :disabled="savingTheme[theme.id]"
               @click="activateTheme(theme.id)"
             >
@@ -178,8 +263,8 @@ onMounted(() => {
           <table v-else class="admin-table">
             <thead>
               <tr>
-                <th>Ubicacion</th>
-                <th>Titulo</th>
+                <th>Ubicación</th>
+                <th>Título</th>
                 <th>URL</th>
                 <th>Imagen</th>
                 <th>Estado</th>
@@ -197,12 +282,7 @@ onMounted(() => {
                   <span v-else style="color: var(--admin-text-muted);">—</span>
                 </td>
                 <td>
-                  <img
-                    v-if="banner.image"
-                    :src="banner.image"
-                    alt="Banner"
-                    class="admin-banner-thumb"
-                  />
+                  <img v-if="banner.image" :src="banner.image" alt="Banner" class="admin-banner-thumb" />
                   <span v-else style="color: var(--admin-text-muted);">Sin imagen</span>
                 </td>
                 <td>
@@ -214,7 +294,11 @@ onMounted(() => {
                   </span>
                 </td>
                 <td>
-                  <button class="admin-btn admin-btn--sm">Editar</button>
+                  <button class="admin-action-btn admin-action-btn--edit" title="Editar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -222,15 +306,61 @@ onMounted(() => {
         </template>
       </div>
     </div>
+
+    <!-- Confirm dialog -->
+    <ConfirmDialog
+      :visible="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :action="confirmAction"
+      :confirm-text="confirmText"
+      :cancel-text="cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 
 <style scoped>
 .admin-section-title { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 1rem; color: var(--admin-text); }
 .admin-theme-card { margin-bottom: 1rem; }
-.admin-theme-header { display: flex; justify-content: space-between; align-items: center; }
-.admin-settings-list { font-size: 0.85rem; }
-.admin-settings-list dt { font-weight: 500; color: var(--admin-text-muted); margin-top: 0.5rem; }
-.admin-settings-list dd { margin-left: 0; }
+.admin-theme-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 .admin-banner-thumb { width: 60px; height: 40px; object-fit: cover; border-radius: 4px; }
+
+.theme-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.theme-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.theme-settings-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--admin-text-secondary);
+}
+
+.theme-settings-input,
+.theme-settings-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  font-family: var(--admin-font);
+  font-size: 0.85rem;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  transition: border-color 0.15s ease;
+}
+
+.theme-settings-input:focus,
+.theme-settings-select:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-light);
+}
 </style>

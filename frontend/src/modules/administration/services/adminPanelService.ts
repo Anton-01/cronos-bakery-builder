@@ -55,7 +55,31 @@ export interface AdminAttribute { id: string; name: string; code: string; type: 
 export interface AdminAttributeValue { id: string; label: string; value: string; position: number; metadata: Record<string, unknown> | null }
 
 // --- Product Builder types ---
-export interface AdminProduct { id: string; name: string; slug: string; is_active: boolean; base_price: { amount: number; currency: string }; options_count?: number }
+export interface ProductImage {
+  id: string
+  path: string
+  name: string | null
+  alt_text: string | null
+  position: number
+}
+
+export interface AdminProduct {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  image: string | null
+  is_active: boolean
+  base_price: { amount: number; currency: string }
+  options_count?: number
+  gallery?: ProductImage[]
+  categories?: string[]
+  tags?: string[]
+}
+
+export interface AdminProductDetail extends AdminProduct {
+  gallery: ProductImage[]
+}
 
 // --- Orders types ---
 export interface AdminOrder {
@@ -213,8 +237,27 @@ export const adminPanelService = {
     return request<Wrapped<AdminProduct>>({ url: `/admin/product-builder/products/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
+  showProduct(id: string): Promise<AdminProductDetail> {
+    return request<Wrapped<AdminProductDetail>>({ url: `/admin/product-builder/products/${id}`, method: 'GET' }).then((r) => r.data)
+  },
+
   deleteProduct(id: string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${id}`, method: 'DELETE' })
+  },
+
+  uploadProductImage(productId: string, file: File, field: 'image' | 'gallery' = 'image'): Promise<AdminProductDetail> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('field', field)
+    return request<Wrapped<AdminProductDetail>>({ url: `/admin/product-builder/products/${productId}/images`, method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data)
+  },
+
+  updateProductImage(productId: string, imageId: string, data: { name?: string; alt_text?: string }): Promise<ProductImage> {
+    return request<Wrapped<ProductImage>>({ url: `/admin/product-builder/products/${productId}/images/${imageId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteProductImage(productId: string, imageId: string): Promise<void> {
+    return request({ url: `/admin/product-builder/products/${productId}/images/${imageId}`, method: 'DELETE' })
   },
 
   // --- Orders ---
