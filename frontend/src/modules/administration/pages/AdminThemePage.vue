@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import { adminPanelService, type Theme, type CmsBanner } from '../services/adminPanelService'
 
-const { success, error, warning } = useToast()
+const { success, error } = useToast()
 const {
   visible: confirmVisible,
   title: confirmTitle,
@@ -36,18 +36,6 @@ interface StoreSettings {
 }
 
 const settingsForms = ref<Record<string, StoreSettings>>({})
-
-function defaultSettings(): StoreSettings {
-  return {
-    currency: 'MXN',
-    currency_symbol: '$',
-    locale: 'es-MX',
-    country: 'MX',
-    tax_rate: 16,
-    tax_name: 'IVA',
-    timezone: 'America/Mexico_City',
-  }
-}
 
 async function loadThemes(): Promise<void> {
   loadingThemes.value = true

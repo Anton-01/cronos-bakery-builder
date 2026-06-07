@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Administration\Presentation\Http\Middleware\EnsureAdmin;
 use App\Modules\Administration\Presentation\Http\Middleware\LogAdminActivity;
 use App\Shared\Http\Middleware\SecurityHeaders;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -48,10 +49,17 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
 
-        // Never expose stack traces or internal details to API consumers.
+        // Never expose stack traces or internal details to API consumers in production..
         $exceptions->respond(function (JsonResponse $response, \Throwable $e, Request $request) {
             if (! $request->is('api/*')) {
                 return $response;
+            }
+
+            if ($e instanceof ValidationException) {
+                return new JsonResponse([
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ], $e->status);
             }
 
             $status = $e instanceof HttpExceptionInterface
@@ -62,8 +70,18 @@ return Application::configure(basePath: dirname(__DIR__))
                 ? $e->getMessage()
                 : 'Server Error'];
 
-            if ($status === 422 && method_exists($e, 'errors')) {
-                $body['errors'] = $e->errors();
+            if (config('app.debug') && $status === 500) {
+                $body['debug'] = [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => collect($e->getTrace())->take(10)->map(fn ($frame) => [
+                        'file' => $frame['file'] ?? null,
+                        'line' => $frame['line'] ?? null,
+                        'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? ''),
+                    ])->all(),
+                ];
             }
 
             return new JsonResponse($body, $status);

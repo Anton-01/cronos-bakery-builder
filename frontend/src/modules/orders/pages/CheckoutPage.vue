@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import AvailabilityPicker from '@/modules/calendar/components/AvailabilityPicker.vue'
 import type { SlotSelection } from '@/modules/calendar/types'
 import { orderService, type AddressPayload } from '../services/orderService'
-import { useCartStore } from '../stores/cart'
+import { useCartStore, type LocalCartItem } from '../stores/cart'
 import type { Address, Branch, CheckoutPayload } from '../types'
 
 const cart = useCartStore()
@@ -139,7 +139,7 @@ onMounted(async () => {
       <aside class="checkout__summary">
         <h2>Resumen</h2>
         <ul>
-          <li v-for="item in cart.items" :key="item.id">
+          <li v-for="item in cart.items" :key="'id' in item ? item.id : (item as LocalCartItem).localId">
             <span>{{ item.quantity }}× {{ item.product_name }}</span>
             <span>{{ money(item.line_total.amount, item.line_total.currency) }}</span>
           </li>

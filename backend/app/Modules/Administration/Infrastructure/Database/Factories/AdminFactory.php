@@ -6,7 +6,6 @@ namespace App\Modules\Administration\Infrastructure\Database\Factories;
 
 use App\Modules\Administration\Domain\Models\Admin;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
@@ -15,16 +14,13 @@ use Illuminate\Support\Str;
 class AdminFactory extends Factory
 {
     protected $model = Admin::class;
-
-    protected static ?string $password = null;
-
     public function definition(): array
     {
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => 'password',
             'is_active' => true,
             'remember_token' => Str::random(10),
         ];

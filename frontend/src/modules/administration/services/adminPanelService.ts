@@ -170,7 +170,7 @@ export interface ReminderRule { id: string; event: string; delay_minutes: number
 export interface NotificationLog { id: string; channel: string; recipient: string; subject: string; status: string; sent_at: string }
 
 interface Wrapped<T> { data: T }
-interface Paginated<T> { data: T[]; meta?: { current_page: number; last_page: number; total: number } }
+export interface Paginated<T> { data: T[]; meta?: { current_page: number; last_page: number; total: number } }
 
 export const adminPanelService = {
   // --- Dashboard ---

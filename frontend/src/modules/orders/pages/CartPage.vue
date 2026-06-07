@@ -3,7 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
-import { useCartStore } from '../stores/cart'
+import { useCartStore, type LocalCartItem } from '../stores/cart'
+import type { CartItem } from '../types'
+type AnyCartItem = CartItem | LocalCartItem
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -15,38 +17,38 @@ function money(amount: number, currency: string): string {
   return new Intl.NumberFormat('es-CR', { style: 'currency', currency }).format(amount / 100)
 }
 
-function itemId(item: Record<string, unknown>): string {
-  return (item.id as string) ?? (item.localId as string)
+function itemId(item: AnyCartItem): string {
+  return 'id' in item ? item.id : item.localId
 }
 
-function itemName(item: Record<string, unknown>): string {
-  return (item.product_name as string) ?? ''
+function itemName(item: AnyCartItem): string {
+  return item.product_name ?? ''
 }
 
-function itemSelections(item: Record<string, unknown>): Record<string, string | string[]> {
-  const config = item.configuration as { selections: Record<string, string | string[]> } | undefined
-  return config?.selections ?? {}
+function itemSelections(item: AnyCartItem): Record<string, string | string[]> {
+  return item.configuration?.selections ?? {}
 }
 
-function itemPriceLines(item: Record<string, unknown>): { label: string; delta: number }[] {
-  const config = item.configuration as { price?: { items?: { label: string; delta: number }[] } } | undefined
-  return config?.price?.items ?? []
+function itemPriceLines(item: AnyCartItem): { label: string; delta: number }[] {
+  const items = item.configuration?.price?.items
+  if (!items) return []
+  return items as { label: string; delta: number }[]
 }
 
-function itemUnitPrice(item: Record<string, unknown>): { amount: number; currency: string } {
-  return (item.unit_price as { amount: number; currency: string }) ?? { amount: 0, currency: 'CRC' }
+function itemUnitPrice(item: AnyCartItem): { amount: number; currency: string } {
+  return item.unit_price ?? { amount: 0, currency: 'CRC' }
 }
 
-function itemLineTotal(item: Record<string, unknown>): { amount: number; currency: string } {
-  return (item.line_total as { amount: number; currency: string }) ?? { amount: 0, currency: 'CRC' }
+function itemLineTotal(item: AnyCartItem): { amount: number; currency: string } {
+  return item.line_total ?? { amount: 0, currency: 'CRC' }
 }
 
-function itemQuantity(item: Record<string, unknown>): number {
-  return (item.quantity as number) ?? 1
+function itemQuantity(item: AnyCartItem): number {
+  return item.quantity ?? 1
 }
 
-function itemSlug(item: Record<string, unknown>): string {
-  return (item.product_slug as string) ?? ''
+function itemSlug(item: AnyCartItem): string {
+  return item.product_slug ?? ''
 }
 
 function formatSelectionValue(value: string | string[]): string {
@@ -101,42 +103,38 @@ onMounted(() => {
       <div class="cart-page__layout">
         <!-- Items list -->
         <div class="cart-page__items">
-          <div v-for="item in cart.items" :key="itemId(item as Record<string, unknown>)" class="cart-item">
+          <div v-for="item in cart.items" :key="itemId(item as AnyCartItem)" class="cart-item">
             <div class="cart-item__header">
               <div class="cart-item__title">
                 <h3>
-                  <RouterLink :to="`/builder/${itemSlug(item as Record<string, unknown>)}`">
-                    {{ itemName(item as Record<string, unknown>) }}
+                  <RouterLink :to="`/builder/${itemSlug(item as AnyCartItem)}`">
+                    {{ itemName(item as AnyCartItem) }}
                   </RouterLink>
                 </h3>
                 <span class="cart-item__unit-price">
-                  {{ money(itemUnitPrice(item as Record<string, unknown>).amount, itemUnitPrice(item as Record<string, unknown>).currency) }} c/u
+                  {{ money(itemUnitPrice(item as AnyCartItem).amount, itemUnitPrice(item as AnyCartItem).currency) }} c/u
                 </span>
               </div>
               <div class="cart-item__line-total">
-                {{ money(itemLineTotal(item as Record<string, unknown>).amount, itemLineTotal(item as Record<string, unknown>).currency) }}
+                {{ money(itemLineTotal(item as AnyCartItem).amount, itemLineTotal(item as AnyCartItem).currency) }}
               </div>
             </div>
 
             <!-- Configuration details -->
             <div class="cart-item__details">
-              <div
-                v-for="(value, key) in itemSelections(item as Record<string, unknown>)"
-                :key="key"
-                class="cart-item__detail"
-              >
+              <div v-for="(value, key) in itemSelections(item as AnyCartItem)" :key="key" class="cart-item__detail">
                 <span class="cart-item__detail-key">{{ formatKey(key as string) }}</span>
                 <span class="cart-item__detail-value">{{ formatSelectionValue(value) }}</span>
               </div>
             </div>
 
             <!-- Price breakdown -->
-            <details v-if="itemPriceLines(item as Record<string, unknown>).length" class="cart-item__breakdown">
+            <details v-if="itemPriceLines(item as AnyCartItem).length" class="cart-item__breakdown">
               <summary>Ver desglose de precio</summary>
               <ul>
-                <li v-for="(line, i) in itemPriceLines(item as Record<string, unknown>)" :key="i">
+                <li v-for="(line, i) in itemPriceLines(item as AnyCartItem)" :key="i">
                   <span>{{ line.label }}</span>
-                  <span>{{ money(line.delta, itemUnitPrice(item as Record<string, unknown>).currency) }}</span>
+                  <span>{{ money(line.delta, itemUnitPrice(item as AnyCartItem).currency) }}</span>
                 </li>
               </ul>
             </details>
@@ -146,41 +144,20 @@ onMounted(() => {
               <div class="cart-item__quantity">
                 <label>Cantidad</label>
                 <div class="cart-item__qty-control">
-                  <button
-                    type="button"
-                    :disabled="itemQuantity(item as Record<string, unknown>) <= 1"
-                    @click="cart.updateQuantity(itemId(item as Record<string, unknown>), itemQuantity(item as Record<string, unknown>) - 1)"
-                  >-</button>
-                  <input
-                    type="number"
-                    min="1"
-                    :value="itemQuantity(item as Record<string, unknown>)"
-                    @change="handleQuantityChange(itemId(item as Record<string, unknown>), $event)"
-                  />
-                  <button
-                    type="button"
-                    @click="cart.updateQuantity(itemId(item as Record<string, unknown>), itemQuantity(item as Record<string, unknown>) + 1)"
-                  >+</button>
+                  <button type="button" :disabled="itemQuantity(item as AnyCartItem) <= 1" @click="cart.updateQuantity(itemId(item as AnyCartItem), itemQuantity(item as AnyCartItem) - 1)">-</button>
+                  <input type="number" min="1" :value="itemQuantity(item as AnyCartItem)" @change="handleQuantityChange(itemId(item as AnyCartItem), $event)"/>
+                  <button type="button" @click="cart.updateQuantity(itemId(item as AnyCartItem), itemQuantity(item as AnyCartItem) + 1)">+</button>
                 </div>
               </div>
 
               <div class="cart-item__action-btns">
-                <RouterLink
-                  :to="`/builder/${itemSlug(item as Record<string, unknown>)}`"
-                  class="cart-item__edit"
-                  title="Modificar configuracion"
-                >
+                <RouterLink :to="`/builder/${itemSlug(item as AnyCartItem)}`" class="cart-item__edit" title="Modificar configuracion">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   Modificar
                 </RouterLink>
-                <button
-                  type="button"
-                  class="cart-item__remove"
-                  :disabled="removingId === itemId(item as Record<string, unknown>)"
-                  @click="handleRemove(itemId(item as Record<string, unknown>))"
-                >
+                <button type="button" class="cart-item__remove" :disabled="removingId === itemId(item as AnyCartItem)" @click="handleRemove(itemId(item as AnyCartItem))">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  {{ removingId === itemId(item as Record<string, unknown>) ? 'Eliminando...' : 'Eliminar' }}
+                  {{ removingId === itemId(item as AnyCartItem) ? 'Eliminando...' : 'Eliminar' }}
                 </button>
               </div>
             </div>

@@ -25,60 +25,78 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        // Admin roles & permissions first.
+        $this->command->info('=== Iniciando el proceso de Seeding de Cronos ===');
+
+        $this->command->comment('Cargando Roles y Permisos...');
         $this->call(RolesAndPermissionsSeeder::class);
 
-        // Super administrator.
-        $superAdmin = Admin::firstOrCreate(
-            ['email' => 'superadmin@cronos.test'],
-            Admin::factory()->raw(['name' => 'Cronos Super Admin']),
+        $this->call(CmsContentSeeder::class);
+        $this->call(ThemeBuilderSeeder::class);
+        $this->call(ProductBuilderSeeder::class);
+        $this->call(CatalogTaxonomySeeder::class);
+        $this->call(BranchSeeder::class);
+        $this->call(CalendarSeeder::class);
+        $this->call(PaymentGatewaySeeder::class);
+        $this->call(NotificationSeeder::class);
+
+        $this->command->newLine();
+        $this->command->info('=== Creando Cuentas Administrativas Oficiales ===');
+
+        // Super administrator
+        $superAdminEmail = 'superadmin@cronos.test';
+        $superAdmin = Admin::updateOrCreate(
+            ['email' => $superAdminEmail],
+            Admin::factory()->raw([
+                'name' => 'Cronos Super Admin',
+                'email' => $superAdminEmail
+            ])
         );
+
         if (!$superAdmin->hasRole(AdminRole::SuperAdmin->value)) {
             $superAdmin->assignRole(AdminRole::SuperAdmin->value);
         }
 
-        // One administrator per remaining role for convenience.
         foreach (AdminRole::cases() as $role) {
             if ($role === AdminRole::SuperAdmin) {
                 continue;
             }
 
-            $admin = Admin::firstOrCreate(
-                ['email' => "{$role->value}@cronos.test"],
-                Admin::factory()->raw(),
+            $roleEmail = "{$role->value}@cronos.test";
+
+            $admin = Admin::updateOrCreate(
+                ['email' => $roleEmail],
+                Admin::factory()->raw([
+                    'email' => $roleEmail
+                ])
             );
+
             if (!$admin->hasRole($role->value)) {
                 $admin->assignRole($role->value);
             }
         }
 
-        // Sample customers.
+        // Sample customers
         if (User::count() === 0) {
             User::factory(5)->create();
         }
 
-        // Dynamic CMS pages with builder blocks.
-        $this->call(CmsContentSeeder::class);
+        $this->validateSeededData();
+    }
 
-        // Theme Builder: active theme, navigation menu and banners.
-        $this->call(ThemeBuilderSeeder::class);
+    private function validateSeededData(): void
+    {
+        $this->command->newLine();
+        $this->command->info('=== VERIFICACIÓN POST-SEEDING ===');
 
-        // Product Builder: configurable cakes with options, pricing and rules.
-        $this->call(ProductBuilderSeeder::class);
+        $superAdminExists = Admin::where('email', 'superadmin@cronos.test')->exists();
+        if ($superAdminExists) {
+            $this->command->info('✔ [OK] El Super Admin (superadmin@cronos.test) está guardado correctamente en el sistema.');
+        } else {
+            $this->command->error('❌ [ALERTA] El Super Admin NO se encuentra en la base de datos.');
+        }
 
-        // Catalog: categories, collections, attributes and classified products.
-        $this->call(CatalogTaxonomySeeder::class);
-
-        // Orders: pickup branches (sucursales).
-        $this->call(BranchSeeder::class);
-
-        // Calendar: scheduling engine configuration (schedule, slots, rules).
-        $this->call(CalendarSeeder::class);
-
-        // Payments: multi-gateway configuration (sandbox).
-        $this->call(PaymentGatewaySeeder::class);
-
-        // Notifications: default templates + reminder rules (24h/12h/2h).
-        $this->call(NotificationSeeder::class);
+        $actualCount = Admin::count();
+        $this->command->info("✔ [OK] Total de administradores en el sistema: {$actualCount}.");
+        $this->command->newLine();
     }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive } from 'vue'
 
-import { adminPanelService, type CmsMenu, type CmsMenuItem } from '../services/adminPanelService'
+import { adminPanelService, type CmsMenu } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
@@ -233,10 +233,7 @@ function locationLabel(location: string): string {
             <template v-else>
               <button class="admin-btn admin-btn--sm" @click="startEdit(menu)">Editar</button>
               <button
-                class="admin-btn admin-btn--sm"
-                style="color: var(--admin-danger, #e53e3e);"
-                @click="deleteMenu(menu.id)"
-              >
+                class="admin-btn admin-btn--sm" style="color: var(--admin-danger, #e53e3e);" @click="deleteMenu(menu.id)">
                 Eliminar
               </button>
             </template>

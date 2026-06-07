@@ -28,12 +28,18 @@ class CmsContentSeeder extends Seeder
 
     private function seedHome(): void
     {
-        $home = Page::factory()->published()->ofType(PageType::Home)->create([
-            'title' => 'Inicio',
-            'slug' => 'home',
-            'meta_title' => 'Cronos Bakery — Pasteles artesanales a tu medida',
-            'meta_description' => 'Diseña tu pastel personalizado y recíbelo fresco en tu puerta.',
-        ]);
+        // Obtenemos los atributos por defecto del factory sin insertarlos en la BD
+        $factoryAttributes = Page::factory()->published()->ofType(PageType::Home)->raw();
+
+        // Buscamos por el slug único, si existe actualiza, si no, crea
+        $home = Page::updateOrCreate(
+            ['slug' => 'home'],
+            array_merge($factoryAttributes, [
+                'title' => 'Inicio',
+                'meta_title' => 'Cronos Bakery — Pasteles artesanales a tu medida',
+                'meta_description' => 'Diseña tu pastel personalizado y recíbelo fresco en tu puerta.',
+            ])
+        );
 
         $blocks = [
             [BlockType::Hero, [
@@ -65,6 +71,9 @@ class CmsContentSeeder extends Seeder
             ]],
         ];
 
+        // Para evitar duplicar bloques en la misma página, limpiamos las secciones previas
+        $home->sections()->delete();
+
         foreach ($blocks as $position => [$type, $data]) {
             $home->sections()->create([
                 'type' => $type->value,
@@ -76,10 +85,16 @@ class CmsContentSeeder extends Seeder
 
     private function seedFaq(): void
     {
-        $faq = Page::factory()->published()->ofType(PageType::Faq)->create([
-            'title' => 'Preguntas frecuentes',
-            'slug' => 'faq',
-        ]);
+        $factoryAttributes = Page::factory()->published()->ofType(PageType::Faq)->raw();
+
+        $faq = Page::updateOrCreate(
+            ['slug' => 'faq'],
+            array_merge($factoryAttributes, [
+                'title' => 'Preguntas frecuentes',
+            ])
+        );
+
+        $faq->sections()->delete();
 
         $faq->sections()->create([
             'type' => BlockType::Faq->value,
@@ -96,11 +111,17 @@ class CmsContentSeeder extends Seeder
 
     private function seedSimplePage(PageType $type, string $title, string $slug): void
     {
-        $page = Page::factory()->published()->ofType($type)->create([
-            'title' => $title,
-            'slug' => $slug,
-            'status' => PageStatus::Published->value,
-        ]);
+        $factoryAttributes = Page::factory()->published()->ofType($type)->raw();
+
+        $page = Page::updateOrCreate(
+            ['slug' => $slug],
+            array_merge($factoryAttributes, [
+                'title' => $title,
+                'status' => PageStatus::Published->value,
+            ])
+        );
+
+        $page->sections()->delete();
 
         $page->sections()->create([
             'type' => BlockType::Text->value,

@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\Schema;
 return new class () extends Migration {
     public function up(): void
     {
+        // 1. Creamos la estructura base de la tabla
         Schema::create('catalog_categories', function (Blueprint $table): void {
             $table->uuid('id')->primary();
-            $table->foreignUuid('parent_id')->nullable()->constrained('catalog_categories')->nullOnDelete();
+
+            // Definimos la columna parent_id como UUID aceptando nulos, pero SIN el .constrained()
+            $table->uuid('parent_id')->nullable();
+
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
@@ -21,6 +25,14 @@ return new class () extends Migration {
             $table->unsignedInteger('position')->default(0);
             $table->boolean('is_active')->default(true)->index();
             $table->timestamps();
+        });
+
+        // 2. Ahora que la tabla existe formalmente, añadimos la clave foránea reflexiva
+        Schema::table('catalog_categories', function (Blueprint $table): void {
+            $table->foreign('parent_id')
+                ->references('id')
+                ->on('catalog_categories')
+                ->nullOnDelete(); // Mantenemos el nullOnDelete que tenías original
         });
     }
 

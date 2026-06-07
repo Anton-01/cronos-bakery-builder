@@ -20,7 +20,9 @@ return new class () extends Migration {
         Schema::create('menu_items', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->foreignUuid('menu_id')->constrained('menus')->cascadeOnDelete();
-            $table->foreignUuid('parent_id')->nullable()->constrained('menu_items')->cascadeOnDelete();
+
+            $table->uuid('parent_id')->nullable();
+
             $table->string('label');
             $table->string('url')->nullable();
             $table->string('target')->default('_self');
@@ -29,6 +31,11 @@ return new class () extends Migration {
             $table->timestamps();
 
             $table->index(['menu_id', 'parent_id', 'position']);
+        });
+
+        Schema::table('menu_items', function (Blueprint $table): void {
+            $table->foreign('parent_id')->references('id')
+                ->on('menu_items')->cascadeOnDelete();
         });
     }
 

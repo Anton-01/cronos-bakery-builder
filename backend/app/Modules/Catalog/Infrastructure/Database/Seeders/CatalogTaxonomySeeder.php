@@ -20,7 +20,14 @@ class CatalogTaxonomySeeder extends Seeder
     public function run(): void
     {
         $categories = $this->seedCategories();
-        $collection = Collection::factory()->create(['name' => 'Temporada', 'slug' => 'temporada']);
+
+        // Evitamos duplicados en Collection usando updateOrCreate
+        $collectionFactory = Collection::factory()->raw();
+        $collection = Collection::updateOrCreate(
+            ['slug' => 'temporada'],
+            array_merge($collectionFactory, ['name' => 'Temporada'])
+        );
+
         $attributes = $this->seedAttributes();
 
         $this->seedProducts($categories, $collection, $attributes);
@@ -32,12 +39,21 @@ class CatalogTaxonomySeeder extends Seeder
     private function seedCategories(): array
     {
         $categories = [];
+
         foreach (['Floral', 'Moderno', 'Mini', 'Signature'] as $position => $name) {
-            $categories[$name] = Category::factory()->create([
-                'name' => $name,
-                'slug' => Str::slug($name),
-                'position' => $position,
-            ]);
+            $slug = Str::slug($name);
+
+            // 💡 IMPORTANTE: El factory debe ser "raw" por cada vuelta del bucle
+            $factoryAttributes = Category::factory()->raw();
+
+            $categories[$name] = Category::updateOrCreate(
+                ['slug' => $slug],
+                array_merge($factoryAttributes, [
+                    'name' => $name,
+                    'slug' => $slug, // Forzamos a que use nuestro slug limpio
+                    'position' => $position,
+                ])
+            );
         }
 
         return $categories;
@@ -46,12 +62,33 @@ class CatalogTaxonomySeeder extends Seeder
     /**
      * @return array<string, \Illuminate\Support\Collection<int, \App\Modules\Catalog\Domain\Models\AttributeValue>>
      */
+    /**
+     * @return array<string, \Illuminate\Support\Collection<int, \App\Modules\Catalog\Domain\Models\AttributeValue>>
+     */
     private function seedAttributes(): array
     {
-        $tamano = Attribute::factory()->create(['name' => 'Tamaño', 'code' => 'tamano', 'position' => 0]);
-        $sabor = Attribute::factory()->create(['name' => 'Sabor', 'code' => 'sabor', 'position' => 1]);
-        $color = Attribute::factory()->color()->create(['name' => 'Color', 'code' => 'color', 'position' => 2]);
+        // Forzamos explícitamente el 'code' correcto dentro del array_merge
+        $tamano = Attribute::updateOrCreate(
+            ['code' => 'tamano'],
+            array_merge(Attribute::factory()->raw(), ['name' => 'Tamaño', 'code' => 'tamano', 'position' => 0])
+        );
 
+        $sabor = Attribute::updateOrCreate(
+            ['code' => 'sabor'],
+            array_merge(Attribute::factory()->raw(), ['name' => 'Sabor', 'code' => 'sabor', 'position' => 1])
+        );
+
+        $color = Attribute::updateOrCreate(
+            ['code' => 'color'],
+            array_merge(Attribute::factory()->color()->raw(), ['name' => 'Color', 'code' => 'color', 'position' => 2])
+        );
+
+        // Limpiamos los valores viejos para no acumular duplicados en las tablas hijas
+        $tamano->values()->delete();
+        $sabor->values()->delete();
+        $color->values()->delete();
+
+        // Re-creación de los valores (este bloque se queda igual)
         $tamanoValues = collect(['Pequeño' => 'pequeno', 'Mediano' => 'mediano', 'Grande' => 'grande'])
             ->map(fn ($value, $label) => $tamano->values()->create(['label' => $label, 'value' => $value]))
             ->values();
@@ -87,18 +124,28 @@ class CatalogTaxonomySeeder extends Seeder
         ];
 
         foreach ($catalogue as $position => [$name, $categoryName, $price]) {
-            $product = Product::factory()->create([
-                'name' => $name,
-                'slug' => Str::slug($name),
-                'price_amount' => $price,
-                'meta_title' => "{$name} — Cronos Bakery",
-                'meta_description' => "Ordena {$name}, un pastel artesanal de la categoría {$categoryName}.",
-                'position' => $position,
-            ]);
+            $slug = Str::slug($name);
 
-            $product->categories()->attach($categories[$categoryName]->id, ['is_primary' => true]);
-            $product->collections()->attach($collection->id);
-            $product->attributeValues()->attach([
+            // Generamos atributos falsos frescos por cada vuelta
+            $productFactory = Product::factory()->raw();
+
+            $product = Product::updateOrCreate(
+                ['slug' => $slug], // 1. Condición de búsqueda
+                array_merge($productFactory, [ // 2. Datos a insertar/actualizar
+                    'name' => $name,
+                    'slug' => $slug, // 💡 OBLIGATORIO: Forzamos nuestro slug limpio aquí también
+                    'price_amount' => $price,
+                    'meta_title' => "{$name} — Cronos Bakery",
+                    'meta_description' => "Ordena {$name}, un pastel artesanal de la categoría {$categoryName}.",
+                    'position' => $position,
+                ])
+            );
+
+            // Sincronización de relaciones muchos a muchos (se mantiene igual)
+            $product->categories()->sync([$categories[$categoryName]->id => ['is_primary' => true]]);
+            $product->collections()->sync([$collection->id]);
+
+            $product->attributeValues()->sync([
                 $attributes['tamano']->random()->id,
                 $attributes['sabor']->random()->id,
                 $attributes['color']->random()->id,

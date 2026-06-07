@@ -8,10 +8,6 @@ import type { ConfigurableProduct } from '../types'
 const products = ref<ConfigurableProduct[]>([])
 const loading = ref(true)
 
-function formatMoney(amount: number, currency: string): string {
-  return new Intl.NumberFormat('es-CR', { style: 'currency', currency }).format(amount / 100)
-}
-
 onMounted(async () => {
   try {
     products.value = await builderService.products()
