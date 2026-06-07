@@ -394,6 +394,14 @@ export const adminPanelService = {
     return request({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'DELETE' })
   },
 
+  generatePreviewToken(productId: string): Promise<{ token: string }> {
+    return request<Wrapped<{ token: string }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
+  },
+
+  getPreview(token: string): Promise<Record<string, unknown>> {
+    return request<Wrapped<Record<string, unknown>>>({ url: `/admin/product-builder/preview/${token}`, method: 'GET' }).then((r) => r.data)
+  },
+
   // --- Orders ---
   adminOrders(): Promise<Paginated<AdminOrder>> {
     return request<Paginated<AdminOrder>>({ url: '/admin/orders', method: 'GET' })

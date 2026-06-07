@@ -883,9 +883,9 @@
 }
 
 .admin-datatable__page-btn:hover:not(:disabled) {
-  border-color: var(--admin-primary);
-  color: var(--admin-primary);
-  background: var(--admin-primary-light);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  background: var(--admin-bg);
 }
 
 .admin-datatable__page-btn--active {

@@ -50,6 +50,10 @@ class EloquentProductRepository extends AbstractEloquentRepository implements Pr
             'options' => fn ($q) => $q->orderBy('position'),
             'options.values' => fn ($q) => $q->orderBy('position'),
             'rules' => fn ($q) => $q->orderBy('position'),
+            'gallery' => fn ($q) => $q->orderBy('position'),
+            'optionLinks' => fn ($q) => $q->orderBy('position'),
+            'optionLinks.template',
+            'optionLinks.template.values' => fn ($q) => $q->orderBy('position'),
         ]);
     }
 }

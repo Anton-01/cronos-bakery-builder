@@ -13,9 +13,7 @@ import { useThemeStore } from '@/stores/theme'
  * falls back to the public-facing default layout.
  */
 const layouts = {
-  default: DefaultLayout,
-  admin: AdminLayout,
-  auth: AuthLayout,
+  default: DefaultLayout, admin: AdminLayout, auth: AuthLayout,
 } as const
 
 const route = useRoute()
@@ -31,19 +29,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <Toaster
-    position="top-right"
-    :toastOptions="{
-      style: {
-        fontFamily: 'var(--admin-font, Plus Jakarta Sans, sans-serif)',
-        fontSize: '0.85rem',
-        borderRadius: '10px',
-        padding: '12px 16px',
-      },
-    }"
-    richColors
-    :offset="16"
-  />
+  <Teleport to="body">
+    <Toaster position="top-right" richColors :offset="16" :toastOptions="{
+        style: {
+          fontFamily: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+          fontSize: '0.85rem', borderRadius: '10px', padding: '12px 16px',
+        },
+      }"
+    />
+  </Teleport>
   <component :is="layout">
     <RouterView />
   </component>

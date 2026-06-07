@@ -24,7 +24,11 @@ final class ProductAdminService
 
     public function all(): Collection
     {
-        return $this->products->all();
+        return Product::query()
+            ->withCount('options')
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get();
     }
 
     public function get(string $id): Product

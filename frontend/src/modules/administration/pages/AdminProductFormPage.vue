@@ -54,6 +54,7 @@ const form = reactive({
 
 const thumbnail = ref<string | null>(null)
 const thumbnailFile = ref<File | null>(null)
+const thumbnailMeta = ref<{ name: string; size: string; type: string } | null>(null)
 const gallery = ref<(ProductImage & { _file?: File; _preview?: string })[]>([])
 const dragOverThumb = ref(false)
 const dragOverGallery = ref(false)
@@ -93,12 +94,26 @@ function onNameInput() {
   }
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+function setThumbMeta(file: File) {
+  thumbnailMeta.value = {
+    name: file.name,
+    size: formatFileSize(file.size),
+    type: file.type,
+  }
+}
+
 function onThumbDrop(e: DragEvent) {
   dragOverThumb.value = false
   const file = e.dataTransfer?.files?.[0]
   if (file && file.type.startsWith('image/')) {
     thumbnailFile.value = file
     thumbnail.value = URL.createObjectURL(file)
+    setThumbMeta(file)
   }
 }
 
@@ -107,12 +122,17 @@ function onThumbSelect(e: Event) {
   if (file) {
     thumbnailFile.value = file
     thumbnail.value = URL.createObjectURL(file)
+    setThumbMeta(file)
   }
 }
 
 function removeThumb() {
+  if (thumbnail.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(thumbnail.value)
+  }
   thumbnail.value = null
   thumbnailFile.value = null
+  thumbnailMeta.value = null
 }
 
 function onGalleryDrop(e: DragEvent) {
@@ -142,6 +162,8 @@ function addGalleryFiles(files: FileList) {
 }
 
 function removeGalleryImage(idx: number) {
+  const img = gallery.value[idx]
+  if (img._preview) URL.revokeObjectURL(img._preview)
   gallery.value.splice(idx, 1)
 }
 
@@ -269,6 +291,33 @@ function toggleLinkExpand(linkId: string) {
   }
 }
 
+// --- Preview ---
+const previewVisible = ref(false)
+const previewLoading = ref(false)
+const previewData = ref<Record<string, unknown> | null>(null)
+async function openPreview() {
+  if (!productId.value) return
+  previewLoading.value = true
+  previewVisible.value = true
+  try {
+    const { token } = await adminPanelService.generatePreviewToken(productId.value)
+    const data = await adminPanelService.getPreview(token)
+    previewData.value = data
+  } catch {
+    error('Error al cargar la vista previa')
+    previewVisible.value = false
+  } finally {
+    previewLoading.value = false
+  }
+}
+function closePreview() {
+  previewVisible.value = false
+  previewData.value = null
+}
+function onPreviewKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && previewVisible.value) closePreview()
+}
+
 async function loadProduct() {
   if (!productId.value) return
   loading.value = true
@@ -280,7 +329,15 @@ async function loadProduct() {
     form.status = p.is_active ? 'public' : 'draft'
     form.base_price_amount = p.base_price.amount
     form.base_price_currency = p.base_price.currency
+    form.discount_type = (p as any).discount_type ?? 'none'
+    form.discount_value = (p as any).discount_value ?? 0
+    form.tax_class = (p as any).tax_class ?? 'standard'
+    form.vat = (p as any).vat ?? 16
+    form.tags = (p as any).tags ?? ''
     thumbnail.value = p.image ?? null
+    if (p.image) {
+      thumbnailMeta.value = { name: p.image.split('/').pop() || 'image', size: '-', type: 'image/*' }
+    }
     gallery.value = (p.gallery ?? []).map((img) => ({ ...img }))
     editor.value?.commands.setContent(form.description)
   } catch {
@@ -304,22 +361,52 @@ async function loadOptionLinks() {
   }
 }
 
+async function uploadImages(id: string) {
+  if (thumbnailFile.value) {
+    await adminPanelService.uploadProductImage(id, thumbnailFile.value, 'image')
+    thumbnailFile.value = null
+  }
+  for (const img of gallery.value) {
+    if (img._file) {
+      await adminPanelService.uploadProductImage(id, img._file, 'gallery')
+    }
+  }
+  const existingGallery = gallery.value.filter((img) => !img.id.startsWith('new-'))
+  for (const img of existingGallery) {
+    await adminPanelService.updateProductImage(id, img.id, { name: img.name ?? undefined, alt_text: img.alt_text ?? undefined })
+  }
+}
 async function submitForm() {
   saving.value = true
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: form.name,
       slug: form.slug,
       description: form.description || null,
       is_active: form.status === 'public',
-      base_price: { amount: form.base_price_amount, currency: form.base_price_currency },
+      base_price_amount: form.base_price_amount,
+      currency: form.base_price_currency,
+      discount_type: form.discount_type,
+      discount_value: form.discount_value,
+      tax_class: form.tax_class,
+      vat: form.vat,
+      tags: form.tags || null,
+    }
+
+    if (thumbnail.value && !thumbnailFile.value) {
+      payload.image = thumbnail.value
+    }
+    if (!thumbnail.value) {
+      payload.image = null
     }
 
     if (isEdit.value) {
       await adminPanelService.updateProduct(productId.value!, payload)
+      await uploadImages(productId.value!)
       success('Producto actualizado exitosamente')
     } else {
       const created = await adminPanelService.createProduct(payload)
+      await uploadImages(created.id)
       success('Producto creado exitosamente')
       router.replace(`/admin/productos/${created.id}`)
     }
@@ -333,10 +420,14 @@ async function submitForm() {
 onMounted(() => {
   loadProduct()
   loadOptionLinks()
+  document.addEventListener('keydown', onPreviewKeydown)
 })
 onBeforeUnmount(() => {
   editor.value?.destroy()
   legendEditor.value?.destroy()
+  document.removeEventListener('keydown', onPreviewKeydown)
+  if (thumbnail.value?.startsWith('blob:')) URL.revokeObjectURL(thumbnail.value)
+  gallery.value.forEach((img) => { if (img._preview) URL.revokeObjectURL(img._preview) })
 })
 </script>
 
@@ -424,33 +515,49 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Thumbnail -->
+        <!-- Media (Thumbnail) -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+
           <div class="admin-content-card__header">
             <h3 class="admin-content-card__title">Imagen Principal</h3>
           </div>
+
           <div class="admin-content-card__body">
-            <div
-              v-if="!thumbnail"
-              class="admin-drop-zone"
-              :class="{ 'admin-drop-zone--active': dragOverThumb }"
-              @dragover.prevent="dragOverThumb = true"
-              @dragleave="dragOverThumb = false"
-              @drop.prevent="onThumbDrop"
-              @click="thumbInput?.click()"
-            >
-              <div class="admin-drop-zone__icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="media-drop-area" :class="{ 'media-drop-area--active': dragOverThumb }" @dragover.prevent="dragOverThumb = true" @dragleave="dragOverThumb = false" @drop.prevent="onThumbDrop">
+
+              <div v-if="thumbnail" class="media-thumb-preview">
+                <div class="media-thumb-preview__img-wrap">
+                  <img :src="thumbnail" alt="Imagen principal" />
+                  <button type="button" class="media-thumb-preview__remove" @click.stop="removeThumb">&times;</button>
+                </div>
+              </div>
+
+              <div v-if="thumbnail" class="media-thumb-preview">
+                <div class="media-thumb-preview__img-wrap">
+                  <img :src="thumbnail" alt="Imagen principal" />
+                  <button type="button" class="media-thumb-preview__remove" @click.stop="removeThumb">&times;</button>
+                </div>
+              </div>
+              <div v-if="!thumbnail" class="media-drop-placeholder" @click="thumbInput?.click()">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
                 </svg>
+                <p>Arrastra una imagen o haz clic para seleccionar</p>
+                <span>JPG, PNG o WebP — máx 5 MB</span>
               </div>
-              <p class="admin-drop-zone__text">Arrastra una imagen aquí o haz clic para seleccionar</p>
-              <p class="admin-drop-zone__hint">JPG, PNG o WebP</p>
+
+              <div v-else class="media-drop-clickable" @click="thumbInput?.click()"></div>
             </div>
-            <div v-else class="admin-drop-zone__preview">
-              <img :src="thumbnail" alt="Imagen principal" />
-              <button type="button" class="admin-drop-zone__remove" @click="removeThumb">&times;</button>
-            </div>
+
+            <div v-if="thumbnailMeta" class="media-file-meta">
+              <span class="media-file-meta__label">Files:</span>
+              <div class="media-file-meta__details">
+                <span>{{ thumbnailMeta.name }}</span>
+                <span class="media-file-meta__sep">·</span>
+                <span>{{ thumbnailMeta.size }}</span>
+                <span class="media-file-meta__sep">·</span>
+                <span>{{ thumbnailMeta.type }}</span>
+              </div>
             <input ref="thumbInput" type="file" accept="image/*" style="display: none;" @change="onThumbSelect" />
           </div>
         </div>
@@ -501,23 +608,20 @@ onBeforeUnmount(() => {
 
         <!-- Pricing -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+
           <div class="admin-content-card__header">
             <h3 class="admin-content-card__title">Precios</h3>
           </div>
+
           <div class="admin-content-card__body">
+
             <div class="admin-pricing-grid">
+
               <div class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-price">Precio Base</label>
-                <input
-                  id="pf-price"
-                  v-model.number="form.base_price_amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="admin-product-form__input"
-                  required
-                />
+                <input id="pf-price" v-model.number="form.base_price_amount" type="number" min="0" step="1" class="admin-product-form__input" required/>
               </div>
+
               <div class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-currency">Moneda</label>
                 <select id="pf-currency" v-model="form.base_price_currency" class="admin-product-form__select">
@@ -525,17 +629,12 @@ onBeforeUnmount(() => {
                   <option value="USD">USD</option>
                 </select>
               </div>
+
               <div class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-vat">IVA (%)</label>
-                <input
-                  id="pf-vat"
-                  v-model.number="form.vat"
-                  type="number"
-                  min="0"
-                  max="100"
-                  class="admin-product-form__input"
-                />
+                <input id="pf-vat" v-model.number="form.vat" type="number" min="0" max="100" class="admin-product-form__input"/>
               </div>
+
               <div class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-tax-class">Clase de impuesto</label>
                 <select id="pf-tax-class" v-model="form.tax_class" class="admin-product-form__select">
@@ -544,9 +643,11 @@ onBeforeUnmount(() => {
                   <option value="zero">Exento</option>
                 </select>
               </div>
+
             </div>
 
             <div class="admin-pricing-grid" style="margin-top: 1rem;">
+
               <div class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-discount-type">Tipo de descuento</label>
                 <select id="pf-discount-type" v-model="form.discount_type" class="admin-product-form__select">
@@ -555,30 +656,31 @@ onBeforeUnmount(() => {
                   <option value="fixed">Monto fijo</option>
                 </select>
               </div>
+
               <div v-if="form.discount_type !== 'none'" class="admin-product-form__field">
                 <label class="admin-product-form__label" for="pf-discount">
                   {{ form.discount_type === 'percentage' ? 'Descuento (%)' : 'Descuento' }}
                 </label>
-                <input
-                  id="pf-discount"
-                  v-model.number="form.discount_value"
-                  type="number"
-                  min="0"
-                  class="admin-product-form__input"
-                />
+                <input id="pf-discount" v-model.number="form.discount_value" type="number" min="0" class="admin-product-form__input"/>
               </div>
+
             </div>
           </div>
+
+          </div>
         </div>
+
       </div>
 
       <!-- RIGHT COLUMN — Sidebar -->
       <div>
         <!-- Status + Preview integrated -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+
           <div class="admin-content-card__header">
             <h3 class="admin-content-card__title">Estado</h3>
           </div>
+
           <div class="admin-content-card__body">
             <div class="admin-product-form__field" style="margin-bottom: 0;">
               <select v-model="form.status" class="admin-product-form__select">
@@ -596,12 +698,7 @@ onBeforeUnmount(() => {
             <!-- Vista Previa link -->
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <span style="font-size: 0.8rem; font-weight: 600; color: var(--admin-text-secondary);">Vista Previa</span>
-              <button
-                v-if="isEdit && form.slug"
-                type="button"
-                class="admin-btn admin-btn--sm admin-btn--outline"
-                @click="router.push(`/productos/${form.slug}`)"
-              >
+              <button v-if="isEdit && form.slug" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="openPreview">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                 Ver como usuario
               </button>
@@ -609,11 +706,14 @@ onBeforeUnmount(() => {
                 Guarda primero para ver la vista previa
               </span>
             </div>
+
           </div>
+
         </div>
 
-        <!-- Opciones del Producto (above Detalles) -->
+        <!-- Opciones del Producto -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+
           <div class="admin-content-card__header">
             <h3 class="admin-content-card__title">Opciones del Producto</h3>
             <button v-if="isEdit && availableTemplates.length" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showAddOption = !showAddOption">
@@ -621,6 +721,7 @@ onBeforeUnmount(() => {
               Vincular
             </button>
           </div>
+
           <div class="admin-content-card__body">
             <p v-if="!isEdit" style="font-size: 0.85rem; color: var(--admin-text-secondary);">
               Guarda el producto primero para poder asignar opciones.
@@ -651,7 +752,7 @@ onBeforeUnmount(() => {
               <!-- Option links list -->
               <div v-if="optionLinks.length" class="option-links-list">
                 <div v-for="link in optionLinks" :key="link.id" class="option-link-item">
-                  <!-- Header row: name + actions -->
+                  <!-- Header row -->
                   <div class="option-link-item__header">
                     <button type="button" class="option-link-item__toggle" @click="toggleLinkExpand(link.id)">
                       <svg
@@ -675,7 +776,7 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
 
-                  <!-- Expanded: details + value tree -->
+                  <!-- Expanded body -->
                   <div v-if="expandedLinks.has(link.id) && link.template" class="option-link-item__body">
                     <div v-if="link.template.help_text" class="option-link-item__help">
                       {{ link.template.help_text }}
@@ -687,18 +788,9 @@ onBeforeUnmount(() => {
 
                     <!-- Values tree -->
                     <div v-if="link.template.values.length" class="option-link-values-tree">
-                      <div
-                        v-for="val in link.template.values"
-                        :key="val.id"
-                        class="option-link-value-row"
-                        :class="{ 'option-link-value-row--disabled': !isValueEnabled(link, val.id) }"
-                      >
+                      <div v-for="val in link.template.values" :key="val.id" class="option-link-value-row" :class="{ 'option-link-value-row--disabled': !isValueEnabled(link, val.id) }">
                         <label class="option-link-value-check">
-                          <input
-                            type="checkbox"
-                            :checked="isValueEnabled(link, val.id)"
-                            @change="toggleValue(link, val.id)"
-                          />
+                          <input type="checkbox" :checked="isValueEnabled(link, val.id)" @change="toggleValue(link, val.id)"/>
                           <span class="option-link-value-check__mark"></span>
                         </label>
                         <template v-if="link.template!.type === 'color' && val.metadata?.hex">
@@ -716,6 +808,7 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </div>
+
             </template>
           </div>
         </div>
@@ -728,21 +821,60 @@ onBeforeUnmount(() => {
           <div class="admin-content-card__body">
             <div class="admin-product-form__field">
               <label class="admin-product-form__label" for="pf-tags">Etiquetas</label>
-              <input
-                id="pf-tags"
-                v-model="form.tags"
-                type="text"
-                class="admin-product-form__input"
-                placeholder="pastel, chocolate, cumpleaños"
-              />
+              <input id="pf-tags" v-model="form.tags" type="text" class="admin-product-form__input" placeholder="pastel, chocolate, cumpleaños"/>
               <p style="font-size: 0.7rem; color: var(--admin-text-muted); margin-top: 0.25rem;">
                 Separa las etiquetas con comas
               </p>
             </div>
           </div>
         </div>
+
       </div>
     </form>
+
+    <!-- Preview modal -->
+    <Teleport to="body">
+      <Transition name="confirm-fade">
+        <div v-if="previewVisible" class="preview-modal-backdrop" @click.self="closePreview" @keydown.esc="closePreview">
+          <div class="preview-modal">
+            <div class="preview-modal__header">
+              <h3 class="preview-modal__title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                Vista previa del producto
+              </h3>
+              <button type="button" class="preview-modal__close" @click="closePreview">&times;</button>
+            </div>
+            <div class="preview-modal__body">
+              <p v-if="previewLoading" style="text-align: center; padding: 3rem; color: var(--admin-text-muted);">
+                Cargando vista previa...
+              </p>
+              <template v-else-if="previewData">
+                <div class="preview-product">
+                  <div class="preview-product__media">
+                    <div v-if="(previewData as any).image" class="preview-product__img-wrap">
+                      <img :src="(previewData as any).image" :alt="(previewData as any).name" />
+                    </div>
+                    <div v-else class="preview-product__no-img">Sin imagen</div>
+                  </div>
+                  <div class="preview-product__info">
+                    <h2 class="preview-product__name">{{ (previewData as any).name }}</h2>
+                    <div class="preview-product__price">
+                      {{ new Intl.NumberFormat('es-MX', { style: 'currency', currency: (previewData as any).base_price?.currency || 'MXN' }).format(((previewData as any).base_price?.amount || 0) / 100) }}
+                    </div>
+                    <div v-if="(previewData as any).description" class="preview-product__desc" v-html="(previewData as any).description"></div>
+                    <div v-if="(previewData as any).tags" class="preview-product__tags">
+                      <span v-for="tag in ((previewData as any).tags || '').split(',').map((t: string) => t.trim()).filter(Boolean)" :key="tag" class="preview-product__tag">
+                        {{ tag }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Legend modal -->
     <Teleport to="body">
@@ -820,6 +952,118 @@ onBeforeUnmount(() => {
   border: none;
   border-top: 1px solid var(--admin-border);
   margin: 1rem 0;
+}
+
+/* Media drop area */
+.media-drop-area {
+  border: 2px dashed var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-primary-light);
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.media-drop-area--active {
+  border-color: var(--admin-primary);
+  background: #dce6ff;
+}
+.media-drop-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  padding: 1.5rem;
+  color: var(--admin-text-muted);
+  text-align: center;
+}
+.media-drop-placeholder svg {
+  opacity: 0.5;
+}
+.media-drop-placeholder p {
+  font-size: 0.82rem;
+  margin: 0;
+  font-weight: 500;
+  color: var(--admin-text-secondary);
+}
+.media-drop-placeholder span {
+  font-size: 0.72rem;
+}
+.media-thumb-preview {
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+.media-thumb-preview__img-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  background: #fff;
+}
+.media-thumb-preview__img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.media-thumb-preview__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+.media-thumb-preview__remove:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+.media-drop-clickable {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  z-index: 0;
+}
+.media-thumb-preview {
+  z-index: 1;
+}
+.media-file-meta {
+  padding: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--admin-text-secondary);
+}
+.media-file-meta__label {
+  font-weight: 600;
+  color: var(--admin-text);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.media-file-meta__details {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+}
+.media-file-meta__sep {
+  opacity: 0.4;
 }
 
 /* TipTap editor */
@@ -1209,5 +1453,131 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   border-top: 1px solid var(--admin-border);
+}
+
+/* Preview modal */
+.preview-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  padding: 2rem;
+}
+.preview-modal {
+  background: var(--admin-surface, #fff);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+}
+.preview-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+.preview-modal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--admin-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.preview-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--admin-text-muted);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.preview-modal__close:hover {
+  background: var(--admin-bg);
+}
+.preview-modal__body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.preview-product {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+}
+.preview-product__img-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--admin-bg);
+  aspect-ratio: 1;
+}
+.preview-product__img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.preview-product__no-img {
+  aspect-ratio: 1;
+  background: var(--admin-bg);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+}
+.preview-product__name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+.preview-product__price {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--admin-primary);
+  margin-bottom: 1rem;
+}
+.preview-product__desc {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--admin-text-secondary);
+  margin-bottom: 1rem;
+}
+.preview-product__desc :deep(p) {
+  margin: 0 0 0.5rem;
+}
+.preview-product__tags {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.preview-product__tag {
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: var(--admin-bg);
+  font-size: 0.75rem;
+  color: var(--admin-text-secondary);
+  font-weight: 500;
+}
+@media (max-width: 640px) {
+  .preview-product {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

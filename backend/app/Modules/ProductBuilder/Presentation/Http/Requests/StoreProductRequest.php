@@ -30,6 +30,11 @@ class StoreProductRequest extends FormRequest
             'image' => ['nullable', 'string', 'max:2048'],
             'base_price_amount' => ['required', 'integer', 'min:0'],
             'currency' => ['nullable', 'string', 'size:3'],
+            'discount_type' => ['nullable', 'string', 'in:none,percentage,fixed'],
+            'discount_value' => ['nullable', 'integer', 'min:0'],
+            'tax_class' => ['nullable', 'string', 'in:standard,reduced,zero'],
+            'vat' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'tags' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'position' => ['nullable', 'integer', 'min:0'],
         ];
@@ -43,6 +48,8 @@ class StoreProductRequest extends FormRequest
         $data = $this->validated();
         $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
         $data['currency'] = $data['currency'] ?? 'USD';
+        $data['discount_type'] = $data['discount_type'] ?? 'none';
+        $data['tax_class'] = $data['tax_class'] ?? 'standard';
 
         return $data;
     }

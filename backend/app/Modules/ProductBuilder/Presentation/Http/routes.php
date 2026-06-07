@@ -8,7 +8,9 @@ use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionTemplat
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionTemplateValueController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\OptionValueController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductController;
+use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductImageController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductOptionLinkController;
+use App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin\ProductPreviewController;
 use App\Modules\ProductBuilder\Presentation\Http\Controllers\ConfiguratorController;
 use Illuminate\Support\Facades\Route;
 
@@ -61,4 +63,14 @@ Route::prefix('admin/product-builder')
         Route::post('products/{product}/option-links', [ProductOptionLinkController::class, 'store']);
         Route::put('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'update']);
         Route::delete('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'destroy']);
+
+
+        // Product Images.
+        Route::post('products/{product}/images', [ProductImageController::class, 'store']);
+        Route::put('products/{product}/images/{image}', [ProductImageController::class, 'update']);
+        Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
+
+        // Product Preview.
+        Route::post('products/{product}/preview-token', [ProductPreviewController::class, 'generateToken']);
+        Route::get('preview/{token}', [ProductPreviewController::class, 'show']);
     });

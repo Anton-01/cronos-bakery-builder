@@ -37,12 +37,19 @@ class Product extends Model
         'image',
         'base_price_amount',
         'currency',
+        'discount_type',
+        'discount_value',
+        'tax_class',
+        'vat',
+        'tags',
         'is_active',
         'position',
     ];
 
     protected $casts = [
         'base_price_amount' => 'integer',
+        'discount_value' => 'integer',
+        'vat' => 'integer',
         'is_active' => 'boolean',
         'position' => 'integer',
     ];
