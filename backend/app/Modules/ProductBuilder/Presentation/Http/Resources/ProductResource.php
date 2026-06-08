@@ -43,6 +43,7 @@ class ProductResource extends JsonResource
                 'position' => $img->position,
             ])),
             'options' => OptionResource::collection($this->whenLoaded('options')),
+            'option_links' => ProductOptionLinkResource::collection($this->whenLoaded('optionLinks')),
             'rules' => OptionRuleResource::collection($this->whenLoaded('rules')),
         ];
     }

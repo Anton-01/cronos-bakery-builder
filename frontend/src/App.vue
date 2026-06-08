@@ -6,6 +6,7 @@ import { Toaster } from 'vue-sonner'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
+import BlankLayout from '@/layouts/BlankLayout.vue'
 import { useThemeStore } from '@/stores/theme'
 
 /**
@@ -13,7 +14,7 @@ import { useThemeStore } from '@/stores/theme'
  * falls back to the public-facing default layout.
  */
 const layouts = {
-  default: DefaultLayout, admin: AdminLayout, auth: AuthLayout,
+  default: DefaultLayout, admin: AdminLayout, auth: AuthLayout, blank: BlankLayout,
 } as const
 
 const route = useRoute()
@@ -30,11 +31,19 @@ onMounted(() => {
 
 <template>
   <Teleport to="body">
-    <Toaster position="top-right" richColors :offset="16" :style="{ zIndex: 99999 }"  :toastOptions="{
-        style: {
-          fontFamily: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-          fontSize: '0.85rem', borderRadius: '10px', padding: '12px 16px',
-        },
+    <Toaster
+        position="top-right"
+        :richColors="false"
+        closeButton
+        :toastOptions="{
+          style: {
+            fontSize: '0.875rem',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            border: '1px solid',
+            maxWidth: '420px',
+          },
       }"
     />
   </Teleport>
