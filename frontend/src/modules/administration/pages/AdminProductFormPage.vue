@@ -1,25 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import Underline from '@tiptap/extension-underline'
+
+import { onBeforeUnmount, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { EditorContent } from '@tiptap/vue-3'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
-import { useToast } from '@/composables/useToast'
-import {
-  adminPanelService,
-  type ProductImage,
-  type OptionTemplate,
-  type ProductOptionLink,
-  type PbOption,
-} from '../services/adminPanelService'
 
-const route = useRoute()
+import { useRichTextEditor } from '../composables/useRichTextEditor'
+import { useMediaGallery } from '../composables/useMediaGallery'
+import { useProductOptions } from '../composables/useProductOptions'
+import { useProductForm, statusOptions } from '../composables/useProductForm'
+import { useProductPreview } from '../composables/useProductPreview'
+
 const router = useRouter()
-const { success, error } = useToast()
 const {
   visible: confirmVisible,
   title: confirmTitle,
@@ -27,488 +21,68 @@ const {
   action: confirmAction,
   confirmText,
   cancelText,
-  confirm,
   handleConfirm,
   handleCancel,
 } = useConfirm()
 
-const productId = computed(() => route.params.id as string | undefined)
-const isEdit = computed(() => !!productId.value)
-const loading = ref(false)
-const saving = ref(false)
 
-type ProductStatus = 'draft' | 'private' | 'public'
-
-const form = reactive({
-  name: '',
-  slug: '',
-  description: '',
-  status: 'draft' as ProductStatus,
-  base_price_amount: 0,
-  base_price_currency: 'MXN',
-  discount_type: 'none' as 'none' | 'percentage' | 'fixed',
-  discount_value: 0,
-  tax_class: 'standard',
-  vat: 16,
-  tags: '',
+// --- Media ---
+const {
+  thumbnail, thumbnailFile, thumbnailMeta, gallery,
+  dragOverThumb, dragOverGallery, thumbInput, galleryInput,
+  onThumbDrop, onThumbSelect, removeThumb,
+  onGalleryDrop, onGallerySelect, removeGalleryImage,
+  setThumbnailFromUrl, setGalleryFromImages,
+} = useMediaGallery()
+// --- Rich Text Editors ---
+const editor = useRichTextEditor({
+  placeholder: 'Describe tu producto...',
+  onUpdate: (html) => { form.description = html },
 })
 
-const formSnapshot = ref('')
-const isDirty = computed(() => {
-  if (!isEdit.value) return true
-  return JSON.stringify(form) !== formSnapshot.value || thumbnailFile.value !== null
+
+const legendEditor = useRichTextEditor({
+  placeholder: 'Escribe la leyenda para esta opción en este producto...',
 })
 
-const thumbnail = ref<string | null>(null)
-const thumbnailFile = ref<File | null>(null)
-const thumbnailMeta = ref<{ name: string; size: string; type: string } | null>(null)
-const gallery = ref<(ProductImage & { _file?: File; _preview?: string })[]>([])
-const dragOverThumb = ref(false)
-const dragOverGallery = ref(false)
-const thumbInput = ref<HTMLInputElement | null>(null)
-const galleryInput = ref<HTMLInputElement | null>(null)
-
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Underline,
-    Placeholder.configure({ placeholder: 'Describe tu producto...' }),
-  ],
-  content: '',
-  onUpdate({ editor: e }) {
-    form.description = e.getHTML()
-  },
+// --- Product Options ---
+const {
+  optionLinks, showAddOption, addOptionTemplateId, availableTemplates,
+  expandedLinks, legendModal, legendHasChanged,
+  getOptionTypeLabel, isValueEnabled, toggleLinkExpand,
+  openLegendModal, closeLegendModal, saveLegend,
+  toggleValue, addOptionLink, removeOptionLink,
+  loadOptionLinks, setLinksFromOptions,
+} = useProductOptions(() => productId.value, legendEditor)
+// --- Form & Submit ---
+const {
+  productId, isEdit, loading, saving, form, isDirty,
+  onNameInput, loadProduct, submitForm,
+} = useProductForm({
+  editor,
+  thumbnail,
+  thumbnailFile,
+  gallery,
+  setThumbnailFromUrl,
+  setGalleryFromImages,
+  setLinksFromOptions,
+  loadOptionLinks,
 })
 
-const statusOptions: { value: ProductStatus; label: string; desc: string }[] = [
-  { value: 'draft', label: 'Borrador', desc: 'No visible, en edición' },
-  { value: 'private', label: 'Privado', desc: 'Solo accesible con enlace directo' },
-  { value: 'public', label: 'Público', desc: 'Visible en la tienda' },
-]
+const {
+  previewVisible, previewLoading, previewData,
+  openPreview, closePreview,
+} = useProductPreview(() => productId.value)
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
 
-function onNameInput() {
-  if (!isEdit.value) {
-    form.slug = generateSlug(form.name)
-  }
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-function setThumbMeta(file: File) {
-  thumbnailMeta.value = {
-    name: file.name,
-    size: formatFileSize(file.size),
-    type: file.type,
-  }
-}
-
-function onThumbDrop(e: DragEvent) {
-  dragOverThumb.value = false
-  const file = e.dataTransfer?.files?.[0]
-  if (file && file.type.startsWith('image/')) {
-    thumbnailFile.value = file
-    thumbnail.value = URL.createObjectURL(file)
-    setThumbMeta(file)
-  }
-}
-
-function onThumbSelect(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) {
-    thumbnailFile.value = file
-    thumbnail.value = URL.createObjectURL(file)
-    setThumbMeta(file)
-  }
-}
-
-function removeThumb() {
-  if (thumbnail.value?.startsWith('blob:')) {
-    URL.revokeObjectURL(thumbnail.value)
-  }
-  thumbnail.value = null
-  thumbnailFile.value = null
-  thumbnailMeta.value = null
-}
-
-function onGalleryDrop(e: DragEvent) {
-  dragOverGallery.value = false
-  const files = e.dataTransfer?.files
-  if (files) addGalleryFiles(files)
-}
-
-function onGallerySelect(e: Event) {
-  const files = (e.target as HTMLInputElement).files
-  if (files) addGalleryFiles(files)
-}
-
-function addGalleryFiles(files: FileList) {
-  for (const file of Array.from(files)) {
-    if (!file.type.startsWith('image/')) continue
-    gallery.value.push({
-      id: `new-${Date.now()}-${Math.random()}`,
-      path: '',
-      name: file.name.replace(/\.[^.]+$/, ''),
-      alt_text: '',
-      position: gallery.value.length,
-      _file: file,
-      _preview: URL.createObjectURL(file),
-    })
-  }
-}
-
-function removeGalleryImage(idx: number) {
-  const img = gallery.value[idx]
-  if (img._preview) URL.revokeObjectURL(img._preview)
-  gallery.value.splice(idx, 1)
-}
-
-// --- Option Links ---
-const optionLinks = ref<ProductOptionLink[]>([])
-const allTemplates = ref<OptionTemplate[]>([])
-const showAddOption = ref(false)
-const addOptionTemplateId = ref('')
-
-const availableTemplates = computed(() => {
-  const linkedIds = new Set(optionLinks.value.map((l) => l.template_id))
-  return allTemplates.value.filter((t) => !linkedIds.has(t.id))
-})
-
-// Legend modal
-const legendModal = ref(false)
-const legendLinkId = ref<string | null>(null)
-const legendEditor = useEditor({
-  extensions: [
-    StarterKit,
-    Underline,
-    Placeholder.configure({ placeholder: 'Escribe la leyenda para esta opción en este producto...' }),
-  ],
-  content: '',
-})
-
-const legendOriginal = ref<string | null>(null)
-
-const legendHasChanged = computed(() => {
-  const html = legendEditor.value?.getHTML() || ''
-  const current = html === '<p></p>' ? null : html
-  return current !== legendOriginal.value
-})
-
-function openLegendModal(link: ProductOptionLink) {
-  legendLinkId.value = link.id
-  legendOriginal.value = link.legend || null
-  legendEditor.value?.commands.setContent(link.legend || '')
-  legendModal.value = true
-}
-
-async function saveLegend() {
-  if (!legendLinkId.value || !productId.value) return
-  const html = legendEditor.value?.getHTML() || ''
-  const content = html === '<p></p>' ? null : html
-  if (content === legendOriginal.value) {
-    legendModal.value = false
-    return
-  }
-  try {
-    const idx = optionLinks.value.findIndex((l) => l.id === legendLinkId.value)
-    const link = idx !== -1 ? optionLinks.value[idx] : null
-    let updated: ProductOptionLink
-    if (link && (link as any)._mapped) {
-      updated = await adminPanelService.createProductOptionLink(productId.value, {
-        template_id: link.template_id,
-        legend: content ?? undefined,
-      })
-    } else {
-      updated = await adminPanelService.updateProductOptionLink(productId.value, legendLinkId.value, { legend: content })
-    }
-    if (idx !== -1) optionLinks.value[idx] = updated
-    legendModal.value = false
-    success('Leyenda actualizada')
-  } catch {
-    error('Error al guardar la leyenda')
-  }
-}
-
-function closeLegendModal() {
-  legendModal.value = false
-  legendLinkId.value = null
-}
-
-function getOptionTypeLabel(type: string): string {
-  const map: Record<string, string> = { select: 'Selector', radio: 'Radio', checkbox: 'Checkbox', color: 'Color', image: 'Imagen', text: 'Texto', textarea: 'Área de texto' }
-  return map[type] ?? type
-}
-
-function isValueEnabled(link: ProductOptionLink, valueId: string): boolean {
-  if (!link.enabled_value_ids) return true
-  return link.enabled_value_ids.includes(valueId)
-}
-
-async function toggleValue(link: ProductOptionLink, valueId: string) {
-  if (!productId.value || !link.template) return
-  const allIds = link.template.values.map((v) => v.id)
-  let current = link.enabled_value_ids ? [...link.enabled_value_ids] : [...allIds]
-
-  if (current.includes(valueId)) {
-    current = current.filter((id) => id !== valueId)
-  } else {
-    current.push(valueId)
-  }
-
-  const enabledIds = current.length === allIds.length ? null : current
-
-  try {
-    let updated: ProductOptionLink
-    if ((link as any)._mapped) {
-      updated = await adminPanelService.createProductOptionLink(productId.value, {
-        template_id: link.template_id,
-        enabled_value_ids: enabledIds ?? undefined,
-      })
-    } else {
-      updated = await adminPanelService.updateProductOptionLink(productId.value, link.id, { enabled_value_ids: enabledIds })
-    }
-    const idx = optionLinks.value.findIndex((l) => l.id === link.id)
-    if (idx !== -1) optionLinks.value[idx] = updated
-  } catch {
-    error('Error al actualizar valores')
-  }
-}
-
-async function addOptionLink() {
-  if (!productId.value || !addOptionTemplateId.value) return
-  try {
-    const link = await adminPanelService.createProductOptionLink(productId.value, { template_id: addOptionTemplateId.value })
-    optionLinks.value.push(link)
-    addOptionTemplateId.value = ''
-    showAddOption.value = false
-    success('Opción vinculada al producto')
-  } catch {
-    error('Error al vincular opción')
-  }
-}
-
-async function removeOptionLink(link: ProductOptionLink) {
-  const tplName = link.template?.label || 'esta opción'
-  const ok = await confirm({
-    title: 'Desvincular opción',
-    message: `Se eliminará la vinculación de "${tplName}" con este producto. Los valores configurados se perderán.`,
-    action: 'delete',
-    confirmText: 'Desvincular',
-  })
-  if (!ok || !productId.value) return
-
-  try {
-    if (!(link as any)._mapped) {
-      await adminPanelService.deleteProductOptionLink(productId.value, link.id)
-    }
-    optionLinks.value = optionLinks.value.filter((l) => l.id !== link.id)
-    success('Opción desvinculada')
-  } catch {
-    error('Error al desvincular opción')
-  }
-}
-
-// Expanded link panels
-const expandedLinks = ref<Set<string>>(new Set())
-
-function toggleLinkExpand(linkId: string) {
-  if (expandedLinks.value.has(linkId)) {
-    expandedLinks.value.delete(linkId)
-  } else {
-    expandedLinks.value.add(linkId)
-  }
-}
-
-// --- Preview ---
-const previewVisible = ref(false)
-const previewLoading = ref(false)
-const previewData = ref<Record<string, unknown> | null>(null)
-async function openPreview() {
-  if (!productId.value) return
-  previewLoading.value = true
-  previewVisible.value = true
-  try {
-    const { token } = await adminPanelService.generatePreviewToken(productId.value)
-    const data = await adminPanelService.getPreview(token)
-    previewData.value = data
-  } catch {
-    error('Error al cargar la vista previa')
-    previewVisible.value = false
-  } finally {
-    previewLoading.value = false
-  }
-}
-function closePreview() {
-  previewVisible.value = false
-  previewData.value = null
-}
-function onPreviewKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && previewVisible.value) closePreview()
-}
-
-function isBlobUrl(url: string | null | undefined): boolean {
-  return !!url && url.startsWith('blob:')
-}
-function mapOptionsToLinks(options: PbOption[]): (ProductOptionLink & { _mapped?: boolean })[] {
-  return options.map((opt) => ({
-    id: opt.id,
-    product_id: opt.product_id,
-    template_id: opt.id,
-    legend: null,
-    enabled_value_ids: null,
-    position: opt.position,
-    _mapped: true,
-    template: {
-      id: opt.id,
-      key: opt.key,
-      label: opt.label,
-      type: opt.type,
-      help_text: opt.help_text,
-      is_required: opt.is_required,
-      position: opt.position,
-      config: opt.config,
-      values: opt.values.map((v) => ({
-        ...v,
-        template_id: opt.id,
-      })),
-    },
-  }))
-}
-
-async function loadProduct() {
-  if (!productId.value) return
-  loading.value = true
-  try {
-    const p = await adminPanelService.showProduct(productId.value)
-    form.name = p.name
-    form.slug = p.slug
-    form.description = p.description ?? ''
-    form.status = p.is_active ? 'public' : 'draft'
-    form.base_price_amount = p.base_price.amount
-    form.base_price_currency = p.base_price.currency
-    form.discount_type = (p as any).discount_type ?? 'none'
-    form.discount_value = (p as any).discount_value ?? 0
-    form.tax_class = (p as any).tax_class ?? 'standard'
-    form.vat = (p as any).vat ?? 16
-    form.tags = (p as any).tags ?? ''
-
-    const imageUrl = isBlobUrl(p.image) ? null : (p.image ?? null)
-    thumbnail.value = imageUrl
-    thumbnailMeta.value = null
-    if (imageUrl) {
-      thumbnailMeta.value = { name: imageUrl.split('/').pop() || 'image', size: '-', type: 'image/*' }
-    }
-    gallery.value = (p.gallery ?? []).map((img) => ({ ...img }))
-    editor.value?.commands.setContent(form.description)
-    if ((p as any).options?.length) {
-      optionLinks.value = mapOptionsToLinks((p as any).options as PbOption[])
-    }
-    formSnapshot.value = JSON.stringify(form)
-  } catch {
-    error('Error al cargar el producto')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadOptionLinks() {
-  if (!productId.value) return
-  try {
-    const [links, templates] = await Promise.all([
-      adminPanelService.productOptionLinks(productId.value),
-      adminPanelService.optionTemplates(),
-    ])
-    if (links.length) {
-      optionLinks.value = links
-    }
-    allTemplates.value = templates
-  } catch {
-    error('Error al cargar las opciones del producto')
-    // option-links endpoint may not exist; options are loaded from product detail instead
-  }
-}
-
-async function uploadImages(id: string) {
-  if (thumbnailFile.value) {
-    await adminPanelService.uploadProductImage(id, thumbnailFile.value, 'image')
-    thumbnailFile.value = null
-  }
-  for (const img of gallery.value) {
-    if (img._file) {
-      await adminPanelService.uploadProductImage(id, img._file, 'gallery')
-    }
-  }
-  const existingGallery = gallery.value.filter((img) => !img.id.startsWith('new-'))
-  for (const img of existingGallery) {
-    await adminPanelService.updateProductImage(id, img.id, { name: img.name ?? undefined, alt_text: img.alt_text ?? undefined })
-  }
-}
-async function submitForm() {
-  saving.value = true
-  try {
-    const payload: Record<string, unknown> = {
-      name: form.name,
-      slug: form.slug,
-      description: form.description || null,
-      is_active: form.status === 'public',
-      base_price_amount: form.base_price_amount,
-      currency: form.base_price_currency,
-      discount_type: form.discount_type,
-      discount_value: form.discount_value,
-      tax_class: form.tax_class,
-      vat: form.vat,
-      tags: form.tags || null,
-    }
-
-    if (thumbnail.value && !thumbnailFile.value && !isBlobUrl(thumbnail.value)) {
-      payload.image = thumbnail.value
-    }
-    if (!thumbnail.value) {
-      payload.image = null
-    }
-
-    if (isEdit.value) {
-      await adminPanelService.updateProduct(productId.value!, payload)
-      await uploadImages(productId.value!)
-      await loadProduct()
-      await loadOptionLinks()
-      thumbnailFile.value = null
-      success('Producto actualizado exitosamente')
-    } else {
-      const created = await adminPanelService.createProduct(payload)
-      await uploadImages(created.id)
-      success('Producto creado exitosamente')
-      router.replace(`/admin/productos/${created.id}`)
-    }
-  } catch {
-    error('Error al guardar el producto')
-  } finally {
-    saving.value = false
-  }
-}
-
+// --- Lifecycle ---
 onMounted(() => {
   loadProduct()
   loadOptionLinks()
-  document.addEventListener('keydown', onPreviewKeydown)
 })
 onBeforeUnmount(() => {
   editor.value?.destroy()
   legendEditor.value?.destroy()
-  document.removeEventListener('keydown', onPreviewKeydown)
-  if (thumbnail.value?.startsWith('blob:')) URL.revokeObjectURL(thumbnail.value)
-  gallery.value.forEach((img) => { if (img._preview) URL.revokeObjectURL(img._preview) })
 })
 </script>
 
