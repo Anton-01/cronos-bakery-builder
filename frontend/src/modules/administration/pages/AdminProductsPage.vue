@@ -34,6 +34,11 @@ function money(amount: number, currency = 'MXN'): string {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency }).format(amount / 100)
 }
 
+function validImageUrl(url: string | null | undefined): string | null {
+  if (!url || url.startsWith('blob:')) return null
+  return url
+}
+
 const filtered = computed(() => {
   let result = products.value
   if (statusFilter.value === 'active') {
@@ -126,8 +131,9 @@ async function deleteProduct(product: AdminProduct): Promise<void> {
 }
 
 function openLightbox(product: AdminProduct) {
-  if (!product.image) return
-  lightboxImage.value = product.image
+  const url = validImageUrl(product.image)
+  if (!url) return
+  lightboxImage.value = url
   lightboxProduct.value = product
 }
 function closeLightbox() {
@@ -230,8 +236,8 @@ onBeforeUnmount(() => {
                     <span class="product-list-slug">/{{ product.slug }}</span>
                   </td>
                   <td>
-                    <div class="product-list-thumb" :class="{ 'product-list-thumb--clickable': !!product.image }" @click="openLightbox(product)">
-                      <img v-if="product.image" :src="product.image" :alt="product.name" />
+                    <div class="product-list-thumb" :class="{ 'product-list-thumb--clickable': !!validImageUrl(product.image) }" @click="openLightbox(product)">
+                      <img v-if="validImageUrl(product.image)" :src="validImageUrl(product.image)!" :alt="product.name" />
                       <span v-else class="product-list-thumb__empty">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
@@ -239,7 +245,10 @@ onBeforeUnmount(() => {
                       </span>
                     </div>
                   </td>
-                  <td>{{ money(product.base_price.amount, product.base_price.currency) }}</td>
+                  <td>
+                    <span class="product-price-currency">{{ product.base_price.currency }}</span>
+                    {{ money(product.base_price.amount, product.base_price.currency) }}
+                  </td>
                   <td>
                     <span class="product-status-badge" :class="product.is_active ? 'product-status-badge--stock' : 'product-status-badge--out'">
                       {{ product.is_active ? 'Activo' : 'Inactivo' }}
@@ -337,6 +346,20 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+
+.product-price-currency {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--admin-primary-light, #e8f0fe);
+  color: var(--admin-primary, #4361ee);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
 .product-list-slug {
   font-size: 0.75rem;
   color: var(--admin-primary);

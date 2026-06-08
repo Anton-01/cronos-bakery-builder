@@ -6,6 +6,8 @@ export function useToast() {
       toast.success(message, { duration: 3000 })
     },
     error(message: string) {
+      console.log("**** Error  ****")
+      console.log(message)
       toast.error(message, { duration: 5000 })
     },
     info(message: string) {
