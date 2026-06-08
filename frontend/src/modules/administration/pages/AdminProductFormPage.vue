@@ -14,6 +14,7 @@ import {
   type ProductImage,
   type OptionTemplate,
   type ProductOptionLink,
+  type PbOption,
 } from '../services/adminPanelService'
 
 const route = useRoute()
@@ -318,6 +319,34 @@ function onPreviewKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && previewVisible.value) closePreview()
 }
 
+function isBlobUrl(url: string | null | undefined): boolean {
+  return !!url && url.startsWith('blob:')
+}
+function mapOptionsToLinks(options: PbOption[]): ProductOptionLink[] {
+  return options.map((opt) => ({
+    id: opt.id,
+    product_id: opt.product_id,
+    template_id: opt.id,
+    legend: null,
+    enabled_value_ids: null,
+    position: opt.position,
+    template: {
+      id: opt.id,
+      key: opt.key,
+      label: opt.label,
+      type: opt.type,
+      help_text: opt.help_text,
+      is_required: opt.is_required,
+      position: opt.position,
+      config: opt.config,
+      values: opt.values.map((v) => ({
+        ...v,
+        template_id: opt.id,
+      })),
+    },
+  }))
+}
+
 async function loadProduct() {
   if (!productId.value) return
   loading.value = true
@@ -334,12 +363,18 @@ async function loadProduct() {
     form.tax_class = (p as any).tax_class ?? 'standard'
     form.vat = (p as any).vat ?? 16
     form.tags = (p as any).tags ?? ''
-    thumbnail.value = p.image ?? null
-    if (p.image) {
-      thumbnailMeta.value = { name: p.image.split('/').pop() || 'image', size: '-', type: 'image/*' }
+
+    const imageUrl = isBlobUrl(p.image) ? null : (p.image ?? null)
+    thumbnail.value = imageUrl
+    thumbnailMeta.value = null
+    if (imageUrl) {
+      thumbnailMeta.value = { name: imageUrl.split('/').pop() || 'image', size: '-', type: 'image/*' }
     }
     gallery.value = (p.gallery ?? []).map((img) => ({ ...img }))
     editor.value?.commands.setContent(form.description)
+    if ((p as any).options?.length) {
+      optionLinks.value = mapOptionsToLinks((p as any).options as PbOption[])
+    }
   } catch {
     error('Error al cargar el producto')
   } finally {
@@ -354,10 +389,13 @@ async function loadOptionLinks() {
       adminPanelService.productOptionLinks(productId.value),
       adminPanelService.optionTemplates(),
     ])
-    optionLinks.value = links
+    if (links.length) {
+      optionLinks.value = links
+    }
     allTemplates.value = templates
   } catch {
-    // silently fail, options are secondary
+    error('Error al cargar las opciones del producto')
+    // option-links endpoint may not exist; options are loaded from product detail instead
   }
 }
 
@@ -393,7 +431,7 @@ async function submitForm() {
       tags: form.tags || null,
     }
 
-    if (thumbnail.value && !thumbnailFile.value) {
+    if (thumbnail.value && !thumbnailFile.value && !isBlobUrl(thumbnail.value)) {
       payload.image = thumbnail.value
     }
     if (!thumbnail.value) {
@@ -403,6 +441,8 @@ async function submitForm() {
     if (isEdit.value) {
       await adminPanelService.updateProduct(productId.value!, payload)
       await uploadImages(productId.value!)
+      await loadProduct()
+      await loadOptionLinks()
       success('Producto actualizado exitosamente')
     } else {
       const created = await adminPanelService.createProduct(payload)
@@ -532,12 +572,6 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <div v-if="thumbnail" class="media-thumb-preview">
-                <div class="media-thumb-preview__img-wrap">
-                  <img :src="thumbnail" alt="Imagen principal" />
-                  <button type="button" class="media-thumb-preview__remove" @click.stop="removeThumb">&times;</button>
-                </div>
-              </div>
               <div v-if="!thumbnail" class="media-drop-placeholder" @click="thumbInput?.click()">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
@@ -549,8 +583,10 @@ onBeforeUnmount(() => {
               <div v-else class="media-drop-clickable" @click="thumbInput?.click()"></div>
             </div>
 
+            <input ref="thumbInput" type="file" accept="image/*" style="display: none;" @change="onThumbSelect" />
+
             <div v-if="thumbnailMeta" class="media-file-meta">
-              <span class="media-file-meta__label">Files:</span>
+              <span class="media-file-meta__label">Archivo:</span>
               <div class="media-file-meta__details">
                 <span>{{ thumbnailMeta.name }}</span>
                 <span class="media-file-meta__sep">·</span>
@@ -558,7 +594,7 @@ onBeforeUnmount(() => {
                 <span class="media-file-meta__sep">·</span>
                 <span>{{ thumbnailMeta.type }}</span>
               </div>
-            <input ref="thumbInput" type="file" accept="image/*" style="display: none;" @change="onThumbSelect" />
+            </div>
           </div>
         </div>
 
@@ -667,7 +703,6 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          </div>
         </div>
 
       </div>

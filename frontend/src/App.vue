@@ -30,7 +30,7 @@ onMounted(() => {
 
 <template>
   <Teleport to="body">
-    <Toaster position="top-right" richColors :offset="16" :toastOptions="{
+    <Toaster position="top-right" richColors :offset="16" :style="{ zIndex: 99999 }"  :toastOptions="{
         style: {
           fontFamily: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
           fontSize: '0.85rem', borderRadius: '10px', padding: '12px 16px',
