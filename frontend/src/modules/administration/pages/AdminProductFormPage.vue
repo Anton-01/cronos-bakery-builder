@@ -7,6 +7,11 @@ import { EditorContent } from '@tiptap/vue-3'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
+import ProductGeneralForm from '../components/ProductGeneralForm.vue'
+import ProductMediaGallery from '../components/ProductMediaGallery.vue'
+import ProductPricing from '../components/ProductPricing.vue'
+import ProductOptionsManager from '../components/ProductOptionsManager.vue'
+
 import { useRichTextEditor } from '../composables/useRichTextEditor'
 import { useMediaGallery } from '../composables/useMediaGallery'
 import { useProductOptions } from '../composables/useProductOptions'
@@ -116,215 +121,30 @@ onBeforeUnmount(() => {
       <!-- LEFT COLUMN -->
       <div>
         <!-- General -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">General</h3>
-          </div>
-          <div class="admin-content-card__body">
-            <div class="admin-product-form__field">
-              <label class="admin-product-form__label" for="pf-name">Nombre del producto</label>
-              <input
-                id="pf-name"
-                v-model="form.name"
-                type="text"
-                class="admin-product-form__input"
-                required
-                placeholder="Ej: Pastel de Chocolate"
-                @input="onNameInput"
-              />
-              <span v-if="form.slug" class="product-slug-display">
-                /{{ form.slug }}
-              </span>
-            </div>
-            <div class="admin-product-form__field">
-              <label class="admin-product-form__label">Descripción</label>
-              <div class="tiptap-editor-wrapper">
-                <div v-if="editor" class="tiptap-toolbar">
-                  <button type="button" :class="{ 'is-active': editor.isActive('bold') }" @click="editor.chain().focus().toggleBold().run()">
-                    <strong>B</strong>
-                  </button>
-                  <button type="button" :class="{ 'is-active': editor.isActive('italic') }" @click="editor.chain().focus().toggleItalic().run()">
-                    <em>I</em>
-                  </button>
-                  <button type="button" :class="{ 'is-active': editor.isActive('underline') }" @click="editor.chain().focus().toggleUnderline().run()">
-                    <u>U</u>
-                  </button>
-                  <span class="tiptap-toolbar__sep"></span>
-                  <button type="button" :class="{ 'is-active': editor.isActive('bulletList') }" @click="editor.chain().focus().toggleBulletList().run()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
-                  </button>
-                  <button type="button" :class="{ 'is-active': editor.isActive('orderedList') }" @click="editor.chain().focus().toggleOrderedList().run()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="2" y="8" fill="currentColor" stroke="none" font-size="7" font-weight="600">1</text><text x="2" y="14" fill="currentColor" stroke="none" font-size="7" font-weight="600">2</text><text x="2" y="20" fill="currentColor" stroke="none" font-size="7" font-weight="600">3</text></svg>
-                  </button>
-                  <span class="tiptap-toolbar__sep"></span>
-                  <button type="button" :class="{ 'is-active': editor.isActive('heading', { level: 2 }) }" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">
-                    H2
-                  </button>
-                  <button type="button" :class="{ 'is-active': editor.isActive('heading', { level: 3 }) }" @click="editor.chain().focus().toggleHeading({ level: 3 }).run()">
-                    H3
-                  </button>
-                </div>
-                <EditorContent :editor="editor" class="tiptap-content" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductGeneralForm v-model="form" :editor="editor" @name-input="onNameInput" />
 
-        <!-- Media (Thumbnail) -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
+        <ProductMediaGallery
+            :thumbnail="thumbnail"
+            :thumbnail-meta="thumbnailMeta"
+            :gallery="gallery"
+            v-model:drag-over-thumb="dragOverThumb"
+            v-model:drag-over-gallery="dragOverGallery"
+            :thumb-input="thumbInput"
+            :gallery-input="galleryInput"
+            @thumb-drop="onThumbDrop"
+            @thumb-select="onThumbSelect"
+            @thumb-remove="removeThumb"
+            @gallery-drop="onGalleryDrop"
+            @gallery-select="onGallerySelect"
+            @gallery-remove="removeGalleryImage"
+        />
 
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">Imagen Principal</h3>
-          </div>
-
-          <div class="admin-content-card__body">
-            <div class="media-drop-area" :class="{ 'media-drop-area--active': dragOverThumb }" @dragover.prevent="dragOverThumb = true" @dragleave="dragOverThumb = false" @drop.prevent="onThumbDrop">
-
-              <div v-if="thumbnail" class="media-thumb-preview">
-                <div class="media-thumb-preview__img-wrap">
-                  <img :src="thumbnail" alt="Imagen principal" />
-                  <button type="button" class="media-thumb-preview__remove" @click.stop="removeThumb">&times;</button>
-                </div>
-              </div>
-
-              <div v-if="!thumbnail" class="media-drop-placeholder" @click="thumbInput?.click()">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                </svg>
-                <p>Arrastra una imagen o haz clic para seleccionar</p>
-                <span>JPG, PNG o WebP — máx 5 MB</span>
-              </div>
-
-              <div v-else class="media-drop-clickable" @click="thumbInput?.click()"></div>
-            </div>
-
-            <input ref="thumbInput" type="file" accept="image/*" style="display: none;" @change="onThumbSelect" />
-
-            <div v-if="thumbnailMeta" class="media-file-meta">
-              <span class="media-file-meta__label">Archivo:</span>
-              <div class="media-file-meta__details">
-                <span>{{ thumbnailMeta.name }}</span>
-                <span class="media-file-meta__sep">·</span>
-                <span>{{ thumbnailMeta.size }}</span>
-                <span class="media-file-meta__sep">·</span>
-                <span>{{ thumbnailMeta.type }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Gallery -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">Galería de Imágenes</h3>
-          </div>
-          <div class="admin-content-card__body">
-            <div
-              class="admin-drop-zone"
-              :class="{ 'admin-drop-zone--active': dragOverGallery }"
-              style="margin-bottom: 1rem;"
-              @dragover.prevent="dragOverGallery = true"
-              @dragleave="dragOverGallery = false"
-              @drop.prevent="onGalleryDrop"
-              @click="galleryInput?.click()"
-            >
-              <div class="admin-drop-zone__icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </div>
-              <p class="admin-drop-zone__text">Agrega imágenes a la galería</p>
-              <p class="admin-drop-zone__hint">Puedes seleccionar varias a la vez</p>
-            </div>
-            <input ref="galleryInput" type="file" accept="image/*" multiple style="display: none;" @change="onGallerySelect" />
-
-            <div v-if="gallery.length" class="admin-gallery-grid">
-              <div v-for="(img, idx) in gallery" :key="img.id" class="admin-gallery-item">
-                <img :src="img._preview || img.path" alt="" class="admin-gallery-item__img" />
-                <div class="admin-gallery-item__body">
-                  <input v-model="img.name" class="admin-gallery-item__input" placeholder="Nombre" />
-                  <input v-model="img.alt_text" class="admin-gallery-item__input" placeholder="Texto alternativo" />
-                </div>
-                <div class="admin-gallery-item__actions">
-                  <button type="button" class="admin-action-btn admin-action-btn--delete" @click="removeGalleryImage(idx)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pricing -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
-
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">Precios</h3>
-          </div>
-
-          <div class="admin-content-card__body">
-
-            <div class="admin-pricing-grid">
-
-              <div class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-price">Precio Base</label>
-                <input id="pf-price" v-model.number="form.base_price_amount" type="number" min="0" step="1" class="admin-product-form__input" required/>
-              </div>
-
-              <div class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-currency">Moneda</label>
-                <select id="pf-currency" v-model="form.base_price_currency" class="admin-product-form__select">
-                  <option value="MXN">MXN</option>
-                  <option value="USD">USD</option>
-                </select>
-              </div>
-
-              <div class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-vat">IVA (%)</label>
-                <input id="pf-vat" v-model.number="form.vat" type="number" min="0" max="100" class="admin-product-form__input"/>
-              </div>
-
-              <div class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-tax-class">Clase de impuesto</label>
-                <select id="pf-tax-class" v-model="form.tax_class" class="admin-product-form__select">
-                  <option value="standard">Estándar</option>
-                  <option value="reduced">Reducida</option>
-                  <option value="zero">Exento</option>
-                </select>
-              </div>
-
-            </div>
-
-            <div class="admin-pricing-grid" style="margin-top: 1rem;">
-
-              <div class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-discount-type">Tipo de descuento</label>
-                <select id="pf-discount-type" v-model="form.discount_type" class="admin-product-form__select">
-                  <option value="none">Sin descuento</option>
-                  <option value="percentage">Porcentaje</option>
-                  <option value="fixed">Monto fijo</option>
-                </select>
-              </div>
-
-              <div v-if="form.discount_type !== 'none'" class="admin-product-form__field">
-                <label class="admin-product-form__label" for="pf-discount">
-                  {{ form.discount_type === 'percentage' ? 'Descuento (%)' : 'Descuento' }}
-                </label>
-                <input id="pf-discount" v-model.number="form.discount_value" type="number" min="0" class="admin-product-form__input"/>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-
+        <ProductPricing v-model="form" />
       </div>
 
       <!-- RIGHT COLUMN — Sidebar -->
       <div>
-        <!-- Status + Preview integrated -->
+        <!-- Status + Preview -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
 
           <div class="admin-content-card__header">
@@ -361,108 +181,21 @@ onBeforeUnmount(() => {
 
         </div>
 
-        <!-- Opciones del Producto -->
-        <div class="admin-content-card" style="margin-bottom: 1.5rem;">
-
-          <div class="admin-content-card__header">
-            <h3 class="admin-content-card__title">Opciones del Producto</h3>
-            <button v-if="isEdit && availableTemplates.length" type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showAddOption = !showAddOption">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              Vincular
-            </button>
-          </div>
-
-          <div class="admin-content-card__body">
-            <p v-if="!isEdit" style="font-size: 0.85rem; color: var(--admin-text-secondary);">
-              Guarda el producto primero para poder asignar opciones.
-            </p>
-            <template v-else>
-              <!-- Add option selector -->
-              <div v-if="showAddOption" class="option-link-add">
-                <select v-model="addOptionTemplateId" class="admin-product-form__select">
-                  <option value="">Selecciona una opción...</option>
-                  <option v-for="tpl in availableTemplates" :key="tpl.id" :value="tpl.id">
-                    {{ tpl.label }} ({{ getOptionTypeLabel(tpl.type) }})
-                  </option>
-                </select>
-                <div style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
-                  <button type="button" class="admin-btn admin-btn--sm admin-btn--primary" :disabled="!addOptionTemplateId" @click="addOptionLink">
-                    Agregar
-                  </button>
-                  <button type="button" class="admin-btn admin-btn--sm admin-btn--outline" @click="showAddOption = false; addOptionTemplateId = ''">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-
-              <p v-if="!optionLinks.length && !showAddOption" style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-bottom: 0;">
-                Este producto aún no tiene opciones asignadas.
-              </p>
-
-              <!-- Option links list -->
-              <div v-if="optionLinks.length" class="option-links-list">
-                <div v-for="link in optionLinks" :key="link.id" class="option-link-item">
-                  <!-- Header row -->
-                  <div class="option-link-item__header">
-                    <button type="button" class="option-link-item__toggle" @click="toggleLinkExpand(link.id)">
-                      <svg
-                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        :style="{ transform: expandedLinks.has(link.id) ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }"
-                      ><polyline points="9 18 15 12 9 6" /></svg>
-                    </button>
-                    <span class="option-link-item__name">{{ link.template?.label ?? '...' }}</span>
-                    <span class="admin-badge admin-badge--info" style="font-size: 0.6rem;">{{ getOptionTypeLabel(link.template?.type ?? '') }}</span>
-                    <div class="option-link-item__actions">
-                      <button type="button" class="option-link-action-btn" title="Leyenda" @click="openLegendModal(link)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
-                      </button>
-                      <button type="button" class="option-link-action-btn option-link-action-btn--delete" title="Desvincular" @click="removeOptionLink(link)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Expanded body -->
-                  <div v-if="expandedLinks.has(link.id) && link.template" class="option-link-item__body">
-                    <div v-if="link.template.help_text" class="option-link-item__help">
-                      {{ link.template.help_text }}
-                    </div>
-                    <div v-if="link.legend" class="option-link-item__legend">
-                      <span class="option-link-item__legend-label">Leyenda:</span>
-                      <div class="option-link-item__legend-content" v-html="link.legend"></div>
-                    </div>
-
-                    <!-- Values tree -->
-                    <div v-if="link.template.values.length" class="option-link-values-tree">
-                      <div v-for="val in link.template.values" :key="val.id" class="option-link-value-row" :class="{ 'option-link-value-row--disabled': !isValueEnabled(link, val.id) }">
-                        <label class="option-link-value-check">
-                          <input type="checkbox" :checked="isValueEnabled(link, val.id)" @change="toggleValue(link, val.id)"/>
-                          <span class="option-link-value-check__mark"></span>
-                        </label>
-                        <template v-if="link.template!.type === 'color' && val.metadata?.hex">
-                          <span class="option-link-value-swatch" :style="{ background: (val.metadata.hex as string) }"></span>
-                        </template>
-                        <span class="option-link-value-label">{{ val.label }}</span>
-                        <span v-if="val.price_modifier_type !== 'none'" class="option-link-value-price">
-                          {{ val.price_modifier_type === 'add' ? '+' : val.price_modifier_type === 'subtract' ? '-' : '=' }}{{ ((val.price_modifier_amount ?? 0) / 100).toFixed(2) }}
-                        </span>
-                      </div>
-                    </div>
-                    <p v-else style="font-size: 0.75rem; color: var(--admin-text-muted); margin: 0;">
-                      Sin valores configurados
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            </template>
-          </div>
-        </div>
-
+        <ProductOptionsManager
+            :is-edit="isEdit"
+            :option-links="optionLinks"
+            v-model:show-add-option="showAddOption"
+            v-model:add-option-template-id="addOptionTemplateId"
+            :available-templates="availableTemplates"
+            :expanded-links="expandedLinks"
+            :get-option-type-label="getOptionTypeLabel"
+            :is-value-enabled="isValueEnabled"
+            @toggle-expand="toggleLinkExpand"
+            @open-legend="openLegendModal"
+            @remove-link="removeOptionLink"
+            @toggle-value="toggleValue"
+            @add-link="addOptionLink"
+        />
         <!-- Product Details -->
         <div class="admin-content-card" style="margin-bottom: 1.5rem;">
           <div class="admin-content-card__header">

@@ -185,9 +185,7 @@ export function useProductForm(deps: UseProductFormDeps) {
             if (isEdit.value) {
                 await adminPanelService.updateProduct(productId.value!, payload)
                 await uploadImages(productId.value!)
-                await loadProduct()
-                await deps.loadOptionLinks()
-                deps.thumbnailFile.value = null
+                await Promise.all([loadProduct(), deps.loadOptionLinks()])
                 success('Producto actualizado exitosamente')
             } else {
                 const created = await adminPanelService.createProduct(payload)
