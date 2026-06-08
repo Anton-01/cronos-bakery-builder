@@ -13,6 +13,7 @@ const form = reactive({ email: '', password: '', code: '' })
 const error = ref<string | null>(null)
 const loading = ref(false)
 const needsCode = ref(false)
+const rememberDevice = ref(false)
 
 async function submit(): Promise<void> {
   error.value = null
@@ -45,29 +46,35 @@ async function submit(): Promise<void> {
         <div class="admin-login__brand-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </div>
-        <span class="admin-login__brand-name">Cronos Admin</span>
+        <span class="admin-login__brand-name">Cronos Builder</span>
       </div>
-
-      <h2>Bienvenido</h2>
-      <p>Ingresa tus credenciales para acceder al panel de administracion</p>
 
       <form @submit.prevent="submit">
         <p v-if="error" class="admin-login__error">{{ error }}</p>
 
         <label>
-          Correo electronico
+          Username
           <input v-model="form.email" type="email" required :disabled="needsCode" placeholder="admin@cronos.com" />
         </label>
         <label>
-          Contrasena
-          <input v-model="form.password" type="password" required :disabled="needsCode" placeholder="Tu contrasena" />
+          Password
+          <input v-model="form.password" type="password" required :disabled="needsCode" placeholder="Password" />
         </label>
         <label v-if="needsCode">
           Codigo 2FA
           <input v-model="form.code" inputmode="numeric" maxlength="6" placeholder="123456" autofocus />
         </label>
+
+        <div class="admin-login__options">
+          <label class="admin-login__remember">
+            <input v-model="rememberDevice" type="checkbox" />
+            <span>Remember this Device</span>
+          </label>
+          <a href="#" class="admin-login__forgot" @click.prevent>Forgot Password ?</a>
+        </div>
+
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Verificando...' : needsCode ? 'Verificar Codigo' : 'Iniciar Sesion' }}
+          {{ loading ? 'Verificando...' : needsCode ? 'Verificar Codigo' : 'Sign In' }}
         </button>
       </form>
     </div>

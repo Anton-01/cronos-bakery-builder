@@ -5,7 +5,7 @@ export const administrationRoutes: RouteRecordRaw[] = [
     path: '/admin/login',
     name: 'admin.login',
     component: () => import('./pages/AdminLoginPage.vue'),
-    meta: { layout: 'auth' },
+    meta: { layout: 'blank' },
   },
   {
     path: '/admin',

@@ -53,6 +53,12 @@ const form = reactive({
   tags: '',
 })
 
+const formSnapshot = ref('')
+const isDirty = computed(() => {
+  if (!isEdit.value) return true
+  return JSON.stringify(form) !== formSnapshot.value || thumbnailFile.value !== null
+})
+
 const thumbnail = ref<string | null>(null)
 const thumbnailFile = ref<File | null>(null)
 const thumbnailMeta = ref<{ name: string; size: string; type: string } | null>(null)
@@ -191,8 +197,17 @@ const legendEditor = useEditor({
   content: '',
 })
 
+const legendOriginal = ref<string | null>(null)
+
+const legendHasChanged = computed(() => {
+  const html = legendEditor.value?.getHTML() || ''
+  const current = html === '<p></p>' ? null : html
+  return current !== legendOriginal.value
+})
+
 function openLegendModal(link: ProductOptionLink) {
   legendLinkId.value = link.id
+  legendOriginal.value = link.legend || null
   legendEditor.value?.commands.setContent(link.legend || '')
   legendModal.value = true
 }
@@ -201,9 +216,22 @@ async function saveLegend() {
   if (!legendLinkId.value || !productId.value) return
   const html = legendEditor.value?.getHTML() || ''
   const content = html === '<p></p>' ? null : html
+  if (content === legendOriginal.value) {
+    legendModal.value = false
+    return
+  }
   try {
-    const updated = await adminPanelService.updateProductOptionLink(productId.value, legendLinkId.value, { legend: content })
     const idx = optionLinks.value.findIndex((l) => l.id === legendLinkId.value)
+    const link = idx !== -1 ? optionLinks.value[idx] : null
+    let updated: ProductOptionLink
+    if (link && (link as any)._mapped) {
+      updated = await adminPanelService.createProductOptionLink(productId.value, {
+        template_id: link.template_id,
+        legend: content ?? undefined,
+      })
+    } else {
+      updated = await adminPanelService.updateProductOptionLink(productId.value, legendLinkId.value, { legend: content })
+    }
     if (idx !== -1) optionLinks.value[idx] = updated
     legendModal.value = false
     success('Leyenda actualizada')
@@ -241,7 +269,15 @@ async function toggleValue(link: ProductOptionLink, valueId: string) {
   const enabledIds = current.length === allIds.length ? null : current
 
   try {
-    const updated = await adminPanelService.updateProductOptionLink(productId.value, link.id, { enabled_value_ids: enabledIds })
+    let updated: ProductOptionLink
+    if ((link as any)._mapped) {
+      updated = await adminPanelService.createProductOptionLink(productId.value, {
+        template_id: link.template_id,
+        enabled_value_ids: enabledIds ?? undefined,
+      })
+    } else {
+      updated = await adminPanelService.updateProductOptionLink(productId.value, link.id, { enabled_value_ids: enabledIds })
+    }
     const idx = optionLinks.value.findIndex((l) => l.id === link.id)
     if (idx !== -1) optionLinks.value[idx] = updated
   } catch {
@@ -273,7 +309,9 @@ async function removeOptionLink(link: ProductOptionLink) {
   if (!ok || !productId.value) return
 
   try {
-    await adminPanelService.deleteProductOptionLink(productId.value, link.id)
+    if (!(link as any)._mapped) {
+      await adminPanelService.deleteProductOptionLink(productId.value, link.id)
+    }
     optionLinks.value = optionLinks.value.filter((l) => l.id !== link.id)
     success('Opción desvinculada')
   } catch {
@@ -322,7 +360,7 @@ function onPreviewKeydown(e: KeyboardEvent) {
 function isBlobUrl(url: string | null | undefined): boolean {
   return !!url && url.startsWith('blob:')
 }
-function mapOptionsToLinks(options: PbOption[]): ProductOptionLink[] {
+function mapOptionsToLinks(options: PbOption[]): (ProductOptionLink & { _mapped?: boolean })[] {
   return options.map((opt) => ({
     id: opt.id,
     product_id: opt.product_id,
@@ -330,6 +368,7 @@ function mapOptionsToLinks(options: PbOption[]): ProductOptionLink[] {
     legend: null,
     enabled_value_ids: null,
     position: opt.position,
+    _mapped: true,
     template: {
       id: opt.id,
       key: opt.key,
@@ -375,6 +414,7 @@ async function loadProduct() {
     if ((p as any).options?.length) {
       optionLinks.value = mapOptionsToLinks((p as any).options as PbOption[])
     }
+    formSnapshot.value = JSON.stringify(form)
   } catch {
     error('Error al cargar el producto')
   } finally {
@@ -443,6 +483,7 @@ async function submitForm() {
       await uploadImages(productId.value!)
       await loadProduct()
       await loadOptionLinks()
+      thumbnailFile.value = null
       success('Producto actualizado exitosamente')
     } else {
       const created = await adminPanelService.createProduct(payload)
@@ -487,7 +528,7 @@ onBeforeUnmount(() => {
         <button class="admin-btn admin-btn--outline" @click="router.push('/admin/products')">
           Cancelar
         </button>
-        <button class="admin-btn admin-btn--primary" :disabled="saving" @click="submitForm">
+        <button class="admin-btn admin-btn--primary" :disabled="saving || (isEdit && !isDirty)" @click="submitForm">
           {{ saving ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Crear Producto') }}
         </button>
       </div>
@@ -945,7 +986,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="legend-modal__footer">
               <button type="button" class="admin-btn admin-btn--outline" @click="closeLegendModal">Cancelar</button>
-              <button type="button" class="admin-btn admin-btn--primary" @click="saveLegend">Guardar</button>
+              <button type="button" class="admin-btn admin-btn--primary" :disabled="!legendHasChanged" @click="saveLegend">Guardar</button>
             </div>
           </div>
         </div>
