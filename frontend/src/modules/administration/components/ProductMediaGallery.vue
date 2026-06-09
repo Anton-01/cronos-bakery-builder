@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Ref } from 'vue'
+
 import type { GalleryImage } from '../composables/useMediaGallery'
 interface FileMeta {
   name: string

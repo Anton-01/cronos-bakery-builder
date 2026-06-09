@@ -11,7 +11,7 @@ interface RichTextEditorOptions {
 }
 
 export function useRichTextEditor(options: RichTextEditorOptions = {}): ShallowRef<Editor | undefined> {
-    return useEditor({
+    const editorOptions: Record<string, unknown> = {
         extensions: [
             StarterKit,
             Underline,
@@ -20,8 +20,9 @@ export function useRichTextEditor(options: RichTextEditorOptions = {}): ShallowR
             }),
         ],
         content: options.content ?? '',
-        onUpdate: options.onUpdate
-            ? ({ editor: e }) => options.onUpdate!(e.getHTML())
-            : undefined,
-    })
+    }
+    if (options.onUpdate) {
+        editorOptions.onUpdate = ({ editor: e }: { editor: Editor }) => options.onUpdate!(e.getHTML())
+    }
+    return useEditor(editorOptions as Parameters<typeof useEditor>[0])
 }

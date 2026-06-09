@@ -49,8 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
 
-        // Never expose stack traces or internal details to API consumers in production..
-        $exceptions->respond(function (JsonResponse $response, \Throwable $e, Request $request) {
+        // Never expose stack traces or internal details to API consumers in production.
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $e, Request $request) {
             if (! $request->is('api/*')) {
                 return $response;
             }

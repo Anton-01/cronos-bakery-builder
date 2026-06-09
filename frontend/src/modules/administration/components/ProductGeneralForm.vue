@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { EditorContent } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/vue-3'
-import type { ShallowRef } from 'vue'
+
 import type { ProductFormState } from '../composables/useProductForm'
 const form = defineModel<ProductFormState>({ required: true })
 defineProps<{
-  editor: ShallowRef<Editor | undefined>
+  editor: Editor | undefined
 }>()
 const emit = defineEmits<{
   'name-input': []
