@@ -106,6 +106,12 @@ export function useProductOptions(
         legendLinkId.value = null
     }
 
+    function resolveTemplateId(link: MappedOptionLink): string | null {
+        if (!link._mapped) return link.template_id
+        const tpl = allTemplates.value.find((t) => t.key === link.template?.key)
+        return tpl?.id ?? null
+    }
+
     async function saveLegend() {
         const pid = productId()
         if (!legendLinkId.value || !pid) return
@@ -120,8 +126,13 @@ export function useProductOptions(
             const link = idx !== -1 ? optionLinks.value[idx] : null
             let updated: ProductOptionLink
             if (link?._mapped) {
+                const templateId = resolveTemplateId(link)
+                if (!templateId) {
+                    error('No se encontró la plantilla de opción correspondiente')
+                    return
+                }
                 updated = await adminPanelService.createProductOptionLink(pid, {
-                    template_id: link.template_id,
+                    template_id: templateId,
                     legend: content ?? undefined,
                 })
             } else {
@@ -152,8 +163,13 @@ export function useProductOptions(
         try {
             let updated: ProductOptionLink
             if (link._mapped) {
+                const templateId = resolveTemplateId(link)
+                if (!templateId) {
+                    error('No se encontró la plantilla de opción correspondiente')
+                    return
+                }
                 updated = await adminPanelService.createProductOptionLink(pid, {
-                    template_id: link.template_id,
+                    template_id: templateId,
                     enabled_value_ids: enabledIds ?? undefined,
                 })
             } else {
