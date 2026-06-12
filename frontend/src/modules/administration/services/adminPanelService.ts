@@ -22,9 +22,18 @@ export interface AuditLog {
 export interface AdminUser {
   id: number
   name: string
+  first_name: string
+  last_name: string
   email: string
   phone: string | null
+  avatar: string | null
   roles: string[]
+  is_suspended: boolean
+  suspended_at: string | null
+  suspended_until: string | null
+  suspension_reason: string | null
+  email_verified: boolean
+  created_at: string
 }
 
 export interface RoleDefinition {
@@ -200,8 +209,44 @@ export const adminPanelService = {
     return request<Paginated<AuditLog>>({ url: '/admin/audit-logs', method: 'GET' })
   },
 
-  users(search = ''): Promise<Paginated<AdminUser>> {
-    return request<Paginated<AdminUser>>({ url: '/admin/users', method: 'GET', params: { search } })
+  users(params: { search?: string; status?: string; role?: string; page?: number; per_page?: number } = {}): Promise<Paginated<AdminUser>> {
+    return request<Paginated<AdminUser>>({ url: '/admin/users', method: 'GET', params })
+  },
+
+  showUser(id: number): Promise<AdminUser> {
+    return request<Wrapped<AdminUser>>({ url: `/admin/users/${id}`, method: 'GET' }).then(r => r.data)
+  },
+
+  createUser(data: { first_name: string; last_name: string; email: string; phone?: string; password: string; role: string }): Promise<AdminUser> {
+    return request<Wrapped<AdminUser>>({ url: '/admin/users', method: 'POST', data }).then(r => r.data)
+  },
+
+  updateUser(id: number, data: { first_name?: string; last_name?: string; email?: string; phone?: string; role?: string }): Promise<AdminUser> {
+    return request<Wrapped<AdminUser>>({ url: `/admin/users/${id}`, method: 'PUT', data }).then(r => r.data)
+  },
+
+  deleteUser(id: number): Promise<void> {
+    return request({ url: `/admin/users/${id}`, method: 'DELETE' })
+  },
+
+  suspendUser(id: number, data: { reason: string; suspended_until?: string }): Promise<AdminUser> {
+    return request<Wrapped<AdminUser>>({ url: `/admin/users/${id}/suspend`, method: 'POST', data }).then(r => r.data)
+  },
+
+  reactivateUser(id: number): Promise<AdminUser> {
+    return request<Wrapped<AdminUser>>({ url: `/admin/users/${id}/reactivate`, method: 'POST' }).then(r => r.data)
+  },
+
+  impersonateUser(id: number): Promise<{ token: string; user: AdminUser }> {
+    return request<{ token: string; user: AdminUser }>({ url: `/admin/users/${id}/impersonate`, method: 'POST' })
+  },
+
+  revokeUserSessions(id: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/users/${id}/revoke-sessions`, method: 'POST' })
+  },
+
+  sendPasswordReset(id: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/users/${id}/send-password-reset`, method: 'POST' })
   },
 
   roles(): Promise<RoleDefinition[]> {
