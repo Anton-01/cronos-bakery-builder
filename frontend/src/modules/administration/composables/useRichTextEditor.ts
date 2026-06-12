@@ -1,6 +1,5 @@
 import { useEditor, type Editor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
 import type { ShallowRef } from 'vue'
 
@@ -14,7 +13,6 @@ export function useRichTextEditor(options: RichTextEditorOptions = {}): ShallowR
     const editorOptions: Record<string, unknown> = {
         extensions: [
             StarterKit,
-            Underline,
             Placeholder.configure({
                 placeholder: options.placeholder ?? '',
             }),

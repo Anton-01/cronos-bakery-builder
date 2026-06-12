@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useAdminAuthStore } from '@/modules/administration/stores/adminAuth'
@@ -8,11 +8,26 @@ const adminAuth = useAdminAuthStore()
 const router = useRouter()
 const route = useRoute()
 const sidebarOpen = ref(false)
+const profileOpen = ref(false)
+const profileDropdownRef = ref<HTMLElement | null>(null)
 
 const adminInitial = computed(() => {
   const name = adminAuth.admin?.name ?? 'A'
   return name.charAt(0).toUpperCase()
 })
+
+function toggleProfile() {
+  profileOpen.value = !profileOpen.value
+}
+function onClickOutside(e: MouseEvent) {
+  if (profileDropdownRef.value && !profileDropdownRef.value.contains(e.target as Node)) {
+    profileOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', onClickOutside))
+onUnmounted(() => document.removeEventListener('click', onClickOutside))
+
 
 const navSections = [
   {
@@ -178,6 +193,57 @@ onMounted(() => {
           <RouterLink to="/" class="admin-topbar__icon-btn" title="Ver tienda">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </RouterLink>
+
+          <!-- User profile dropdown -->
+          <div ref="profileDropdownRef" class="admin-profile-dropdown">
+            <button type="button" class="admin-profile-dropdown__trigger" @click.stop="toggleProfile">
+              <div class="admin-profile-dropdown__avatar">{{ adminInitial }}</div>
+            </button>
+            <Transition name="dropdown-fade">
+              <div v-if="profileOpen" class="admin-profile-dropdown__menu">
+                <div class="admin-profile-dropdown__header">
+                  <span class="admin-profile-dropdown__label">User Profile</span>
+                </div>
+                <div class="admin-profile-dropdown__user">
+                  <div class="admin-profile-dropdown__user-avatar">{{ adminInitial }}</div>
+                  <div class="admin-profile-dropdown__user-info">
+                    <div class="admin-profile-dropdown__user-name">{{ adminAuth.admin?.name ?? 'Admin' }}</div>
+                    <div class="admin-profile-dropdown__user-role">{{ adminAuth.admin?.roles?.[0] ?? 'Admin' }}</div>
+                    <div class="admin-profile-dropdown__user-email">{{ adminAuth.admin?.email ?? '' }}</div>
+                  </div>
+                </div>
+                <div class="admin-profile-dropdown__links">
+                  <RouterLink to="/admin/profile" class="admin-profile-dropdown__link" @click="profileOpen = false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div>
+                      <span class="admin-profile-dropdown__link-label">Mi Perfil</span>
+                      <span class="admin-profile-dropdown__link-desc">Configuración de cuenta</span>
+                    </div>
+                  </RouterLink>
+                  <RouterLink to="/admin/notifications" class="admin-profile-dropdown__link" @click="profileOpen = false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+                    <div>
+                      <span class="admin-profile-dropdown__link-label">Mi Bandeja</span>
+                      <span class="admin-profile-dropdown__link-desc">Mensajes y correos</span>
+                    </div>
+                  </RouterLink>
+                  <RouterLink to="/admin/tasks" class="admin-profile-dropdown__link" @click="profileOpen = false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <div>
+                      <span class="admin-profile-dropdown__link-label">Mis Tareas</span>
+                      <span class="admin-profile-dropdown__link-desc">Lista de pendientes</span>
+                    </div>
+                  </RouterLink>
+                </div>
+                <div class="admin-profile-dropdown__footer">
+                  <button type="button" class="admin-profile-dropdown__logout" @click="logout">
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
+
         </div>
       </header>
 
@@ -193,5 +259,166 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 0;
+}
+/* Profile dropdown */
+.admin-profile-dropdown {
+  position: relative;
+}
+.admin-profile-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  transition: opacity 0.15s ease;
+}
+.admin-profile-dropdown__trigger:hover {
+  opacity: 0.8;
+}
+.admin-profile-dropdown__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--admin-primary, #5d87ff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+}
+.admin-profile-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--admin-border, #e5eaef);
+  z-index: 1000;
+  overflow: hidden;
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+}
+.admin-profile-dropdown__header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--admin-border, #e5eaef);
+}
+.admin-profile-dropdown__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--admin-text, #2a3547);
+}
+.admin-profile-dropdown__user {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--admin-border, #e5eaef);
+}
+.admin-profile-dropdown__user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--admin-primary, #5d87ff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.admin-profile-dropdown__user-info {
+  min-width: 0;
+}
+.admin-profile-dropdown__user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--admin-text, #2a3547);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-profile-dropdown__user-role {
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #a1aab4);
+  margin-top: 0.1rem;
+}
+.admin-profile-dropdown__user-email {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted, #a1aab4);
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-profile-dropdown__links {
+  padding: 0.5rem 0;
+}
+.admin-profile-dropdown__link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 1.25rem;
+  text-decoration: none;
+  color: var(--admin-text, #2a3547);
+  transition: background 0.12s ease;
+}
+.admin-profile-dropdown__link:hover {
+  background: var(--admin-primary-light, #ecf2ff);
+}
+.admin-profile-dropdown__link svg {
+  color: var(--admin-primary, #5d87ff);
+  flex-shrink: 0;
+}
+.admin-profile-dropdown__link-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-text, #2a3547);
+}
+.admin-profile-dropdown__link-desc {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--admin-text-muted, #a1aab4);
+  margin-top: 0.1rem;
+}
+.admin-profile-dropdown__footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--admin-border, #e5eaef);
+}
+.admin-profile-dropdown__logout {
+  width: 100%;
+  padding: 0.55rem;
+  border: 1px solid var(--admin-primary, #5d87ff);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-primary, #5d87ff);
+  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.admin-profile-dropdown__logout:hover {
+  background: var(--admin-primary, #5d87ff);
+  color: #fff;
+}
+/* Dropdown transition */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

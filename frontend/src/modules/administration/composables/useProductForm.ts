@@ -50,6 +50,7 @@ interface UseProductFormDeps {
     thumbnail: { value: string | null }
     thumbnailFile: { value: File | null }
     gallery: { value: GalleryImage[] }
+    galleryDirty: { value: boolean }
     setThumbnailFromUrl: (url: string | null) => void
     setGalleryFromImages: (images: { id: string; path: string; name: string | null; alt_text: string | null; position: number }[]) => void
     setLinksFromOptions: (options: PbOption[]) => void
@@ -81,10 +82,14 @@ export function useProductForm(deps: UseProductFormDeps) {
     })
 
     const formSnapshot = ref('')
+    const thumbnailSnapshot = ref<string | null>(null)
 
     const isDirty = computed(() => {
         if (!isEdit.value) return true
-        return JSON.stringify(form) !== formSnapshot.value || deps.thumbnailFile.value !== null
+        return JSON.stringify(form) !== formSnapshot.value
+            || deps.thumbnailFile.value !== null
+            || deps.thumbnail.value !== thumbnailSnapshot.value
+            || deps.galleryDirty.value
     })
 
     function onNameInput() {
@@ -132,6 +137,7 @@ export function useProductForm(deps: UseProductFormDeps) {
             }
 
             formSnapshot.value = JSON.stringify(form)
+            thumbnailSnapshot.value = deps.thumbnail.value
         } catch {
             error('Error al cargar el producto')
         } finally {

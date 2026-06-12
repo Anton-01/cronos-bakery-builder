@@ -1,5 +1,6 @@
 <script setup lang="ts">
 
+import { ref } from 'vue'
 import type { GalleryImage } from '../composables/useMediaGallery'
 interface FileMeta {
   name: string
@@ -12,8 +13,6 @@ defineProps<{
   gallery: GalleryImage[]
   dragOverThumb: boolean
   dragOverGallery: boolean
-  thumbInput: HTMLInputElement | null
-  galleryInput: HTMLInputElement | null
 }>()
 defineEmits<{
   'update:dragOverThumb': [val: boolean]
@@ -24,7 +23,11 @@ defineEmits<{
   'gallery-drop': [e: DragEvent]
   'gallery-select': [e: Event]
   'gallery-remove': [idx: number]
+  'gallery-meta-change': []
 }>()
+
+const thumbInputRef = ref<HTMLInputElement | null>(null)
+const galleryInputRef = ref<HTMLInputElement | null>(null)
 </script>
 
 <template>
@@ -47,16 +50,16 @@ defineEmits<{
             <button type="button" class="media-thumb-preview__remove" @click.stop="$emit('thumb-remove')">&times;</button>
           </div>
         </div>
-        <div v-if="!thumbnail" class="media-drop-placeholder" @click="thumbInput?.click()">
+        <div v-if="!thumbnail" class="media-drop-placeholder" @click="thumbInputRef?.click()">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
           </svg>
           <p>Arrastra una imagen o haz clic para seleccionar</p>
           <span>JPG, PNG o WebP — máx 5 MB</span>
         </div>
-        <div v-else class="media-drop-clickable" @click="thumbInput?.click()"></div>
+        <div v-else class="media-drop-clickable" @click="thumbInputRef?.click()"></div>
       </div>
-      <input ref="thumbInput" type="file" accept="image/*" style="display: none;" @change="$emit('thumb-select', $event)" />
+      <input ref="thumbInputRef" type="file" accept="image/*" style="display: none;" @change="$emit('thumb-select', $event)" />
       <div v-if="thumbnailMeta" class="media-file-meta">
         <span class="media-file-meta__label">Archivo:</span>
         <div class="media-file-meta__details">
@@ -83,7 +86,7 @@ defineEmits<{
           @dragover.prevent="$emit('update:dragOverGallery', true)"
           @dragleave="$emit('update:dragOverGallery', false)"
           @drop.prevent="$emit('gallery-drop', $event)"
-          @click="galleryInput?.click()"
+          @click="galleryInputRef?.click()"
       >
         <div class="admin-drop-zone__icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -93,13 +96,13 @@ defineEmits<{
         <p class="admin-drop-zone__text">Agrega imágenes a la galería</p>
         <p class="admin-drop-zone__hint">Puedes seleccionar varias a la vez</p>
       </div>
-      <input ref="galleryInput" type="file" accept="image/*" multiple style="display: none;" @change="$emit('gallery-select', $event)" />
+      <input ref="galleryInputRef" type="file" accept="image/*" multiple style="display: none;" @change="$emit('gallery-select', $event)" />
       <div v-if="gallery.length" class="admin-gallery-grid">
         <div v-for="(img, idx) in gallery" :key="img.id" class="admin-gallery-item">
           <img :src="img._preview || img.path" alt="" class="admin-gallery-item__img" />
           <div class="admin-gallery-item__body">
-            <input v-model="img.name" class="admin-gallery-item__input" placeholder="Nombre" />
-            <input v-model="img.alt_text" class="admin-gallery-item__input" placeholder="Texto alternativo" />
+            <input v-model="img.name" class="admin-gallery-item__input" placeholder="Nombre" @input="$emit('gallery-meta-change')" />
+            <input v-model="img.alt_text" class="admin-gallery-item__input" placeholder="Texto alternativo" @input="$emit('gallery-meta-change')" />
           </div>
           <div class="admin-gallery-item__actions">
             <button type="button" class="admin-action-btn admin-action-btn--delete" @click="$emit('gallery-remove', idx)">
