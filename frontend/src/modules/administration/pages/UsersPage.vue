@@ -79,7 +79,8 @@ async function handleSuspend(data: { reason: string; suspended_until?: string })
 async function handleReactivate(user: AdminUser) {
   const ok = await confirm({
     title: 'Reactivar usuario',
-    message: `Reactivar la cuenta de ${user.name}?`,
+    message: `¿Reactivar la cuenta de ${user.name}? El usuario podrá volver a iniciar sesión.`,
+    action: 'activate',
     confirmText: 'Reactivar',
   })
   if (!ok) return
@@ -94,7 +95,8 @@ async function handleReactivate(user: AdminUser) {
 async function handleImpersonate(user: AdminUser) {
   const ok = await confirm({
     title: 'Impersonar usuario',
-    message: `Vas a iniciar sesion como ${user.name}. Esto es solo para soporte.`,
+    message: `Vas a iniciar sesión como ${user.name}. Esto es solo para soporte técnico.`,
+    action: 'warning',
     confirmText: 'Impersonar',
   })
   if (!ok) return
@@ -103,7 +105,7 @@ async function handleImpersonate(user: AdminUser) {
     impersonating.value = { name: user.name, token: result.token }
     localStorage.setItem('impersonation_token', result.token)
     localStorage.setItem('impersonation_admin_token', localStorage.getItem('admin_token') ?? '')
-    toast.success(`Ahora estas viendo como ${user.name}.`)
+    toast.success(`Ahora estás viendo como ${user.name}.`)
   } catch (e: any) {
     toast.error(e?.response?.data?.message ?? 'Error al impersonar.')
   }
@@ -121,7 +123,8 @@ function stopImpersonation() {
 async function handleRevokeSessions(user: AdminUser) {
   const ok = await confirm({
     title: 'Cerrar sesiones',
-    message: `Cerrar todas las sesiones activas de ${user.name}?`,
+    message: `¿Cerrar todas las sesiones activas de ${user.name}? El usuario deberá volver a iniciar sesión en todos sus dispositivos.`,
+    action: 'warning',
     confirmText: 'Cerrar sesiones',
   })
   if (!ok) return
@@ -135,8 +138,9 @@ async function handleRevokeSessions(user: AdminUser) {
 
 async function handleSendPasswordReset(user: AdminUser) {
   const ok = await confirm({
-    title: 'Resetear contrasena',
-    message: `Enviar enlace de reseteo a ${user.email}?`,
+    title: 'Resetear contraseña',
+    message: `¿Enviar enlace de reseteo de contraseña a ${user.email}?`,
+    action: 'info',
     confirmText: 'Enviar enlace',
   })
   if (!ok) return
@@ -151,9 +155,9 @@ async function handleSendPasswordReset(user: AdminUser) {
 async function handleDelete(user: AdminUser) {
   const ok = await confirm({
     title: 'Eliminar usuario',
-    message: `Eliminar permanentemente a ${user.name}? Esta accion no se puede deshacer.`,
+    message: `¿Eliminar permanentemente a ${user.name}? Esta acción no se puede deshacer. Se eliminarán todos sus datos, sesiones y tokens.`,
+    action: 'delete',
     confirmText: 'Eliminar',
-    destructive: true,
   })
   if (!ok) return
   try {
@@ -168,15 +172,35 @@ async function handleDelete(user: AdminUser) {
 <template>
   <section class="admin-page">
     <!-- Page Header -->
-    <div class="users-page__header">
+    <div class="admin-page-header">
       <div>
-        <h1 class="users-page__title">Usuarios</h1>
-        <div class="users-page__breadcrumb">
-          <span>Inicio</span>
-          <span class="users-page__breadcrumb-sep">&bull;</span>
-          <span>Usuarios</span>
+        <h1>Usuarios</h1>
+        <div class="admin-page-header__breadcrumb">
+          Inicio <span>/</span> Usuarios
         </div>
       </div>
+      <svg class="users-page__header-illustration" viewBox="0 0 180 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="50" y="30" width="80" height="60" rx="8" fill="#d4e2ff" />
+        <rect x="55" y="35" width="70" height="50" rx="4" fill="#eef3ff" />
+        <rect x="62" y="48" width="28" height="3" rx="1.5" fill="#7fadff" />
+        <rect x="62" y="55" width="20" height="3" rx="1.5" fill="#b3d0ff" />
+        <rect x="62" y="62" width="24" height="3" rx="1.5" fill="#b3d0ff" />
+        <rect x="100" y="45" width="18" height="22" rx="4" fill="#d4e2ff" />
+        <circle cx="109" cy="51" r="4" fill="#7fadff" />
+        <rect x="103" y="58" width="12" height="6" rx="2" fill="#7fadff" />
+        <circle cx="45" cy="90" r="14" fill="#d4e2ff" />
+        <circle cx="45" cy="85" r="6" fill="#7fadff" />
+        <path d="M33 99c0-6.627 5.373-9 12-9s12 2.373 12 9" fill="#7fadff" />
+        <circle cx="140" cy="55" r="12" fill="#d4e2ff" />
+        <circle cx="140" cy="51" r="5" fill="#7fadff" />
+        <path d="M130 63c0-5.523 4.477-8 10-8s10 2.477 10 8" fill="#7fadff" />
+        <circle cx="90" cy="110" r="10" fill="#d4e2ff" />
+        <circle cx="90" cy="107" r="4" fill="#7fadff" />
+        <path d="M82 117c0-4.418 3.582-6 8-6s8 1.582 8 6" fill="#7fadff" />
+        <line x1="57" y1="92" x2="68" y2="82" stroke="#b3d0ff" stroke-width="1.5" stroke-dasharray="3 2" />
+        <line x1="112" y1="80" x2="128" y2="63" stroke="#b3d0ff" stroke-width="1.5" stroke-dasharray="3 2" />
+        <line x1="98" y1="95" x2="98" y2="107" stroke="#b3d0ff" stroke-width="1.5" stroke-dasharray="3 2" />
+      </svg>
     </div>
 
     <!-- Toolbar -->
@@ -252,31 +276,10 @@ async function handleDelete(user: AdminUser) {
 </template>
 
 <style scoped>
-.users-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-
-.users-page__title {
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-  font-family: inherit;
-}
-
-.users-page__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-  color: #9ca3af;
-}
-
-.users-page__breadcrumb-sep {
-  font-size: 0.625rem;
+.users-page__header-illustration {
+  width: 180px;
+  height: 140px;
+  flex-shrink: 0;
 }
 
 .users-page__toolbar {

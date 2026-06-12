@@ -31,11 +31,11 @@ class UserManagementController extends Controller
                     ->orWhere('last_name', 'like', $term)
                     ->orWhere('email', 'like', $term));
             })
-            ->when($request->filled('status'), function ($q) use ($request): void {
-                match ($request->query('status')) {
+            ->when($request->filled('status'), function ($q) use ($request) {
+                return match ($request->query('status')) {
                     'suspended' => $q->where('is_suspended', true),
                     'active' => $q->where('is_suspended', false),
-                    default => null,
+                    default => $q,
                 };
             })
             ->when($request->filled('role'), function ($q) use ($request): void {
