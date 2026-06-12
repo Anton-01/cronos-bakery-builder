@@ -115,4 +115,16 @@ export const administrationRoutes: RouteRecordRaw[] = [
     component: () => import('./pages/SecurityPage.vue'),
     meta: { layout: 'admin', requiresAdmin: true },
   },
+  {
+    path: '/admin/profile',
+    name: 'admin.profile',
+    component: () => import('./pages/AdminProfilePage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/tasks',
+    name: 'admin.tasks',
+    component: () => import('./pages/AdminTasksPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
 ]

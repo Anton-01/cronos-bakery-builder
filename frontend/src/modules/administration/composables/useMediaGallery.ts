@@ -26,8 +26,7 @@ export function useMediaGallery() {
 
     const dragOverThumb = ref(false)
     const dragOverGallery = ref(false)
-    const thumbInput = ref<HTMLInputElement | null>(null)
-    const galleryInput = ref<HTMLInputElement | null>(null)
+    const galleryDirty = ref(false)
 
     function setThumbFromFile(file: File) {
         thumbnailFile.value = file
@@ -85,12 +84,17 @@ export function useMediaGallery() {
                 _preview: URL.createObjectURL(file),
             })
         }
+        galleryDirty.value = true
     }
 
     function removeGalleryImage(idx: number) {
         const img = gallery.value[idx]
         if (img._preview) URL.revokeObjectURL(img._preview)
-        gallery.value.splice(idx, 1)
+        galleryDirty.value = true
+    }
+
+    function markGalleryDirty() {
+        galleryDirty.value = true
     }
 
     function setThumbnailFromUrl(url: string | null) {
@@ -103,6 +107,7 @@ export function useMediaGallery() {
 
     function setGalleryFromImages(images: ProductImage[]) {
         gallery.value = images.map((img) => ({ ...img }))
+        galleryDirty.value = false
     }
 
     function revokeAllBlobUrls() {
@@ -119,16 +124,16 @@ export function useMediaGallery() {
         thumbnailFile,
         thumbnailMeta,
         gallery,
+        galleryDirty,
         dragOverThumb,
         dragOverGallery,
-        thumbInput,
-        galleryInput,
         onThumbDrop,
         onThumbSelect,
         removeThumb,
         onGalleryDrop,
         onGallerySelect,
         removeGalleryImage,
+        markGalleryDirty,
         setThumbnailFromUrl,
         setGalleryFromImages,
     }

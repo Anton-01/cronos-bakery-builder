@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
-import { onBeforeUnmount, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { EditorContent } from '@tiptap/vue-3'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -33,12 +33,17 @@ const {
 
 // --- Media ---
 const {
-  thumbnail, thumbnailFile, thumbnailMeta, gallery,
-  dragOverThumb, dragOverGallery, thumbInput, galleryInput,
+  thumbnail, thumbnailFile, thumbnailMeta, gallery, galleryDirty,
+  dragOverThumb, dragOverGallery,
   onThumbDrop, onThumbSelect, removeThumb,
-  onGalleryDrop, onGallerySelect, removeGalleryImage,
+  onGalleryDrop, onGallerySelect, removeGalleryImage, markGalleryDirty,
   setThumbnailFromUrl, setGalleryFromImages,
 } = useMediaGallery()
+
+function onGalleryMetaChange() {
+  markGalleryDirty()
+}
+
 // --- Rich Text Editors ---
 const editor = useRichTextEditor({
   placeholder: 'Describe tu producto...',
@@ -68,6 +73,7 @@ const {
   thumbnail,
   thumbnailFile,
   gallery,
+  galleryDirty,
   setThumbnailFromUrl,
   setGalleryFromImages,
   setLinksFromOptions,
@@ -78,6 +84,40 @@ const {
   previewVisible, previewLoading, previewData,
   openPreview, closePreview,
 } = useProductPreview(() => productId.value)
+
+
+// --- Unsaved changes modal ---
+const unsavedModalVisible = ref(false)
+let pendingNavigation: (() => void) | null = null
+function saveAndLeave() {
+  unsavedModalVisible.value = false
+  submitForm().then(() => {
+    if (pendingNavigation) {
+      pendingNavigation()
+      pendingNavigation = null
+    }
+  })
+}
+function discardAndLeave() {
+  unsavedModalVisible.value = false
+  if (pendingNavigation) {
+    pendingNavigation()
+    pendingNavigation = null
+  }
+}
+function cancelLeave() {
+  unsavedModalVisible.value = false
+  pendingNavigation = null
+}
+onBeforeRouteLeave((_to, _from, next) => {
+  if (isEdit.value && isDirty.value && !saving.value) {
+    pendingNavigation = () => next()
+    unsavedModalVisible.value = true
+    next(false)
+  } else {
+    next()
+  }
+})
 
 
 // --- Lifecycle ---
@@ -129,14 +169,13 @@ onBeforeUnmount(() => {
             :gallery="gallery"
             v-model:drag-over-thumb="dragOverThumb"
             v-model:drag-over-gallery="dragOverGallery"
-            :thumb-input="thumbInput"
-            :gallery-input="galleryInput"
             @thumb-drop="onThumbDrop"
             @thumb-select="onThumbSelect"
             @thumb-remove="removeThumb"
             @gallery-drop="onGalleryDrop"
             @gallery-select="onGallerySelect"
             @gallery-remove="removeGalleryImage"
+            @gallery-meta-change="onGalleryMetaChange"
         />
 
         <ProductPricing v-model="form" />
@@ -311,6 +350,40 @@ onBeforeUnmount(() => {
       @confirm="handleConfirm"
       @cancel="handleCancel"
     />
+
+    <!-- Unsaved changes modal -->
+    <Teleport to="body">
+      <div v-if="unsavedModalVisible" style="position: fixed; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+        <div style="background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); padding: 2rem 2.5rem; max-width: 420px; width: 90vw; text-align: center; font-family: 'Plus Jakarta Sans', sans-serif;">
+          <!-- Warning icon -->
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: #fef5e5; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffae1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+
+          <h3 style="font-size: 1.15rem; font-weight: 600; color: #2a3547; margin: 0 0 0.5rem; line-height: 1.3;">
+            Cambios pendientes sin guardar
+          </h3>
+          <p style="font-size: 0.9rem; color: #5a6a85; margin: 0 0 1.5rem; line-height: 1.5;">
+            Tienes cambios sin guardar en este producto. ¿Qué deseas hacer?
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <button type="button" style="width: 100%; padding: 0.65rem 1.5rem; border-radius: 8px; font-size: 0.875rem; font-weight: 600; border: none; cursor: pointer; background: #5d87ff; color: #fff; font-family: inherit;" @click="saveAndLeave">
+              Guardar y cerrar
+            </button>
+            <button type="button" style="width: 100%; padding: 0.65rem 1.5rem; border-radius: 8px; font-size: 0.875rem; font-weight: 600; border: none; cursor: pointer; background: #f0f2f5; color: #fa896b; font-family: inherit;" @click="discardAndLeave">
+              Salir sin guardar
+            </button>
+            <button type="button" style="width: 100%; padding: 0.65rem 1.5rem; border-radius: 8px; font-size: 0.875rem; font-weight: 600; border: none; cursor: pointer; background: #f0f2f5; color: #5a6a85; font-family: inherit;" @click="cancelLeave">
+              Seguir editando
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
