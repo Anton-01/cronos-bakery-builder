@@ -25,9 +25,9 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $this->command->info('=== Iniciando el proceso de Seeding de Cronos ===');
+        $this->command->info('=== Starting the Cronos seeding process ===');
 
-        $this->command->comment('Cargando Roles y Permisos...');
+        $this->command->comment('Loading Roles and Permissions ...');
         $this->call(RolesAndPermissionsSeeder::class);
 
         $this->call(CmsContentSeeder::class);
@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
         $this->call(NotificationSeeder::class);
 
         $this->command->newLine();
-        $this->command->info('=== Creando Cuentas Administrativas Oficiales ===');
+        $this->command->info('=== Creating Official Administrative Accounts ===');
 
         // Super administrator
         $superAdminEmail = 'superadmin@cronos.test';
@@ -86,17 +86,17 @@ class DatabaseSeeder extends Seeder
     private function validateSeededData(): void
     {
         $this->command->newLine();
-        $this->command->info('=== VERIFICACIÓN POST-SEEDING ===');
+        $this->command->info('=== POST-SEEDING VERIFICATION ===');
 
         $superAdminExists = Admin::where('email', 'superadmin@cronos.test')->exists();
         if ($superAdminExists) {
-            $this->command->info('✔ [OK] El Super Admin (superadmin@cronos.test) está guardado correctamente en el sistema.');
+            $this->command->info('[OK] :: The Super Admin (superadmin@cronos.test) is correctly stored in the system.');
         } else {
-            $this->command->error('❌ [ALERTA] El Super Admin NO se encuentra en la base de datos.');
+            $this->command->error('[ALERT] :: The Super Admin is NOT in the database.');
         }
 
         $actualCount = Admin::count();
-        $this->command->info("✔ [OK] Total de administradores en el sistema: {$actualCount}.");
+        $this->command->info("[OK] :: Total number of administrators in the system: {$actualCount}.");
         $this->command->newLine();
     }
 }
