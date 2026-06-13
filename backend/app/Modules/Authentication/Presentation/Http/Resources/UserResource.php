@@ -28,6 +28,11 @@ class UserResource extends JsonResource
             'avatar' => $this->avatar,
             'email_verified' => $this->hasVerifiedEmail(),
             'roles' => [$this->role->value],
+            'is_suspended' => $this->is_suspended,
+            'suspended_at' => $this->suspended_at,
+            'suspended_until' => $this->suspended_until,
+            'suspension_reason' => $this->suspension_reason,
+            'created_at' => $this->created_at,
         ];
     }
 }
