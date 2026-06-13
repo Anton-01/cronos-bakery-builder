@@ -1,28 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 export type ConfirmAction = 'delete' | 'activate' | 'deactivate' | 'warning' | 'info'
 
-const props = withDefaults(defineProps<{
-  visible: boolean
-  title?: string
-  message?: string
-  action?: ConfirmAction
-  confirmText?: string
-  cancelText?: string
-}>(), {
-  title: '¿Estás seguro?',
-  message: '',
-  action: 'warning',
-  confirmText: 'Confirmar',
-  cancelText: 'Cancelar',
-})
+// 1. EXTRAEMOS TODO EL ESTADO CENTRALIZADO DEL COMPOSABLE SINGLETON
+const {
+  visible,
+  title,
+  message,
+  action,
+  confirmText,
+  cancelText,
+  handleConfirm,
+  handleCancel
+} = useConfirm()
 
-const emit = defineEmits<{
-  confirm: []
-  cancel: []
-}>()
-
+// 2. ADAPTAMOS LAS PROPIEDADES COMPUTADAS PARA QUE LEAN DEL COMPOSABLE GLOBAL
 const iconColor = computed(() => {
   const map: Record<ConfirmAction, string> = {
     delete: 'var(--admin-error, #fa896b)',
@@ -31,7 +25,8 @@ const iconColor = computed(() => {
     warning: 'var(--admin-warning, #ffae1f)',
     info: 'var(--admin-info, #539bff)',
   }
-  return map[props.action]
+  // Leemos de action.value provisto por useConfirm()
+  return map[action.value as ConfirmAction]
 })
 
 const iconBg = computed(() => {
@@ -42,12 +37,12 @@ const iconBg = computed(() => {
     warning: 'var(--admin-warning-light, #fef5e5)',
     info: 'var(--admin-info-light, #ebf3fe)',
   }
-  return map[props.action]
+  return map[action.value as ConfirmAction]
 })
 
 const confirmBtnClass = computed(() => {
-  if (props.action === 'delete') return 'confirm-dialog__btn--danger'
-  if (props.action === 'activate') return 'confirm-dialog__btn--success'
+  if (action.value === 'delete') return 'confirm-dialog__btn--danger'
+  if (action.value === 'activate') return 'confirm-dialog__btn--success'
   return 'confirm-dialog__btn--primary'
 })
 </script>
@@ -55,26 +50,22 @@ const confirmBtnClass = computed(() => {
 <template>
   <Teleport to="body">
     <Transition name="confirm-fade">
-      <div v-if="visible" class="confirm-dialog__overlay" @click.self="emit('cancel')">
+      <div v-if="visible" class="confirm-dialog__overlay" @click.self="handleCancel">
         <div class="confirm-dialog__card">
           <div class="confirm-dialog__icon" :style="{ background: iconBg }">
-            <!-- Delete / trash -->
+
             <svg v-if="action === 'delete'" :style="{ color: iconColor }" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
             </svg>
-            <!-- Activate / check-circle -->
             <svg v-else-if="action === 'activate'" :style="{ color: iconColor }" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
-            <!-- Deactivate / x-circle -->
             <svg v-else-if="action === 'deactivate'" :style="{ color: iconColor }" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
             </svg>
-            <!-- Warning / alert-triangle -->
             <svg v-else-if="action === 'warning'" :style="{ color: iconColor }" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            <!-- Info -->
             <svg v-else :style="{ color: iconColor }" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
@@ -84,10 +75,10 @@ const confirmBtnClass = computed(() => {
           <p v-if="message" class="confirm-dialog__message">{{ message }}</p>
 
           <div class="confirm-dialog__actions">
-            <button class="confirm-dialog__btn confirm-dialog__btn--cancel" @click="emit('cancel')">
+            <button class="confirm-dialog__btn confirm-dialog__btn--cancel" @click="handleCancel">
               {{ cancelText }}
             </button>
-            <button class="confirm-dialog__btn" :class="confirmBtnClass" @click="emit('confirm')">
+            <button class="confirm-dialog__btn" :class="confirmBtnClass" @click="handleConfirm">
               {{ confirmText }}
             </button>
           </div>
@@ -98,6 +89,7 @@ const confirmBtnClass = computed(() => {
 </template>
 
 <style scoped>
+/* Los estilos se mantienen exactamente igual */
 .confirm-dialog__overlay {
   position: fixed;
   inset: 0;
@@ -199,7 +191,6 @@ const confirmBtnClass = computed(() => {
   background: #4a74e8;
 }
 
-/* Transitions */
 .confirm-fade-enter-active,
 .confirm-fade-leave-active {
   transition: opacity 0.2s ease;

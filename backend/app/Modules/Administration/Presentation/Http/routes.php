@@ -52,7 +52,15 @@ Route::prefix('admin')->group(function (): void {
         // Customer management.
         Route::middleware('permission:manage users')->group(function (): void {
             Route::get('users', [UserManagementController::class, 'index']);
+            Route::post('users', [UserManagementController::class, 'store']);
             Route::get('users/{user}', [UserManagementController::class, 'show']);
+            Route::put('users/{user}', [UserManagementController::class, 'update']);
+            Route::delete('users/{user}', [UserManagementController::class, 'destroy']);
+            Route::post('users/{user}/suspend', [UserManagementController::class, 'suspend']);
+            Route::post('users/{user}/reactivate', [UserManagementController::class, 'reactivate']);
+            Route::post('users/{user}/impersonate', [UserManagementController::class, 'impersonate']);
+            Route::post('users/{user}/revoke-sessions', [UserManagementController::class, 'revokeSessions']);
+            Route::post('users/{user}/send-password-reset', [UserManagementController::class, 'sendPasswordReset']);
         });
 
         // Access control: roles + administrators (Super Admin / Administrador).
