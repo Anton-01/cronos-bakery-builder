@@ -102,3 +102,84 @@ export interface Banner {
   sort_order: number
 }
 
+// --- Content Versioning & Workflows ----------------------------------------
+
+export type ContentStatus = 'draft' | 'pending_review' | 'published' | 'scheduled' | 'archived'
+
+export interface ContentVersion {
+  id: string
+  versionable_type: string
+  versionable_id: string
+  version_number: number
+  payload_before: Record<string, unknown> | null
+  payload_after: Record<string, unknown>
+  status_before: string | null
+  status_after: string
+  change_summary: string | null
+  author_id: number
+  author_name?: string
+  created_at: string
+}
+
+export interface ContentWorkflow {
+  id: string
+  from_status: ContentStatus
+  to_status: ContentStatus
+  requested_by: number
+  approved_by: number | null
+  comment: string | null
+  scheduled_at: string | null
+  created_at: string
+  requester_name?: string
+  approver_name?: string
+}
+
+// --- Media Library ---------------------------------------------------------
+
+export interface MediaAsset {
+  id: string
+  original_name: string
+  disk: string
+  path: string
+  mime_type: string
+  size: number
+  transformations: Record<string, unknown> | null
+  processing_status: 'pending' | 'processing' | 'completed' | 'failed'
+  storage_provider_id: string | null
+  uploaded_by: number
+  url?: string
+  created_at: string
+}
+
+export interface StorageProvider {
+  id: string
+  name: string
+  driver: 's3' | 'gcs' | 'azure'
+  bucket: string
+  region: string | null
+  is_active: boolean
+  is_default: boolean
+}
+
+// --- Cache -----------------------------------------------------------------
+
+export interface CacheSetting {
+  id: number
+  tag: string
+  ttl_seconds: number
+  last_flushed_at: string | null
+}
+
+// --- Pagination ------------------------------------------------------------
+
+export interface PaginationMeta {
+  current_page: number
+  last_page: number
+  total: number
+  per_page: number
+}
+
+export interface ValidationErrors {
+  [field: string]: string[]
+}
+
