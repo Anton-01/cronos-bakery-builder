@@ -5,7 +5,7 @@ export const administrationRoutes: RouteRecordRaw[] = [
     path: '/admin/login',
     name: 'admin.login',
     component: () => import('./pages/AdminLoginPage.vue'),
-    meta: { layout: 'blank' },
+    meta: { layout: 'admin-auth' },
   },
   {
     path: '/admin',
@@ -59,6 +59,30 @@ export const administrationRoutes: RouteRecordRaw[] = [
     path: '/admin/cms',
     name: 'admin.cms',
     component: () => import('./pages/AdminCmsPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/cms/media',
+    name: 'admin.cms.media',
+    component: () => import('./pages/AdminMediaPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/cms/versions',
+    name: 'admin.cms.versions',
+    component: () => import('./pages/AdminVersionsPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/cms/cache',
+    name: 'admin.cms.cache',
+    component: () => import('./pages/AdminCachePage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/cms/storage',
+    name: 'admin.cms.storage',
+    component: () => import('./pages/AdminStoragePage.vue'),
     meta: { layout: 'admin', requiresAdmin: true },
   },
   {

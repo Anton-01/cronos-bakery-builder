@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useAdminAuthStore } from '@/modules/administration/stores/adminAuth'
@@ -10,6 +10,7 @@ const route = useRoute()
 const sidebarOpen = ref(false)
 const profileOpen = ref(false)
 const profileDropdownRef = ref<HTMLElement | null>(null)
+const expandedSections = ref<Set<string>>(new Set())
 
 const adminInitial = computed(() => {
   const name = adminAuth.admin?.name ?? 'A'
@@ -49,7 +50,16 @@ const navSections = [
   {
     title: 'Contenido',
     items: [
-      { label: 'CMS', to: '/admin/cms', icon: 'cms' },
+      {
+        label: 'CMS', to: '/admin/cms', icon: 'cms',
+        children: [
+          { label: 'Páginas', to: '/admin/cms', icon: 'pages' },
+          { label: 'Media Library', to: '/admin/cms/media', icon: 'media' },
+          { label: 'Versiones', to: '/admin/cms/versions', icon: 'versions' },
+          { label: 'Caché', to: '/admin/cms/cache', icon: 'cache' },
+          { label: 'Almacenamiento', to: '/admin/cms/storage', icon: 'storage' },
+        ],
+      },
       { label: 'Menus', to: '/admin/menus', icon: 'menus' },
       { label: 'Theme Builder', to: '/admin/theme', icon: 'theme' },
     ],
@@ -78,10 +88,55 @@ const navSections = [
   },
 ]
 
+interface NavChild {
+  label: string
+  to: string
+  icon: string
+}
+
+interface NavItem {
+  label: string
+  to: string
+  icon: string
+  exact?: boolean
+  children?: NavChild[]
+}
+
 function isActive(to: string, exact?: boolean): boolean {
   if (exact) return route.path === to
   return route.path.startsWith(to)
 }
+
+function hasChildren(item: NavItem): boolean {
+  return !!item.children?.length
+}
+
+function isExpanded(label: string): boolean {
+  return expandedSections.value.has(label)
+}
+
+function toggleExpand(label: string) {
+  if (expandedSections.value.has(label)) {
+    expandedSections.value.delete(label)
+  } else {
+    expandedSections.value.add(label)
+  }
+}
+
+function isSectionActive(item: NavItem): boolean {
+  if (!item.children) return false
+  return item.children.some((c) => isActive(c.to, c.to === '/admin/cms'))
+}
+
+watchEffect(() => {
+  for (const section of navSections) {
+    for (const item of section.items) {
+      if ((item as NavItem).children && isSectionActive(item as NavItem)) {
+        expandedSections.value.add(item.label)
+      }
+    }
+  }
+})
 
 async function logout(): Promise<void> {
   await adminAuth.logout()
@@ -112,14 +167,50 @@ onMounted(() => {
       <div class="admin-sidebar__nav">
         <div v-for="section in navSections" :key="section.title" class="admin-sidebar__section">
           <div class="admin-sidebar__section-title">{{ section.title }}</div>
-          <RouterLink
-            v-for="item in section.items"
-            :key="item.to"
-            :to="item.to"
-            class="admin-sidebar__link"
-            :class="{ 'admin-sidebar__link--active': isActive(item.to, item.exact) }"
-            @click="sidebarOpen = false"
-          >
+          <template v-for="item in section.items" :key="item.to">
+            <!-- Item with children (expandable) -->
+            <template v-if="hasChildren(item as NavItem)">
+              <button
+                type="button"
+                class="admin-sidebar__link admin-sidebar__link--parent"
+                :class="{ 'admin-sidebar__link--active': isSectionActive(item as NavItem) }"
+                @click="toggleExpand(item.label)"
+              >
+                <span class="admin-sidebar__link-icon">
+                  <svg v-if="item.icon === 'cms'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                </span>
+                {{ item.label }}
+                <svg
+                  class="admin-sidebar__chevron"
+                  :class="{ 'admin-sidebar__chevron--open': isExpanded(item.label) }"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"
+                ><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <Transition name="submenu-slide">
+                <div v-if="isExpanded(item.label)" class="admin-sidebar__submenu">
+                  <RouterLink
+                    v-for="child in (item as NavItem).children"
+                    :key="child.to"
+                    :to="child.to"
+                    class="admin-sidebar__sublink"
+                    :class="{ 'admin-sidebar__sublink--active': isActive(child.to, child.to === '/admin/cms') }"
+                    @click="sidebarOpen = false"
+                  >
+                    <span class="admin-sidebar__sublink-dot"></span>
+                    {{ child.label }}
+                  </RouterLink>
+                </div>
+              </Transition>
+            </template>
+            <!-- Regular item (no children) -->
+            <RouterLink
+              v-else
+              :to="item.to"
+              class="admin-sidebar__link"
+              :class="{ 'admin-sidebar__link--active': isActive(item.to, (item as NavItem).exact) }"
+              @click="sidebarOpen = false"
+            >
             <span class="admin-sidebar__link-icon">
               <!-- Dashboard -->
               <svg v-if="item.icon === 'dashboard'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
@@ -158,6 +249,7 @@ onMounted(() => {
             </span>
             {{ item.label }}
           </RouterLink>
+          </template>
         </div>
       </div>
 
@@ -410,6 +502,74 @@ onMounted(() => {
 .admin-profile-dropdown__logout:hover {
   background: var(--admin-primary, #5d87ff);
   color: #fff;
+}
+/* Submenu parent button */
+.admin-sidebar__link--parent {
+  width: 100%;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  justify-content: flex-start;
+}
+.admin-sidebar__chevron {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--admin-text-muted, #8c97a8);
+}
+.admin-sidebar__chevron--open {
+  transform: rotate(180deg);
+}
+/* Submenu children */
+.admin-sidebar__submenu {
+  overflow: hidden;
+}
+.admin-sidebar__sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 1rem 0.45rem 2.75rem;
+  font-size: 0.8125rem;
+  color: var(--admin-text-secondary, #5a6a85);
+  text-decoration: none;
+  border-radius: var(--admin-radius-sm, 8px);
+  transition: all 0.15s ease;
+}
+.admin-sidebar__sublink:hover {
+  color: var(--admin-primary, #5d87ff);
+  background: var(--admin-primary-light, #ecf2ff);
+}
+.admin-sidebar__sublink--active {
+  color: var(--admin-primary, #5d87ff);
+  font-weight: 600;
+}
+.admin-sidebar__sublink-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--admin-text-muted, #8c97a8);
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.admin-sidebar__sublink--active .admin-sidebar__sublink-dot,
+.admin-sidebar__sublink:hover .admin-sidebar__sublink-dot {
+  background: var(--admin-primary, #5d87ff);
+}
+/* Submenu slide transition */
+.submenu-slide-enter-active {
+  transition: all 0.25s ease;
+  max-height: 300px;
+}
+.submenu-slide-leave-active {
+  transition: all 0.2s ease;
+  max-height: 300px;
+}
+.submenu-slide-enter-from,
+.submenu-slide-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 /* Dropdown transition */
 .dropdown-fade-enter-active,

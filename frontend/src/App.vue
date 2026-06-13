@@ -6,6 +6,7 @@ import { Toaster } from 'vue-sonner'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import AdminAuthLayout from '@/layouts/AdminAuthLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import BlankLayout from '@/layouts/BlankLayout.vue'
 import { useThemeStore } from '@/stores/theme'
@@ -15,7 +16,7 @@ import { useThemeStore } from '@/stores/theme'
  * falls back to the public-facing default layout.
  */
 const layouts = {
-  default: DefaultLayout, admin: AdminLayout, auth: AuthLayout, blank: BlankLayout,
+  default: DefaultLayout, admin: AdminLayout, 'admin-auth': AdminAuthLayout, auth: AuthLayout, blank: BlankLayout,
 } as const
 
 const route = useRoute()
