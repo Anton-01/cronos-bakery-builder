@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, type Ref } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useValidationErrors } from './useValidationErrors'
 
 type ValidationRule<T> = (value: T) => string | true
@@ -14,7 +14,7 @@ export function useFormValidation<
 >(fieldConfigs: TFields) {
   type FormValues = { [K in keyof TFields]: TFields[K]['initial'] }
 
-  const { validationErrors, setErrors, clearErrors, clearField, getError, hasError } = useValidationErrors()
+  const { setErrors, clearErrors, clearField, getError, hasError } = useValidationErrors()
 
   const form = reactive<Record<string, unknown>>({})
   const touched = reactive<Record<string, boolean>>({})

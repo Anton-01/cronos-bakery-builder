@@ -5,7 +5,6 @@ import type {
   MediaAsset,
   StorageProvider,
   CacheSetting,
-  ContentStatus,
 } from '../types'
 
 interface Wrapped<T> { data: T }
@@ -79,7 +78,7 @@ export const cmsContentService = {
       data: formData,
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress
-        ? (e: ProgressEvent) => onProgress(Math.round((e.loaded / (e.total || 1)) * 100))
+        ? (e: { loaded: number; total?: number }) => onProgress(Math.round((e.loaded / (e.total || 1)) * 100))
         : undefined,
     }).then((r) => r.data)
   },

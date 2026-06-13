@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import type { ValidationErrors } from '@/modules/cms/types'
 
 const sudoRequired = ref(false)
 const sudoPassword = ref('')

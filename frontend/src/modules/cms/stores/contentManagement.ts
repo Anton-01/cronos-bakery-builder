@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { cmsContentService } from '../services/cmsContentService'
 import { adminPanelService, type CmsPage } from '@/modules/administration/services/adminPanelService'
 import { useOptimistic } from '@/composables/useOptimistic'
 import { useSudo } from '@/composables/useSudo'
 import { useToast } from '@/composables/useToast'
-import type { ContentVersion, ContentWorkflow, ContentStatus } from '../types'
+import type { ContentVersion, ContentWorkflow } from '../types'
 
 export const useContentManagementStore = defineStore('contentManagement', () => {
   const pages = ref<CmsPage[]>([])
@@ -16,7 +16,7 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
 
   const { optimisticUpdate } = useOptimistic()
   const { withSudo } = useSudo()
-  const { success, error } = useToast()
+  const { success } = useToast()
 
   async function fetchPages() {
     loading.value = true
