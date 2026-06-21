@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Card from 'primevue/card'
 import { useAdminAuthStore } from '../stores/adminAuth'
 const adminAuth = useAdminAuthStore()
 </script>
@@ -8,25 +9,21 @@ const adminAuth = useAdminAuthStore()
     <div class="admin-page-header">
       <div>
         <h1>Mi Perfil</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Mi Perfil
-        </div>
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Mi Perfil</div>
       </div>
     </div>
 
-    <div class="admin-content-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Configuración de cuenta</h3>
-      </div>
-      <div class="admin-content-card__body" style="padding: 2rem; text-align: center; color: var(--admin-text-muted);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.4; margin-bottom: 1rem;">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-        </svg>
-        <p style="font-size: 0.9rem;">Sección en construcción</p>
-        <p v-if="adminAuth.admin" style="font-size: 0.8rem; margin-top: 0.5rem;">
-          {{ adminAuth.admin.name }} — {{ adminAuth.admin.email }}
-        </p>
-      </div>
-    </div>
+    <Card style="max-width:560px;">
+      <template #title>Configuración de cuenta</template>
+      <template #content>
+        <div style="padding:1rem; text-align:center; color:var(--admin-text-muted);">
+          <i class="pi pi-user" style="font-size:3rem; opacity:0.4; display:block; margin-bottom:1rem;" />
+          <p style="font-size:0.9rem;">Sección en construcción</p>
+          <p v-if="adminAuth.admin" style="font-size:0.8rem; margin-top:0.5rem;">
+            {{ adminAuth.admin.name }} — {{ adminAuth.admin.email }}
+          </p>
+        </div>
+      </template>
+    </Card>
   </div>
 </template>

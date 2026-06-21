@@ -1,24 +1,21 @@
 <script setup lang="ts">
-import { onMounted, ref, reactive } from 'vue'
+import { onMounted, ref, reactive, computed } from 'vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Select from 'primevue/select'
+import Card from 'primevue/card'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 
 import { adminPanelService, type AdminCategory } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
-
-const {
-  visible: confirmVisible,
-  title: confirmTitle,
-  message: confirmMessage,
-  action: confirmAction,
-  confirmText,
-  cancelText,
-  confirm,
-  handleConfirm,
-  handleCancel,
-} = useConfirm()
+const { confirm } = useConfirm()
 
 const categories = ref<AdminCategory[]>([])
 const loading = ref(true)
@@ -32,6 +29,12 @@ const form = reactive<{ name: string; slug: string; position: number; parent_id:
   position: 0,
   parent_id: '',
 })
+
+const parentOptions = computed(() =>
+  [{ label: '— Sin padre —', value: '' }, ...categories.value
+    .filter((c) => c.id !== editingId.value)
+    .map((c) => ({ label: c.name, value: c.id }))]
+)
 
 function openNew(): void {
   editingId.value = null
@@ -49,11 +52,6 @@ function openEdit(cat: AdminCategory): void {
   form.position = cat.position
   form.parent_id = cat.parent_id ?? ''
   showForm.value = true
-}
-
-function cancelForm(): void {
-  showForm.value = false
-  editingId.value = null
 }
 
 function parentName(parentId: string | null): string {
@@ -118,129 +116,104 @@ onMounted(load)
 
 <template>
   <div>
-    <!-- Page header -->
     <div class="admin-page-header">
       <div>
         <h1>Categorias</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Catalogo <span>/</span> Categorias
-        </div>
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Catalogo <span>/</span> Categorias</div>
       </div>
-      <div>
-        <button class="admin-btn admin-btn--primary" @click="openNew">Nueva Categoria</button>
-      </div>
+      <Button label="Nueva Categoria" icon="pi pi-plus" @click="openNew" />
     </div>
 
-    <!-- New / Edit form -->
-    <div v-if="showForm" class="admin-content-card admin-form-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">
-          {{ editingId ? 'Editar Categoria' : 'Nueva Categoria' }}
-        </h3>
-      </div>
-      <div class="admin-content-card__body">
-        <div class="admin-form-grid">
-          <div class="admin-form-group">
-            <label>Nombre</label>
-            <input v-model="form.name" type="text" placeholder="Nombre" />
-          </div>
-          <div class="admin-form-group">
-            <label>Slug</label>
-            <input v-model="form.slug" type="text" placeholder="slug-url" />
-          </div>
-          <div class="admin-form-group">
-            <label>Posicion</label>
-            <input v-model.number="form.position" type="number" placeholder="0" />
-          </div>
-          <div class="admin-form-group">
-            <label>Padre</label>
-            <select v-model="form.parent_id">
-              <option value="">— Sin padre —</option>
-              <option
-                v-for="cat in categories"
-                :key="cat.id"
-                :value="cat.id"
-                :disabled="cat.id === editingId"
-              >
-                {{ cat.name }}
-              </option>
-            </select>
-          </div>
+    <Card>
+      <template #title>Listado de Categorias</template>
+      <template #content>
+        <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
+          <ProgressSpinner />
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="admin-btn admin-btn--primary" :disabled="saving" @click="save">
-            {{ saving ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button class="admin-btn" @click="cancelForm">Cancelar</button>
+
+        <DataTable v-else :value="categories" class="p-datatable-sm">
+          <template #empty>
+            <div style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No hay categorias registradas.</div>
+          </template>
+
+          <Column header="Nombre" field="name">
+            <template #body="{ data }">
+              <span style="font-weight:500;">{{ data.name }}</span>
+            </template>
+          </Column>
+
+          <Column header="Slug" field="slug">
+            <template #body="{ data }">
+              <small style="font-family:monospace; color:var(--admin-primary); opacity:0.75;">{{ data.slug }}</small>
+            </template>
+          </Column>
+
+          <Column header="Posicion" field="position" style="width:100px;" />
+
+          <Column header="Productos" style="width:100px;">
+            <template #body="{ data }">{{ data.products_count ?? 0 }}</template>
+          </Column>
+
+          <Column header="Padre" style="width:140px;">
+            <template #body="{ data }">{{ parentName(data.parent_id) }}</template>
+          </Column>
+
+          <Column header="Acciones" style="width:120px;">
+            <template #body="{ data }">
+              <div style="display:flex; gap:0.25rem;">
+                <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="openEdit(data)" />
+                <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="deleteCategory(data.id)" />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </template>
+    </Card>
+
+    <!-- Form dialog -->
+    <Dialog
+      v-model:visible="showForm"
+      modal
+      :header="editingId ? 'Editar Categoria' : 'Nueva Categoria'"
+      :style="{ width: '480px' }"
+      @hide="editingId = null"
+    >
+      <form @submit.prevent="save">
+        <div class="cat-field">
+          <label>Nombre</label>
+          <InputText v-model="form.name" fluid required placeholder="Nombre" />
         </div>
-      </div>
-    </div>
-
-    <!-- Categories table -->
-    <div class="admin-content-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Listado de Categorias</h3>
-      </div>
-      <div class="admin-content-card__body">
-        <p v-if="loading" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-          Cargando categorias...
-        </p>
-
-        <template v-else>
-          <p v-if="categories.length === 0" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-            No hay categorias registradas.
-          </p>
-
-          <table v-else class="admin-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Slug</th>
-                <th>Posicion</th>
-                <th>Productos</th>
-                <th>Padre</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="cat in categories" :key="cat.id">
-                <td>
-                  <span class="admin-badge">{{ cat.name }}</span>
-                </td>
-                <td>{{ cat.slug }}</td>
-                <td>{{ cat.position }}</td>
-                <td>{{ cat.products_count ?? 0 }}</td>
-                <td>{{ parentName(cat.parent_id) }}</td>
-                <td style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                  <button class="admin-btn admin-btn--sm" @click="openEdit(cat)">Editar</button>
-                  <button class="admin-btn admin-btn--sm" style="color: var(--admin-error, #e53e3e);" @click="deleteCategory(cat.id)">
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </template>
-      </div>
-    </div>
-
-    <ConfirmDialog
-      :visible="confirmVisible"
-      :title="confirmTitle"
-      :message="confirmMessage"
-      :action="confirmAction"
-      :confirm-text="confirmText"
-      :cancel-text="cancelText"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
-    />
+        <div class="cat-field">
+          <label>Slug</label>
+          <InputText v-model="form.slug" fluid required placeholder="slug-url" style="font-family:monospace;" />
+        </div>
+        <div class="cat-field">
+          <label>Posicion</label>
+          <InputNumber v-model="form.position" fluid :min="0" />
+        </div>
+        <div class="cat-field">
+          <label>Categoria padre</label>
+          <Select v-model="form.parent_id" :options="parentOptions" optionLabel="label" optionValue="value" fluid />
+        </div>
+      </form>
+      <template #footer>
+        <Button label="Cancelar" severity="secondary" outlined @click="showForm = false" />
+        <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" @click="save" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
-.admin-form-card { margin-bottom: 1.5rem; }
-.admin-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.admin-form-group { display: flex; flex-direction: column; gap: 0.25rem; }
-.admin-form-group label { font-size: 0.8rem; font-weight: 500; color: var(--admin-text-muted); }
-.admin-form-group input, .admin-form-group select { padding: 0.5rem 0.75rem; border: 1px solid var(--admin-border); border-radius: 6px; font-size: 0.875rem; }
+.cat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+.cat-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+}
 </style>

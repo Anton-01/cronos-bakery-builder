@@ -1,7 +1,5 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { Editor } from '@tiptap/vue-3'
-import type { ShallowRef } from 'vue'
 import { useToast } from '@/composables/useToast'
 import {
     adminPanelService,
@@ -46,7 +44,6 @@ function isBlobUrl(url: string | null | undefined): boolean {
 }
 
 interface UseProductFormDeps {
-    editor: ShallowRef<Editor | undefined>
     thumbnail: { value: string | null }
     thumbnailFile: { value: File | null }
     gallery: { value: GalleryImage[] }
@@ -130,7 +127,6 @@ export function useProductForm(deps: UseProductFormDeps) {
             const imageUrl = isBlobUrl(p.image) ? null : (p.image ?? null)
             deps.setThumbnailFromUrl(imageUrl)
             deps.setGalleryFromImages(p.gallery ?? [])
-            deps.editor.value?.commands.setContent(form.description)
 
             if (p.options?.length) {
                 deps.setLinksFromOptions(p.options)
