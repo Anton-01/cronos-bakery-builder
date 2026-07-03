@@ -18,7 +18,7 @@ final class SectionService
         return Section::query()->orderBy('name')->get();
     }
 
-    public function get(string $id): Section
+    public function get(int $id): Section
     {
         return Section::query()->findOrFail($id);
     }
@@ -28,7 +28,7 @@ final class SectionService
         return Section::create($data->toAttributes());
     }
 
-    public function update(string $id, SectionData $data): Section
+    public function update(int $id, SectionData $data): Section
     {
         $section = $this->get($id);
         $section->update($data->toAttributes());
@@ -36,7 +36,7 @@ final class SectionService
         return $section->refresh();
     }
 
-    public function delete(string $id): void
+    public function delete(int $id): void
     {
         $this->get($id)->delete();
     }

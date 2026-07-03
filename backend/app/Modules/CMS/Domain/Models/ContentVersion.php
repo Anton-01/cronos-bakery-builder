@@ -37,9 +37,9 @@ class ContentVersion extends Model
         return $this->morphTo();
     }
 
-    /** @return BelongsTo<\App\Modules\Authentication\Domain\Models\User, $this> */
+    /** @return BelongsTo<\App\Modules\Administration\Domain\Models\Admin, $this> */
     public function author(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Authentication\Domain\Models\User::class, 'author_id');
+        return $this->belongsTo(\App\Modules\Administration\Domain\Models\Admin::class, 'author_id');
     }
 }

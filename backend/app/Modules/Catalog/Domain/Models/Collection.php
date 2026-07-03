@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Domain\Models;
 
 use App\Modules\Catalog\Infrastructure\Database\Factories\CollectionFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,15 +13,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * A curated collection of products (e.g. seasonal lineups).
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property string $slug
  * @property bool $is_active
  */
 class Collection extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'catalog_collections';
 

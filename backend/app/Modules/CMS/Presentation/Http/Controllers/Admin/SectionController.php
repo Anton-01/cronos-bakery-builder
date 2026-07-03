@@ -26,7 +26,7 @@ class SectionController extends Controller
         return SectionResource::collection($this->sections->all());
     }
 
-    public function show(string $section): SectionResource
+    public function show(int $section): SectionResource
     {
         return new SectionResource($this->sections->get($section));
     }
@@ -38,12 +38,12 @@ class SectionController extends Controller
         return (new SectionResource($section))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreSectionRequest $request, string $section): SectionResource
+    public function update(StoreSectionRequest $request, int $section): SectionResource
     {
         return new SectionResource($this->sections->update($section, SectionData::fromArray($request->validated())));
     }
 
-    public function destroy(string $section): JsonResponse
+    public function destroy(int $section): JsonResponse
     {
         $this->sections->delete($section);
 

@@ -10,7 +10,7 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('catalog_products', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();

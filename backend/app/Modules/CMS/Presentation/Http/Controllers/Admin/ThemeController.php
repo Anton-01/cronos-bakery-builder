@@ -29,12 +29,12 @@ class ThemeController extends Controller
         return (new ThemeResource($theme))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreThemeRequest $request, string $theme): ThemeResource
+    public function update(StoreThemeRequest $request, int $theme): ThemeResource
     {
         return new ThemeResource($this->themes->update($theme, $request->toAttributes()));
     }
 
-    public function activate(string $theme): ThemeResource
+    public function activate(int $theme): ThemeResource
     {
         return new ThemeResource($this->themes->activate($theme));
     }

@@ -20,18 +20,18 @@ const { confirm } = useConfirm()
 const categories = ref<AdminCategory[]>([])
 const loading = ref(true)
 const showForm = ref(false)
-const editingId = ref<string | null>(null)
+const editingId = ref<number | null>(null)
 const saving = ref(false)
 
-const form = reactive<{ name: string; slug: string; position: number; parent_id: string }>({
+const form = reactive<{ name: string; slug: string; position: number; parent_id: number | null }>({
   name: '',
   slug: '',
   position: 0,
-  parent_id: '',
+  parent_id: null,
 })
 
 const parentOptions = computed(() =>
-  [{ label: '— Sin padre —', value: '' }, ...categories.value
+  [{ label: '— Sin padre —', value: null as number | null }, ...categories.value
     .filter((c) => c.id !== editingId.value)
     .map((c) => ({ label: c.name, value: c.id }))]
 )
@@ -41,7 +41,7 @@ function openNew(): void {
   form.name = ''
   form.slug = ''
   form.position = 0
-  form.parent_id = ''
+  form.parent_id = null
   showForm.value = true
 }
 
@@ -50,11 +50,11 @@ function openEdit(cat: AdminCategory): void {
   form.name = cat.name
   form.slug = cat.slug
   form.position = cat.position
-  form.parent_id = cat.parent_id ?? ''
+  form.parent_id = cat.parent_id
   showForm.value = true
 }
 
-function parentName(parentId: string | null): string {
+function parentName(parentId: number | null): string {
   if (!parentId) return '—'
   const found = categories.value.find((c) => c.id === parentId)
   return found ? found.name : '—'
@@ -76,7 +76,7 @@ async function save(): Promise<void> {
       name: form.name,
       slug: form.slug,
       position: form.position,
-      parent_id: form.parent_id || null,
+      parent_id: form.parent_id,
     }
     if (editingId.value) {
       await adminPanelService.updateCategory(editingId.value, data)
@@ -94,7 +94,7 @@ async function save(): Promise<void> {
   }
 }
 
-async function deleteCategory(id: string): Promise<void> {
+async function deleteCategory(id: number): Promise<void> {
   const ok = await confirm({
     title: 'Eliminar categoria',
     message: '¿Eliminar esta categoria?',

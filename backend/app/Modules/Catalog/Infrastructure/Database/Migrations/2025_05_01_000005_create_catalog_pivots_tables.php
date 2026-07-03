@@ -10,27 +10,27 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('catalog_category_product', function (Blueprint $table): void {
-            $table->foreignUuid('product_id')->constrained('catalog_products')->cascadeOnDelete();
-            $table->foreignUuid('category_id')->constrained('catalog_categories')->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('catalog_products')->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained('catalog_categories')->cascadeOnDelete();
             $table->boolean('is_primary')->default(false);
             $table->primary(['product_id', 'category_id']);
         });
 
         Schema::create('catalog_collection_product', function (Blueprint $table): void {
-            $table->foreignUuid('product_id')->constrained('catalog_products')->cascadeOnDelete();
-            $table->foreignUuid('collection_id')->constrained('catalog_collections')->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('catalog_products')->cascadeOnDelete();
+            $table->foreignId('collection_id')->constrained('catalog_collections')->cascadeOnDelete();
             $table->primary(['product_id', 'collection_id']);
         });
 
         Schema::create('catalog_attribute_value_product', function (Blueprint $table): void {
-            $table->foreignUuid('product_id')->constrained('catalog_products')->cascadeOnDelete();
-            $table->foreignUuid('attribute_value_id')->constrained('catalog_attribute_values')->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('catalog_products')->cascadeOnDelete();
+            $table->foreignId('attribute_value_id')->constrained('catalog_attribute_values')->cascadeOnDelete();
             $table->primary(['product_id', 'attribute_value_id'], 'cat_attr_val_prod_primary');
         });
 
         Schema::create('catalog_product_tag', function (Blueprint $table): void {
-            $table->foreignUuid('product_id')->constrained('catalog_products')->cascadeOnDelete();
-            $table->foreignUuid('tag_id')->constrained('catalog_tags')->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('catalog_products')->cascadeOnDelete();
+            $table->foreignId('tag_id')->constrained('catalog_tags')->cascadeOnDelete();
             $table->primary(['product_id', 'tag_id']);
         });
     }

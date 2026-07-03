@@ -16,7 +16,7 @@ export interface ProductAttribute {
 }
 
 export interface CatalogProduct {
-  id: string
+  id: number
   name: string
   slug: string
   url: string
@@ -24,14 +24,14 @@ export interface CatalogProduct {
   image: string | null
   price: Money
   seo: Seo
-  categories?: Array<{ id: string; name: string; slug: string }>
-  collections?: Array<{ id: string; name: string; slug: string }>
+  categories?: Array<{ id: number; name: string; slug: string }>
+  collections?: Array<{ id: number; name: string; slug: string }>
   attributes?: ProductAttribute[]
   tags?: string[]
 }
 
 export interface Category {
-  id: string
+  id: number
   name: string
   slug: string
   url: string
@@ -42,14 +42,14 @@ export interface Category {
 }
 
 export interface AttributeValueFacet {
-  id: string
+  id: number
   label: string
   value: string
   metadata: Record<string, unknown> | null
 }
 
 export interface AttributeFacet {
-  id: string
+  id: number
   name: string
   code: string
   type: 'select' | 'color'
@@ -59,7 +59,7 @@ export interface AttributeFacet {
 
 export interface Facets {
   categories: Category[]
-  collections: Array<{ id: string; name: string; slug: string }>
+  collections: Array<{ id: number; name: string; slug: string }>
   attributes: AttributeFacet[]
   price: { min: number; max: number }
 }

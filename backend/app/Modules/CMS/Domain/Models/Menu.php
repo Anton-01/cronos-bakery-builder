@@ -6,7 +6,7 @@ namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\MenuLocation;
 use App\Modules\CMS\Infrastructure\Database\Factories\MenuFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,15 +14,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A dynamic, location-bound navigation menu composed of nested items.
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property MenuLocation $location
  * @property bool $is_active
  */
 class Menu extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'menus';
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\CMS\Domain\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A single navigation entry. Items may nest one or more levels via parent_id
  * (e.g. Pasteles → Floral, Moderno, Mini Cakes).
  *
- * @property string $id
+ * @property int $id
  * @property string $menu_id
  * @property string|null $parent_id
  * @property string $label
@@ -25,8 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class MenuItem extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'menu_items';
 

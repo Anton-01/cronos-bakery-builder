@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\CMS\Domain\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MediaAsset extends Model
 {
-    use HasUuids;
-
     protected $fillable = [
         'original_name',
         'disk',

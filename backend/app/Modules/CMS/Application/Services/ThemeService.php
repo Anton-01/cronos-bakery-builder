@@ -45,7 +45,7 @@ final class ThemeService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function update(string $id, array $attributes): Theme
+    public function update(int $id, array $attributes): Theme
     {
         $theme = Theme::query()->findOrFail($id);
         $theme->update($attributes);
@@ -60,7 +60,7 @@ final class ThemeService
     /**
      * Make a single theme active, deactivating the rest.
      */
-    public function activate(string $id): Theme
+    public function activate(int $id): Theme
     {
         return DB::transaction(function () use ($id): Theme {
             $theme = Theme::query()->findOrFail($id);

@@ -30,7 +30,7 @@ final class BannerService
             ->get();
     }
 
-    public function get(string $id): Banner
+    public function get(int $id): Banner
     {
         return Banner::query()->findOrFail($id);
     }
@@ -46,7 +46,7 @@ final class BannerService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function update(string $id, array $attributes): Banner
+    public function update(int $id, array $attributes): Banner
     {
         $banner = $this->get($id);
         $banner->update($attributes);
@@ -54,7 +54,7 @@ final class BannerService
         return $banner->refresh();
     }
 
-    public function delete(string $id): void
+    public function delete(int $id): void
     {
         $this->get($id)->delete();
     }

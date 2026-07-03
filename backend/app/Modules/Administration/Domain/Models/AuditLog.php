@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Administration\Domain\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * An immutable record of a mutating administrative action.
  *
- * @property string $id
+ * @property int $id
  * @property int|null $admin_id
  * @property string|null $admin_name
  * @property string $method
@@ -21,8 +20,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditLog extends Model
 {
-    use HasUuids;
-
     protected $table = 'audit_logs';
 
     public $timestamps = false;

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Domain\Models;
 
 use App\Modules\Catalog\Infrastructure\Database\Factories\AttributeValueFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * A possible value of an attribute (e.g. "Grande" of Tamaño, "#f7c5d9" of Color).
  *
- * @property string $id
+ * @property int $id
  * @property string $attribute_id
  * @property string $label
  * @property string $value
@@ -23,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class AttributeValue extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'catalog_attribute_values';
 

@@ -31,7 +31,7 @@ final class TaxonomyService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateCategory(string $id, array $attributes): Category
+    public function updateCategory(int $id, array $attributes): Category
     {
         $category = Category::query()->findOrFail($id);
         $category->update($attributes);
@@ -39,7 +39,7 @@ final class TaxonomyService
         return $category->refresh();
     }
 
-    public function deleteCategory(string $id): void
+    public function deleteCategory(int $id): void
     {
         Category::query()->findOrFail($id)->delete();
     }
@@ -58,7 +58,7 @@ final class TaxonomyService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateCollection(string $id, array $attributes): ProductCollection
+    public function updateCollection(int $id, array $attributes): ProductCollection
     {
         $collection = ProductCollection::query()->findOrFail($id);
         $collection->update($attributes);
@@ -66,7 +66,7 @@ final class TaxonomyService
         return $collection->refresh();
     }
 
-    public function deleteCollection(string $id): void
+    public function deleteCollection(int $id): void
     {
         ProductCollection::query()->findOrFail($id)->delete();
     }
@@ -85,7 +85,7 @@ final class TaxonomyService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateAttribute(string $id, array $attributes): Attribute
+    public function updateAttribute(int $id, array $attributes): Attribute
     {
         $attribute = Attribute::query()->findOrFail($id);
         $attribute->update($attributes);
@@ -93,20 +93,20 @@ final class TaxonomyService
         return $attribute->refresh()->load('values');
     }
 
-    public function deleteAttribute(string $id): void
+    public function deleteAttribute(int $id): void
     {
         Attribute::query()->findOrFail($id)->delete();
     }
 
     /** @param array<string, mixed> $attributes */
-    public function addAttributeValue(string $attributeId, array $attributes): AttributeValue
+    public function addAttributeValue(int $attributeId, array $attributes): AttributeValue
     {
         $attribute = Attribute::query()->findOrFail($attributeId);
 
         return $attribute->values()->create($attributes);
     }
 
-    public function deleteAttributeValue(string $attributeId, string $valueId): void
+    public function deleteAttributeValue(int $attributeId, int $valueId): void
     {
         AttributeValue::query()->where('attribute_id', $attributeId)->whereKey($valueId)->delete();
     }
@@ -117,7 +117,7 @@ final class TaxonomyService
      * @param  array{categories?: array<int,string>, primary_category?: string|null,
      *     collections?: array<int,string>, attribute_values?: array<int,string>, tags?: array<int,string>}  $payload
      */
-    public function syncProductTaxonomy(string $productId, array $payload): Product
+    public function syncProductTaxonomy(int $productId, array $payload): Product
     {
         /** @var Product $product */
         $product = Product::query()->findOrFail($productId);

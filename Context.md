@@ -1,6 +1,6 @@
 # Cronos Bakery Builder — Context.md
 
-Fecha de última actualización: 2026-06-21
+Fecha de última actualización: 2026-07-03
 
 ---
 
@@ -341,3 +341,28 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 | Módulos por dominio | Cada feature (admin, catalog, orders, etc.) es auto-contenido con sus propias rutas, tipos, servicios y stores. Facilita el crecimiento del proyecto. |
 | Doble sistema de auth | El admin opera con un token completamente separado del cliente, permitiendo sesiones simultáneas y sin interferencia. |
 | CSS custom properties para theming | El tema del admin se puede personalizar centralmente desde `admin.css` sin tocar componentes individuales. PrimeVue se integra via su sistema de temas (Aura preset). |
+
+---
+
+## 13. Persistencia: IDs Autoincrementales Universales (regla innegociable)
+
+**Decisión (2026-07):** todas las llaves primarias del sistema usan **BIGINT autoincremental nativo de PostgreSQL 16** (`$table->id()` → identity/bigserial). Queda **prohibido** generar UUIDs como PK desde la aplicación (ni `HasUuids` en modelos, ni `Str::uuid()` para llaves). Los UUIDs solo se admiten en valores no-clave (ej. nombres de archivo en MinIO).
+
+- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration) y **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes).
+- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Payments, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo), por lo que pueden migrarse en una fase posterior sin romper integridad.
+- **Cómo se aplicó:** las migraciones se editaron **en sitio** (el proyecto está en desarrollo, sin datos productivos) → requiere `php artisan migrate:fresh --seed`. Las columnas JSON de los módulos convertidos pasaron a **JSONB**.
+- **Frontend:** las interfaces TS de los módulos convertidos usan `id: number` (cms/types, catalog/types, adminPanelService). Los módulos aún en UUID conservan `id: string`.
+
+## 14. Versionado de Contenido y Workflow Editorial (CMS)
+
+- **Snapshot polimórfico**, no tabla por entidad: `content_versions` (morphs `versionable`, `version_number` incremental por entidad, `payload_before`/`payload_after` JSONB, `status_before`/`status_after`, `change_summary`, `author_id` → **admins**). Cada transición de workflow y cada rollback insertan una versión automáticamente (`PublishContentAction` / `RollbackContentAction`).
+- **Máquina de estados:** `ContentStatus` (draft → pending_review → published/scheduled → archived) define las transiciones válidas; `PageStatus` (cast de `cms_pages.status`) incluye los 5 estados para aceptar todo lo que el workflow persiste. Transición ilegal ⇒ HTTP 422.
+- **Endpoints** (bajo `admin/cms`, permiso `manage cms`): `POST pages/{id}/submit-review | approve | reject | schedule`, `GET pages/{id}/versions`, `POST pages/{id}/rollback` (`version_id` validado contra la misma página), `GET pages/{id}/workflows`. "Guardar borrador" NO pasa por el workflow: es el update normal de página/bloques y nunca cambia el estado de publicación.
+- Los actores del workflow son **Admins** (guard sanctum del panel); las FKs `author_id`/`requested_by`/`approved_by`/`last_editor_id` apuntan a `admins`.
+- El middleware `RequirePasswordRevalidation` (sudo por sesión) existe pero **no está enrutado** — el flujo sudo del frontend (`useSudo`) queda pendiente de wiring en backend.
+
+## 15. Auditoría Automática de Modelos (Audit Trail)
+
+- **Dos tablas con propósitos distintos:** `audit_logs` (Administration) registra **requests HTTP** del panel (method, path, status, payload redactado); la nueva **`model_audit_logs`** registra **diffs de estado por modelo**: `brand_id` (multitenant, nullable), `user_id` (→ `admins`, null para acciones de sistema), `event` (created/updated/deleted/restored), morphs `auditable`, `old_values`/`new_values` JSONB, `ip_address`. Se nombró `model_audit_logs` porque `audit_logs` ya existía con otro esquema.
+- **Patrón:** trait opt-in `App\Shared\Domain\Concerns\Auditable` → registra `AuditObserver` (captura contexto en el request: diff `getOriginal()` vs `getChanges()`, admin autenticado, IP, brand) → despacha `RecordModelAuditJob` **encolado y `afterCommit()`** (la escritura nunca añade latencia ni fallos al request). Atributos en `$hidden` o en `auditExclude()` jamás se auditan.
+- **Modelos auditados hoy:** Page, PageBlock, Section, Theme, Menu, MenuItem, Banner (CMS) y Product, Category, Collection (Catalog). Para auditar otro modelo basta `use Auditable;`.

@@ -16,19 +16,19 @@ class MenuItemController extends Controller
     {
     }
 
-    public function store(StoreMenuItemRequest $request, string $menu): JsonResponse
+    public function store(StoreMenuItemRequest $request, int $menu): JsonResponse
     {
         $item = $this->menus->addItem($menu, $request->validated());
 
         return (new MenuItemResource($item))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreMenuItemRequest $request, string $menu, string $item): MenuItemResource
+    public function update(StoreMenuItemRequest $request, int $menu, int $item): MenuItemResource
     {
         return new MenuItemResource($this->menus->updateItem($menu, $item, $request->validated()));
     }
 
-    public function destroy(string $menu, string $item): JsonResponse
+    public function destroy(int $menu, int $item): JsonResponse
     {
         $this->menus->removeItem($menu, $item);
 

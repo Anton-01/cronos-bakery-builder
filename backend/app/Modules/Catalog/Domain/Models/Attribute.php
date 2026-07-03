@@ -6,7 +6,6 @@ namespace App\Modules\Catalog\Domain\Models;
 
 use App\Modules\Catalog\Infrastructure\Database\Factories\AttributeFactory;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * An admin-defined product attribute (e.g. Tamaño, Sabor, Color). When flagged
  * filterable it is surfaced automatically as a catalog filter facet.
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property string $code
  * @property string $type
@@ -25,7 +24,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Attribute extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'catalog_attributes';
 

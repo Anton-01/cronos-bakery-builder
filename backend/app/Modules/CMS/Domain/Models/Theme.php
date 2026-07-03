@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Infrastructure\Database\Factories\ThemeFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * Branding configuration for the storefront. A single theme is active at a
  * time and drives colours, typography, logo, favicon and footer.
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property string|null $logo_path
  * @property string|null $favicon_path
@@ -25,8 +25,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Theme extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'themes';
 

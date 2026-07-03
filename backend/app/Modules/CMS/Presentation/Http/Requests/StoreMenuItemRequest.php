@@ -24,7 +24,7 @@ class StoreMenuItemRequest extends FormRequest
             'url' => ['nullable', 'string', 'max:2048'],
             'target' => ['nullable', Rule::in(['_self', '_blank'])],
             'parent_id' => [
-                'nullable', 'uuid',
+                'nullable', 'integer',
                 Rule::exists('menu_items', 'id')->where('menu_id', $this->route('menu')),
             ],
             'position' => ['nullable', 'integer', 'min:0'],

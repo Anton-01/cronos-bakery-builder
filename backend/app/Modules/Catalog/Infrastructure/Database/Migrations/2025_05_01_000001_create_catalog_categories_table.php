@@ -11,10 +11,10 @@ return new class () extends Migration {
     {
         // 1. Creamos la estructura base de la tabla
         Schema::create('catalog_categories', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
 
-            // Definimos la columna parent_id como UUID aceptando nulos, pero SIN el .constrained()
-            $table->uuid('parent_id')->nullable();
+            // Definimos la columna parent_id aceptando nulos, pero SIN el .constrained()
+            $table->unsignedBigInteger('parent_id')->nullable();
 
             $table->string('name');
             $table->string('slug')->unique();

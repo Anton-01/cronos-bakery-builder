@@ -10,7 +10,7 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::table('themes', function (Blueprint $table): void {
-            $table->json('settings')->nullable()->after('footer');
+            $table->jsonb('settings')->nullable()->after('footer');
         });
     }
 

@@ -11,7 +11,7 @@ return new class () extends Migration {
     {
         // Audit trail: every mutating admin action is recorded automatically.
         Schema::create('audit_logs', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->foreignId('admin_id')->nullable()->constrained('admins')->nullOnDelete();
             $table->string('admin_name')->nullable();
             $table->string('method');
@@ -20,7 +20,7 @@ return new class () extends Migration {
             $table->unsignedSmallInteger('status_code');
             $table->string('ip_address', 45)->nullable();
             $table->string('user_agent')->nullable();
-            $table->json('payload')->nullable();
+            $table->jsonb('payload')->nullable();
             $table->timestamp('created_at')->nullable();
 
             $table->index(['admin_id', 'created_at']);

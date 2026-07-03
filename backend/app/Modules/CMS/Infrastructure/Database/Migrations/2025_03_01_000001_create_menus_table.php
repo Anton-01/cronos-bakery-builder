@@ -10,7 +10,7 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('menus', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('location')->index();
             $table->boolean('is_active')->default(true);
@@ -18,10 +18,10 @@ return new class () extends Migration {
         });
 
         Schema::create('menu_items', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('menu_id')->constrained('menus')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('menu_id')->constrained('menus')->cascadeOnDelete();
 
-            $table->uuid('parent_id')->nullable();
+            $table->unsignedBigInteger('parent_id')->nullable();
 
             $table->string('label');
             $table->string('url')->nullable();
