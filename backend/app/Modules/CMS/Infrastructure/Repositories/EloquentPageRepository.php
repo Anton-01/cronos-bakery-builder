@@ -19,19 +19,30 @@ class EloquentPageRepository extends AbstractEloquentRepository implements PageR
         return Page::class;
     }
 
-    public function findPublishedBySlug(string $slug): ?Page
+    public function allForBrand(?int $brandId = null): Collection
+    {
+        return $this->model->newQuery()
+            ->with('brand')
+            ->when($brandId !== null, fn ($query) => $query->forBrand($brandId))
+            ->orderByDesc('updated_at')
+            ->get();
+    }
+
+    public function findPublishedBySlug(string $slug, ?int $brandId = null): ?Page
     {
         return $this->model->newQuery()
             ->published()
-            ->with(['sections' => fn ($query) => $query->where('is_active', true), 'sections.section'])
+            ->with(['blocks' => fn ($query) => $query->where('is_active', true), 'blocks.section'])
+            ->when($brandId !== null, fn ($query) => $query->forBrand($brandId))
             ->where('slug', $slug)
             ->first();
     }
 
-    public function publishedPages(): Collection
+    public function publishedPages(?int $brandId = null): Collection
     {
         return $this->model->newQuery()
             ->published()
+            ->when($brandId !== null, fn ($query) => $query->forBrand($brandId))
             ->orderBy('title')
             ->get();
     }

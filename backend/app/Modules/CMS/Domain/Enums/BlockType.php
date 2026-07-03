@@ -19,6 +19,7 @@ enum BlockType: string
     case Cta = 'cta';
     case Faq = 'faq';
     case Testimonials = 'testimonials';
+    case Products = 'products';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum BlockType: string
             self::Cta => 'Call To Action',
             self::Faq => 'FAQ',
             self::Testimonials => 'Testimonios',
+            self::Products => 'Productos de Repostería',
         };
     }
 

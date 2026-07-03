@@ -20,17 +20,20 @@ class PageResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'brand_id' => $this->brand_id,
+            'brand' => new BrandResource($this->whenLoaded('brand')),
             'title' => $this->title,
             'slug' => $this->slug,
             'type' => $this->type->value,
             'status' => $this->status->value,
             'content' => $this->content,
+            'settings' => $this->settings,
             'seo' => [
                 'meta_title' => $this->meta_title ?? $this->title,
                 'meta_description' => $this->meta_description,
             ],
             'published_at' => $this->published_at?->toIso8601String(),
-            'sections' => PageSectionResource::collection($this->whenLoaded('sections')),
+            'blocks' => PageBlockResource::collection($this->whenLoaded('blocks')),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

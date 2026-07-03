@@ -21,6 +21,8 @@ class StoreSectionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Null brand_id = global (platform-wide) reusable section.
+            'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(BlockType::class)],
             'data' => ['required', 'array'],

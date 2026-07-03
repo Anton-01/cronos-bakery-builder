@@ -47,9 +47,7 @@ export interface TwoFactorSetup {
 }
 
 // --- CMS types ---
-export interface CmsSection { id: string; key: string; name: string; position: number }
-export interface CmsPage { id: string; title: string; slug: string; is_published: boolean; section_id: string }
-export interface CmsBlock { id: string; type: string; content: Record<string, unknown>; position: number }
+// Page/block types live in `@/modules/cms/types` (brand-aware page builder).
 
 // --- Theme types ---
 export interface Theme { id: string; name: string; is_active: boolean; settings: Record<string, unknown> }
@@ -254,25 +252,8 @@ export const adminPanelService = {
   },
 
   // --- CMS ---
-  cmsSections(): Promise<CmsSection[]> {
-    return request<Wrapped<CmsSection[]>>({ url: '/admin/cms/sections', method: 'GET' }).then((r) => r.data)
-  },
-
-  cmsPages(sectionId?: string): Promise<CmsPage[]> {
-    return request<Wrapped<CmsPage[]>>({ url: '/admin/cms/pages', method: 'GET', params: sectionId ? { section_id: sectionId } : {} }).then((r) => r.data)
-  },
-
-  cmsCreatePage(data: Partial<CmsPage>): Promise<CmsPage> {
-    return request<Wrapped<CmsPage>>({ url: '/admin/cms/pages', method: 'POST', data }).then((r) => r.data)
-  },
-
-  cmsUpdatePage(id: string, data: Partial<CmsPage>): Promise<CmsPage> {
-    return request<Wrapped<CmsPage>>({ url: `/admin/cms/pages/${id}`, method: 'PUT', data }).then((r) => r.data)
-  },
-
-  cmsDeletePage(id: string): Promise<void> {
-    return request({ url: `/admin/cms/pages/${id}`, method: 'DELETE' })
-  },
+  // Page management moved to `@/modules/cms/services/pageBuilderService`
+  // (brand-scoped pages + block builder).
 
   // --- Themes ---
   themes(): Promise<Theme[]> {

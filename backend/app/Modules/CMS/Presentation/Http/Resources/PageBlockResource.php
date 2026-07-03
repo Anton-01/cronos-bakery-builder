@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\CMS\Presentation\Http\Resources;
 
-use App\Modules\CMS\Domain\Models\PageSection;
+use App\Modules\CMS\Domain\Models\PageBlock;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin PageSection
+ * @mixin PageBlock
  */
-class PageSectionResource extends JsonResource
+class PageBlockResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

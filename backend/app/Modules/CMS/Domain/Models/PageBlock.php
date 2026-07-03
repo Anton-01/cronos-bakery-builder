@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\BlockType;
-use App\Modules\CMS\Infrastructure\Database\Factories\PageSectionFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Modules\CMS\Infrastructure\Database\Factories\PageBlockFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,20 +15,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * a reference to a reusable {@see Section}, in which case the section's data is
  * used as the base and any local data overrides it.
  *
- * @property string $id
- * @property string $page_id
- * @property string|null $section_id
+ * @property int $id
+ * @property int $page_id
+ * @property int|null $section_id
  * @property BlockType $type
  * @property array<string, mixed>|null $data
  * @property int $position
  * @property bool $is_active
  */
-class PageSection extends Model
+class PageBlock extends Model
 {
     use HasFactory;
-    use HasUuids;
 
-    protected $table = 'cms_page_sections';
+    protected $table = 'cms_page_blocks';
 
     protected $fillable = [
         'page_id',
@@ -41,6 +39,8 @@ class PageSection extends Model
     ];
 
     protected $casts = [
+        'page_id' => 'integer',
+        'section_id' => 'integer',
         'type' => BlockType::class,
         'data' => 'array',
         'position' => 'integer',
@@ -84,8 +84,8 @@ class PageSection extends Model
         return array_merge($base, $this->data ?? []);
     }
 
-    protected static function newFactory(): PageSectionFactory
+    protected static function newFactory(): PageBlockFactory
     {
-        return PageSectionFactory::new();
+        return PageBlockFactory::new();
     }
 }

@@ -12,6 +12,7 @@ import VideoBlock from './blocks/VideoBlock.vue'
 import CtaBlock from './blocks/CtaBlock.vue'
 import FaqBlock from './blocks/FaqBlock.vue'
 import TestimonialsBlock from './blocks/TestimonialsBlock.vue'
+import ProductsBlock from './blocks/ProductsBlock.vue'
 
 const props = defineProps<{ block: PageBlock }>()
 
@@ -26,6 +27,7 @@ const registry: Record<BlockType, unknown> = {
   cta: CtaBlock,
   faq: FaqBlock,
   testimonials: TestimonialsBlock,
+  products: ProductsBlock,
 }
 
 const component = computed(() => registry[props.block.type] ?? null)

@@ -6,15 +6,15 @@ namespace App\Modules\CMS\Infrastructure\Database\Factories;
 
 use App\Modules\CMS\Domain\Enums\BlockType;
 use App\Modules\CMS\Domain\Models\Page;
-use App\Modules\CMS\Domain\Models\PageSection;
+use App\Modules\CMS\Domain\Models\PageBlock;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<PageSection>
+ * @extends Factory<PageBlock>
  */
-class PageSectionFactory extends Factory
+class PageBlockFactory extends Factory
 {
-    protected $model = PageSection::class;
+    protected $model = PageBlock::class;
 
     public function definition(): array
     {
@@ -26,5 +26,13 @@ class PageSectionFactory extends Factory
             'position' => 0,
             'is_active' => true,
         ];
+    }
+
+    public function ofType(BlockType $type, array $data = []): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => $type->value,
+            'data' => $data ?: $attributes['data'],
+        ]);
     }
 }

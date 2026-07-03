@@ -10,9 +10,10 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('cms_pages', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->foreignId('brand_id')->constrained('brands')->cascadeOnDelete();
             $table->string('title');
-            $table->string('slug')->unique();
+            $table->string('slug');
             $table->string('type')->default('landing')->index();
 
             // SEO metadata.
@@ -22,9 +23,17 @@ return new class () extends Migration {
             // Optional rich-text body (e.g. blog / policies pages).
             $table->longText('content')->nullable();
 
+            // Page-level presentation settings (layout, container width, theme
+            // overrides…). Free-form JSONB interpreted by the frontend.
+            $table->jsonb('settings')->nullable();
+
             $table->string('status')->default('draft')->index();
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
+
+            // A slug identifies a page within a brand, not globally.
+            $table->unique(['brand_id', 'slug']);
+            $table->index(['brand_id', 'status']);
         });
     }
 

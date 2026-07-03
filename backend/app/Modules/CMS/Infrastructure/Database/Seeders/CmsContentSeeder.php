@@ -7,38 +7,43 @@ namespace App\Modules\CMS\Infrastructure\Database\Seeders;
 use App\Modules\CMS\Domain\Enums\BlockType;
 use App\Modules\CMS\Domain\Enums\PageStatus;
 use App\Modules\CMS\Domain\Enums\PageType;
+use App\Modules\CMS\Domain\Models\Brand;
 use App\Modules\CMS\Domain\Models\Page;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds the default set of dynamic pages with sample builder blocks so the
- * frontend renders a complete site out of the box.
+ * Seeds the default brand and its set of dynamic pages with sample builder
+ * blocks so the frontend renders a complete site out of the box.
  */
 class CmsContentSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->seedHome();
-        $this->seedSimplePage(PageType::About, 'Nosotros', 'about');
-        $this->seedSimplePage(PageType::Contact, 'Contacto', 'contact');
-        $this->seedFaq();
-        $this->seedSimplePage(PageType::Policies, 'Políticas', 'policies');
-        $this->seedSimplePage(PageType::Blog, 'Blog', 'blog');
+        $brand = Brand::updateOrCreate(
+            ['slug' => 'cronos-bakery'],
+            ['name' => 'Cronos Bakery', 'is_active' => true],
+        );
+
+        $this->seedHome($brand);
+        $this->seedSimplePage($brand, PageType::About, 'Nosotros', 'about');
+        $this->seedSimplePage($brand, PageType::Contact, 'Contacto', 'contact');
+        $this->seedFaq($brand);
+        $this->seedSimplePage($brand, PageType::Policies, 'Políticas', 'policies');
+        $this->seedSimplePage($brand, PageType::Blog, 'Blog', 'blog');
     }
 
-    private function seedHome(): void
+    private function seedHome(Brand $brand): void
     {
-        // Obtenemos los atributos por defecto del factory sin insertarlos en la BD
-        $factoryAttributes = Page::factory()->published()->ofType(PageType::Home)->raw();
-
-        // Buscamos por el slug único, si existe actualiza, si no, crea
         $home = Page::updateOrCreate(
-            ['slug' => 'home'],
-            array_merge($factoryAttributes, [
+            ['brand_id' => $brand->id, 'slug' => 'home'],
+            [
                 'title' => 'Inicio',
+                'type' => PageType::Home->value,
                 'meta_title' => 'Cronos Bakery — Pasteles artesanales a tu medida',
                 'meta_description' => 'Diseña tu pastel personalizado y recíbelo fresco en tu puerta.',
-            ])
+                'status' => PageStatus::Published->value,
+                'published_at' => now(),
+            ],
         );
 
         $blocks = [
@@ -57,6 +62,12 @@ class CmsContentSeeder extends Seeder
                     ['title' => 'Entrega puntual', 'text' => 'Del horno a tu puerta.'],
                 ],
             ]],
+            [BlockType::Products, [
+                'title' => 'Nuestros favoritos',
+                'source' => 'latest',
+                'limit' => 8,
+                'show_price' => true,
+            ]],
             [BlockType::Testimonials, [
                 'title' => 'Lo que dicen nuestros clientes',
                 'items' => [
@@ -71,11 +82,11 @@ class CmsContentSeeder extends Seeder
             ]],
         ];
 
-        // Para evitar duplicar bloques en la misma página, limpiamos las secciones previas
-        $home->sections()->delete();
+        // Para evitar duplicar bloques en la misma página, limpiamos los previos.
+        $home->blocks()->delete();
 
         foreach ($blocks as $position => [$type, $data]) {
-            $home->sections()->create([
+            $home->blocks()->create([
                 'type' => $type->value,
                 'data' => $data,
                 'position' => $position,
@@ -83,20 +94,21 @@ class CmsContentSeeder extends Seeder
         }
     }
 
-    private function seedFaq(): void
+    private function seedFaq(Brand $brand): void
     {
-        $factoryAttributes = Page::factory()->published()->ofType(PageType::Faq)->raw();
-
         $faq = Page::updateOrCreate(
-            ['slug' => 'faq'],
-            array_merge($factoryAttributes, [
+            ['brand_id' => $brand->id, 'slug' => 'faq'],
+            [
                 'title' => 'Preguntas frecuentes',
-            ])
+                'type' => PageType::Faq->value,
+                'status' => PageStatus::Published->value,
+                'published_at' => now(),
+            ],
         );
 
-        $faq->sections()->delete();
+        $faq->blocks()->delete();
 
-        $faq->sections()->create([
+        $faq->blocks()->create([
             'type' => BlockType::Faq->value,
             'position' => 0,
             'data' => [
@@ -109,25 +121,25 @@ class CmsContentSeeder extends Seeder
         ]);
     }
 
-    private function seedSimplePage(PageType $type, string $title, string $slug): void
+    private function seedSimplePage(Brand $brand, PageType $type, string $title, string $slug): void
     {
-        $factoryAttributes = Page::factory()->published()->ofType($type)->raw();
-
         $page = Page::updateOrCreate(
-            ['slug' => $slug],
-            array_merge($factoryAttributes, [
+            ['brand_id' => $brand->id, 'slug' => $slug],
+            [
                 'title' => $title,
+                'type' => $type->value,
+                'meta_title' => $title,
                 'status' => PageStatus::Published->value,
-            ])
+                'published_at' => now(),
+            ],
         );
 
-        $page->sections()->delete();
+        $page->blocks()->delete();
 
-        $page->sections()->create([
+        $page->blocks()->create([
             'type' => BlockType::Text->value,
             'position' => 0,
             'data' => [
-                'heading' => $title,
                 'body' => "<p>Contenido de la página <strong>{$title}</strong>.</p>",
             ],
         ]);

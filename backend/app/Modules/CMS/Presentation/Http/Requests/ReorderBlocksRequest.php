@@ -20,7 +20,7 @@ class ReorderBlocksRequest extends FormRequest
     {
         return [
             'order' => ['required', 'array', 'min:1'],
-            'order.*' => ['uuid'],
+            'order.*' => ['integer', 'min:1'],
         ];
     }
 }

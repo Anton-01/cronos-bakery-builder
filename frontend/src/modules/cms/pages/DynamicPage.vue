@@ -54,7 +54,7 @@ watch(() => resolveSlug(), load)
     <p v-if="loading" class="dynamic-page__state">Loading…</p>
     <p v-else-if="notFound" class="dynamic-page__state">This page is not available.</p>
     <template v-else-if="page">
-      <BlockRenderer v-for="block in page.sections" :key="block.id" :block="block" />
+      <BlockRenderer v-for="block in page.blocks" :key="block.id" :block="block" />
     </template>
   </div>
 </template>

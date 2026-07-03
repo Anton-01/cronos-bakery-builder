@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { cmsContentService } from '../services/cmsContentService'
-import { adminPanelService, type CmsPage } from '@/modules/administration/services/adminPanelService'
+import { pageBuilderService } from '../services/pageBuilderService'
 import { useOptimistic } from '@/composables/useOptimistic'
 import { useSudo } from '@/composables/useSudo'
 import { useToast } from '@/composables/useToast'
-import type { ContentVersion, ContentWorkflow } from '../types'
+import type { CmsPage, ContentVersion, ContentWorkflow } from '../types'
 
 export const useContentManagementStore = defineStore('contentManagement', () => {
     const pages = ref<CmsPage[]>([])
@@ -21,13 +21,13 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
     async function fetchPages() {
         loading.value = true
         try {
-            pages.value = await adminPanelService.cmsPages()
+            pages.value = await pageBuilderService.pages()
         } finally {
             loading.value = false
         }
     }
 
-    async function fetchVersions(pageId: string) {
+    async function fetchVersions(pageId: number) {
         versionsLoading.value = true
         try {
             versions.value = await cmsContentService.versions(pageId)
@@ -36,15 +36,15 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
         }
     }
 
-    async function fetchWorkflows(pageId: string) {
+    async function fetchWorkflows(pageId: number) {
         workflows.value = await cmsContentService.workflows(pageId)
     }
 
-    async function submitForReview(pageId: string, comment?: string) {
+    async function submitForReview(pageId: number, comment?: string) {
         await optimisticUpdate(
             pages,
             (p) => p.id === pageId,
-            { is_published: false },
+            { status: 'draft' },
             async () => {
                 await cmsContentService.submitForReview(pageId, comment)
                 success('Contenido enviado a revisión')
@@ -53,12 +53,12 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
         )
     }
 
-    async function approvePublication(pageId: string, comment?: string) {
+    async function approvePublication(pageId: number, comment?: string) {
         await withSudo(async () => {
             await optimisticUpdate(
                 pages,
                 (p) => p.id === pageId,
-                { is_published: true },
+                { status: 'published' },
                 async () => {
                     await cmsContentService.approve(pageId, comment)
                     success('Contenido publicado exitosamente')
@@ -68,23 +68,23 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
         })
     }
 
-    async function rejectContent(pageId: string, reason?: string) {
+    async function rejectContent(pageId: number, reason?: string) {
         await cmsContentService.reject(pageId, reason)
         const idx = pages.value.findIndex((p) => p.id === pageId)
         if (idx !== -1) {
-            pages.value[idx] = { ...pages.value[idx], is_published: false }
+            pages.value[idx] = { ...pages.value[idx], status: 'draft' }
         }
         success('Contenido devuelto a borrador')
     }
 
-    async function schedulePublication(pageId: string, publishAt: string) {
+    async function schedulePublication(pageId: number, publishAt: string) {
         await withSudo(async () => {
             await cmsContentService.schedule(pageId, publishAt)
             success('Publicación programada')
         })
     }
 
-    async function rollbackToVersion(pageId: string, versionId: string) {
+    async function rollbackToVersion(pageId: number, versionId: string) {
         await withSudo(async () => {
             await cmsContentService.rollback(pageId, versionId)
             await fetchPages()
@@ -93,7 +93,7 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
         })
     }
 
-    function updatePageInList(pageId: string, patch: Partial<CmsPage>) {
+    function updatePageInList(pageId: number, patch: Partial<CmsPage>) {
         const idx = pages.value.findIndex((p) => p.id === pageId)
         if (idx !== -1) {
             pages.value[idx] = { ...pages.value[idx], ...patch }

@@ -68,10 +68,11 @@ class AdminPanelTest extends TestCase
     public function test_mutating_admin_actions_are_audited_automatically(): void
     {
         $admin = $this->actingAsAdministrator();
+        $brand = \App\Modules\CMS\Domain\Models\Brand::factory()->create();
 
         // A create through any admin endpoint should be recorded.
         $this->postJson('/api/admin/cms/pages', [
-            'title' => 'Audited Page', 'type' => 'landing', 'status' => 'draft',
+            'brand_id' => $brand->id, 'title' => 'Audited Page', 'type' => 'landing', 'status' => 'draft',
         ])->assertCreated();
 
         $this->assertDatabaseHas('audit_logs', [

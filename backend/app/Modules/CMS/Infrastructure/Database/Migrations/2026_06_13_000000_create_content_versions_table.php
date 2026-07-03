@@ -10,8 +10,8 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('content_versions', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuidMorphs('versionable');
+            $table->id();
+            $table->morphs('versionable');
             $table->unsignedInteger('version_number');
             $table->json('payload_before')->nullable();
             $table->json('payload_after');

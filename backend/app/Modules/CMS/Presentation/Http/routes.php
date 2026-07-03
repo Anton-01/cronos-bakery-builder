@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\BannerController as AdminBannerController;
+use App\Modules\CMS\Presentation\Http\Controllers\Admin\BrandController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuController as AdminMenuController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuItemController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\PageBlockController;
@@ -36,14 +37,20 @@ Route::get('banners/{placement}', [BannerController::class, 'index']);
 Route::prefix('admin/cms')
     ->middleware(['auth:sanctum', 'admin', 'permission:manage cms'])
     ->group(function (): void {
+        // Brands (tenants) the admin can manage content for.
+        Route::get('brands', [BrandController::class, 'index']);
+
         // Reusable section library.
         Route::apiResource('sections', SectionController::class)->parameters(['sections' => 'section']);
 
         // Pages.
         Route::apiResource('pages', PageController::class)->parameters(['pages' => 'page']);
+        Route::put('pages/{page}/publish', [PageController::class, 'publish']);
+        Route::put('pages/{page}/unpublish', [PageController::class, 'unpublish']);
 
         // Page-builder blocks.
         Route::post('pages/{page}/blocks', [PageBlockController::class, 'store']);
+        Route::put('pages/{page}/blocks/sync', [PageBlockController::class, 'sync']);
         Route::put('pages/{page}/blocks/reorder', [PageBlockController::class, 'reorder']);
         Route::put('pages/{page}/blocks/{block}', [PageBlockController::class, 'update']);
         Route::delete('pages/{page}/blocks/{block}', [PageBlockController::class, 'destroy']);
