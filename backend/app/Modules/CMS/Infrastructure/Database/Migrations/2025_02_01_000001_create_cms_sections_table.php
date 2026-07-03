@@ -10,13 +10,17 @@ return new class () extends Migration {
     public function up(): void
     {
         // Reusable section library: blocks that can be referenced from many pages.
+        // A null brand_id marks a global (platform-wide) section.
         Schema::create('cms_sections', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->foreignId('brand_id')->nullable()->constrained('brands')->cascadeOnDelete();
             $table->string('name');
             $table->string('type')->index();
-            $table->json('data');
+            $table->jsonb('data');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index(['brand_id', 'is_active']);
         });
     }
 

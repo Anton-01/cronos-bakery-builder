@@ -18,6 +18,7 @@ class SectionFactory extends Factory
     public function definition(): array
     {
         return [
+            'brand_id' => null,
             'name' => ucfirst($this->faker->words(2, true)),
             'type' => BlockType::Hero->value,
             'data' => [

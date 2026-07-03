@@ -6,7 +6,7 @@ interface Paginated<T> { data: T[]; meta?: { current_page: number; last_page: nu
 
 export const cmsContentService = {
     // --- Workflow Actions ---
-    submitForReview(pageId: string, comment?: string): Promise<ContentWorkflow> {
+    submitForReview(pageId: number, comment?: string): Promise<ContentWorkflow> {
         return request<Wrapped<ContentWorkflow>>({
             url: `/admin/cms/pages/${pageId}/submit-review`,
             method: 'POST',
@@ -14,7 +14,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    approve(pageId: string, comment?: string): Promise<ContentWorkflow> {
+    approve(pageId: number, comment?: string): Promise<ContentWorkflow> {
         return request<Wrapped<ContentWorkflow>>({
             url: `/admin/cms/pages/${pageId}/approve`,
             method: 'POST',
@@ -22,7 +22,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    reject(pageId: string, reason?: string): Promise<ContentWorkflow> {
+    reject(pageId: number, reason?: string): Promise<ContentWorkflow> {
         return request<Wrapped<ContentWorkflow>>({
             url: `/admin/cms/pages/${pageId}/reject`,
             method: 'POST',
@@ -30,7 +30,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    schedule(pageId: string, publishAt: string): Promise<ContentWorkflow> {
+    schedule(pageId: number, publishAt: string): Promise<ContentWorkflow> {
         return request<Wrapped<ContentWorkflow>>({
             url: `/admin/cms/pages/${pageId}/schedule`,
             method: 'POST',
@@ -39,14 +39,14 @@ export const cmsContentService = {
     },
 
     // --- Versioning ---
-    versions(pageId: string): Promise<ContentVersion[]> {
+    versions(pageId: number): Promise<ContentVersion[]> {
         return request<Wrapped<ContentVersion[]>>({
             url: `/admin/cms/pages/${pageId}/versions`,
             method: 'GET',
         }).then((r) => r.data)
     },
 
-    rollback(pageId: string, versionId: string): Promise<void> {
+    rollback(pageId: number, versionId: string): Promise<void> {
         return request({
             url: `/admin/cms/pages/${pageId}/rollback`,
             method: 'POST',
@@ -122,7 +122,7 @@ export const cmsContentService = {
     },
 
     // --- Workflows History ---
-    workflows(pageId: string): Promise<ContentWorkflow[]> {
+    workflows(pageId: number): Promise<ContentWorkflow[]> {
         return request<Wrapped<ContentWorkflow[]>>({
             url: `/admin/cms/pages/${pageId}/workflows`,
             method: 'GET',

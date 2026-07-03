@@ -8,55 +8,68 @@ use App\Modules\CMS\Domain\Enums\PageStatus;
 use App\Modules\CMS\Domain\Enums\PageType;
 use App\Modules\CMS\Infrastructure\Database\Factories\PageFactory;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * CMS aggregate root: a dynamic, SEO-aware page composed of ordered builder
- * blocks ({@see PageSection}).
+ * CMS aggregate root: a brand-scoped, SEO-aware dynamic page composed of
+ * ordered builder blocks ({@see PageBlock}).
  *
- * @property string $id
+ * @property int $id
+ * @property int $brand_id
  * @property string $title
  * @property string $slug
  * @property PageType $type
  * @property string|null $meta_title
  * @property string|null $meta_description
  * @property string|null $content
+ * @property array<string, mixed>|null $settings
  * @property PageStatus $status
  * @property \Illuminate\Support\Carbon|null $published_at
  */
 class Page extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'cms_pages';
 
     protected $fillable = [
+        'brand_id',
         'title',
         'slug',
         'type',
         'meta_title',
         'meta_description',
         'content',
+        'settings',
         'status',
         'published_at',
     ];
 
     protected $casts = [
+        'brand_id' => 'integer',
         'type' => PageType::class,
+        'settings' => 'array',
         'status' => PageStatus::class,
         'published_at' => 'datetime',
     ];
 
     /**
-     * @return HasMany<PageSection, $this>
+     * @return BelongsTo<Brand, $this>
      */
-    public function sections(): HasMany
+    public function brand(): BelongsTo
     {
-        return $this->hasMany(PageSection::class)->orderBy('position');
+        return $this->belongsTo(Brand::class);
+    }
+
+    /**
+     * @return HasMany<PageBlock, $this>
+     */
+    public function blocks(): HasMany
+    {
+        return $this->hasMany(PageBlock::class)->orderBy('position');
     }
 
     public function isPublished(): bool
@@ -70,6 +83,14 @@ class Page extends Model
     public function scopePublished(Builder $query): void
     {
         $query->where('status', PageStatus::Published->value);
+    }
+
+    /**
+     * @param  Builder<Page>  $query
+     */
+    public function scopeForBrand(Builder $query, int $brandId): void
+    {
+        $query->where('brand_id', $brandId);
     }
 
     protected static function newFactory(): PageFactory

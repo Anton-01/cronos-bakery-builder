@@ -7,8 +7,10 @@ namespace App\Modules\CMS\Presentation\Http\Controllers\Admin;
 use App\Modules\CMS\Application\DTO\PageData;
 use App\Modules\CMS\Application\Services\PageService;
 use App\Modules\CMS\Presentation\Http\Requests\StorePageRequest;
+use App\Modules\CMS\Presentation\Http\Requests\UpdatePageRequest;
 use App\Modules\CMS\Presentation\Http\Resources\PageResource;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 
@@ -18,12 +20,14 @@ class PageController extends Controller
     {
     }
 
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return PageResource::collection($this->pages->all());
+        $brandId = $request->filled('brand_id') ? (int) $request->query('brand_id') : null;
+
+        return PageResource::collection($this->pages->all($brandId));
     }
 
-    public function show(string $page): PageResource
+    public function show(int $page): PageResource
     {
         return new PageResource($this->pages->get($page));
     }
@@ -35,15 +39,25 @@ class PageController extends Controller
         return (new PageResource($page))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StorePageRequest $request, string $page): PageResource
+    public function update(UpdatePageRequest $request, int $page): PageResource
     {
         return new PageResource($this->pages->update($page, PageData::fromArray($request->validated())));
     }
 
-    public function destroy(string $page): JsonResponse
+    public function destroy(int $page): JsonResponse
     {
         $this->pages->delete($page);
 
         return response()->json(status: JsonResponse::HTTP_NO_CONTENT);
+    }
+
+    public function publish(int $page): PageResource
+    {
+        return new PageResource($this->pages->publish($page));
+    }
+
+    public function unpublish(int $page): PageResource
+    {
+        return new PageResource($this->pages->unpublish($page));
     }
 }

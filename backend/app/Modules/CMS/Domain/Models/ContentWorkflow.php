@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\ContentStatus;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ContentWorkflow extends Model
 {
-    use HasUuids;
-
     protected $fillable = [
         'workflowable_type',
         'workflowable_id',

@@ -62,6 +62,12 @@ export const administrationRoutes: RouteRecordRaw[] = [
     meta: { layout: 'admin', requiresAdmin: true },
   },
   {
+    path: '/admin/cms/pages/:id/builder',
+    name: 'admin.cms.builder',
+    component: () => import('./pages/AdminPageBuilderPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
     path: '/admin/menus',
     name: 'admin.menus',
     component: () => import('./pages/AdminMenusPage.vue'),

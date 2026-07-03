@@ -10,8 +10,8 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('content_workflows', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuidMorphs('workflowable');
+            $table->id();
+            $table->morphs('workflowable');
             $table->string('from_status');
             $table->string('to_status');
             $table->foreignId('requested_by')->constrained('users')->cascadeOnDelete();

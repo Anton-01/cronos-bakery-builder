@@ -8,15 +8,131 @@ export type BlockType =
   | 'cta'
   | 'faq'
   | 'testimonials'
+  | 'products'
 
-/** A rendered page-builder block. `config` is a free-form, type-specific payload. */
+export type PageStatus = 'draft' | 'published' | 'archived'
+
+export type PageType = 'home' | 'about' | 'contact' | 'faq' | 'policies' | 'blog' | 'landing'
+
+/** A brand (tenant) owning its own CMS content. */
+export interface Brand {
+  id: number
+  name: string
+  slug: string
+  domain: string | null
+  is_active: boolean
+}
+
+// --- Typed block payloads ----------------------------------------------------
+// Mirror of the backend's BlockRules: the JSONB `data` stored per block type.
+
+export interface HeroBlockConfig {
+  heading: string
+  subheading?: string | null
+  image?: string | null
+  cta_label?: string | null
+  cta_url?: string | null
+}
+
+export interface BannerBlockConfig {
+  image: string
+  link?: string | null
+  alt?: string | null
+}
+
+export interface GalleryImage {
+  url: string
+  caption?: string | null
+}
+
+export interface GalleryBlockConfig {
+  title?: string | null
+  images: GalleryImage[]
+}
+
+export interface CardItem {
+  title: string
+  text?: string | null
+  image?: string | null
+}
+
+export interface CardsBlockConfig {
+  title?: string | null
+  items: CardItem[]
+}
+
+export interface TextBlockConfig {
+  body: string
+}
+
+export interface VideoBlockConfig {
+  url: string
+  title?: string | null
+  autoplay?: boolean
+}
+
+export interface CtaBlockConfig {
+  heading: string
+  text?: string | null
+  cta_label: string
+  cta_url: string
+}
+
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
+export interface FaqBlockConfig {
+  title?: string | null
+  items: FaqItem[]
+}
+
+export interface TestimonialItem {
+  author: string
+  quote: string
+}
+
+export interface TestimonialsBlockConfig {
+  title?: string | null
+  items: TestimonialItem[]
+}
+
+export type ProductsSource = 'latest' | 'featured' | 'category' | 'manual'
+
+/** Dynamic bakery-products block: renders live catalog products. */
+export interface ProductsBlockConfig {
+  title?: string | null
+  source: ProductsSource
+  category_slug?: string | null
+  product_ids?: string[]
+  limit?: number
+  show_price?: boolean
+}
+
+export interface BlockConfigMap {
+  hero: HeroBlockConfig
+  banner: BannerBlockConfig
+  gallery: GalleryBlockConfig
+  cards: CardsBlockConfig
+  text: TextBlockConfig
+  video: VideoBlockConfig
+  cta: CtaBlockConfig
+  faq: FaqBlockConfig
+  testimonials: TestimonialsBlockConfig
+  products: ProductsBlockConfig
+}
+
+export type BlockConfig = BlockConfigMap[BlockType]
+
+/** A rendered page-builder block. `config` is the type-specific payload. */
 export interface PageBlock {
-  id: string
+  id: number
   type: BlockType
   config: Record<string, unknown>
   position: number
   is_active: boolean
-  section_id: string | null
+  section_id: number | null
 }
 
 export interface PageSeo {
@@ -25,15 +141,42 @@ export interface PageSeo {
 }
 
 export interface CmsPage {
-  id: string
+  id: number
+  brand_id: number
+  brand?: Brand
   title: string
   slug: string
-  type: string
-  status: string
+  type: PageType
+  status: PageStatus
   content: string | null
+  settings: Record<string, unknown> | null
   seo: PageSeo
   published_at: string | null
-  sections: PageBlock[]
+  blocks: PageBlock[]
+  updated_at: string | null
+}
+
+/** Payload for creating/updating a page from the admin. */
+export interface PagePayload {
+  brand_id?: number
+  title: string
+  slug?: string | null
+  type: PageType
+  meta_title?: string | null
+  meta_description?: string | null
+  content?: string | null
+  settings?: Record<string, unknown> | null
+  status: PageStatus
+  blocks?: PageBlockPayload[]
+}
+
+/** One block inside a bulk save: `id` present = update, absent = create. */
+export interface PageBlockPayload {
+  id?: number | null
+  section_id?: number | null
+  type?: BlockType | null
+  data?: Record<string, unknown> | null
+  is_active?: boolean
 }
 
 // --- Theme Builder ---------------------------------------------------------

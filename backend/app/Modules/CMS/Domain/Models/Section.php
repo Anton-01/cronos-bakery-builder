@@ -6,15 +6,17 @@ namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\BlockType;
 use App\Modules\CMS\Infrastructure\Database\Factories\SectionFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A reusable, configurable block stored in the section library. It can be
- * referenced by many pages via {@see PageSection}.
+ * referenced by many pages via {@see PageBlock}. A null brand_id marks a
+ * global (platform-wide) section available to every brand.
  *
- * @property string $id
+ * @property int $id
+ * @property int|null $brand_id
  * @property string $name
  * @property BlockType $type
  * @property array<string, mixed> $data
@@ -23,11 +25,11 @@ use Illuminate\Database\Eloquent\Model;
 class Section extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'cms_sections';
 
     protected $fillable = [
+        'brand_id',
         'name',
         'type',
         'data',
@@ -35,10 +37,19 @@ class Section extends Model
     ];
 
     protected $casts = [
+        'brand_id' => 'integer',
         'type' => BlockType::class,
         'data' => 'array',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * @return BelongsTo<Brand, $this>
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
 
     protected static function newFactory(): SectionFactory
     {

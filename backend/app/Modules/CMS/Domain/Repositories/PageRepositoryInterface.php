@@ -14,12 +14,21 @@ use Illuminate\Support\Collection;
 interface PageRepositoryInterface extends RepositoryInterface
 {
     /**
-     * Find a published page by slug, eager-loading its ordered blocks.
+     * All pages, optionally scoped to one brand.
+     *
+     * @return Collection<int, Page>
      */
-    public function findPublishedBySlug(string $slug): ?Page;
+    public function allForBrand(?int $brandId = null): Collection;
+
+    /**
+     * Find a published page by slug, eager-loading its ordered blocks. The
+     * lookup is brand-scoped when a brand id is given (slugs are only unique
+     * per brand).
+     */
+    public function findPublishedBySlug(string $slug, ?int $brandId = null): ?Page;
 
     /**
      * @return Collection<int, Page>
      */
-    public function publishedPages(): Collection;
+    public function publishedPages(?int $brandId = null): Collection;
 }
