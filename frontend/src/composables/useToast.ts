@@ -1,20 +1,20 @@
-import { toast } from 'vue-sonner'
+import { useToast as usePrimeToast } from 'primevue/usetoast'
 
 export function useToast() {
+  const toast = usePrimeToast()
+
   return {
     success(message: string) {
-      toast.success(message, { duration: 3000 })
+      toast.add({ severity: 'success', summary: 'Éxito', detail: message, life: 3000 })
     },
     error(message: string) {
-      console.log("**** Error  ****")
-      console.log(message)
-      toast.error(message, { duration: 5000 })
+      toast.add({ severity: 'error', summary: 'Error', detail: message, life: 5000 })
     },
     info(message: string) {
-      toast.info(message, { duration: 3000 })
+      toast.add({ severity: 'info', summary: 'Info', detail: message, life: 3000 })
     },
     warning(message: string) {
-      toast.warning(message, { duration: 4000 })
+      toast.add({ severity: 'warn', summary: 'Aviso', detail: message, life: 4000 })
     },
   }
 }

@@ -1,34 +1,37 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Tag from 'primevue/tag'
+import Card from 'primevue/card'
+import Image from 'primevue/image'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import { adminPanelService, type AdminProduct } from '../services/adminPanelService'
 
 const router = useRouter()
 const { success, error } = useToast()
-const {
-  visible: confirmVisible,
-  title: confirmTitle,
-  message: confirmMessage,
-  action: confirmAction,
-  confirmText,
-  cancelText,
-  confirm,
-  handleConfirm,
-  handleCancel,
-} = useConfirm()
+const { confirm } = useConfirm()
 
 const products = ref<AdminProduct[]>([])
 const loading = ref(true)
 const search = ref('')
-const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
-const currentPage = ref(1)
-const perPage = ref(10)
+const statusFilter = ref('all')
 const lightboxImage = ref<string | null>(null)
 const lightboxProduct = ref<AdminProduct | null>(null)
+
+const statusOptions = [
+  { label: 'Todos los estados', value: 'all' },
+  { label: 'Activos', value: 'active' },
+  { label: 'Inactivos', value: 'inactive' },
+]
 
 function money(amount: number, currency = 'MXN'): string {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency }).format(amount / 100)
@@ -41,45 +44,14 @@ function validImageUrl(url: string | null | undefined): string | null {
 
 const filtered = computed(() => {
   let result = products.value
-  if (statusFilter.value === 'active') {
-    result = result.filter((p) => p.is_active)
-  } else if (statusFilter.value === 'inactive') {
-    result = result.filter((p) => !p.is_active)
-  }
+  if (statusFilter.value === 'active') result = result.filter((p) => p.is_active)
+  else if (statusFilter.value === 'inactive') result = result.filter((p) => !p.is_active)
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
-    result = result.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
-    )
+    result = result.filter((p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
   }
   return result
 })
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / perPage.value)))
-
-const paginated = computed(() => {
-  const start = (currentPage.value - 1) * perPage.value
-  return filtered.value.slice(start, start + perPage.value)
-})
-
-const pageRange = computed(() => {
-  const pages: number[] = []
-  const total = totalPages.value
-  const current = currentPage.value
-  const delta = 2
-  for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
-    pages.push(i)
-  }
-  return pages
-})
-
-function onSearchInput() {
-  currentPage.value = 1
-}
-
-function onStatusFilterChange() {
-  currentPage.value = 1
-}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -101,7 +73,6 @@ async function toggleActive(product: AdminProduct): Promise<void> {
     confirmText: activating ? 'Activar' : 'Desactivar',
   })
   if (!ok) return
-
   try {
     const updated = await adminPanelService.updateProduct(product.id, { is_active: !product.is_active })
     const idx = products.value.findIndex((p) => p.id === product.id)
@@ -120,7 +91,6 @@ async function deleteProduct(product: AdminProduct): Promise<void> {
     confirmText: 'Eliminar',
   })
   if (!ok) return
-
   try {
     await adminPanelService.deleteProduct(product.id)
     products.value = products.value.filter((p) => p.id !== product.id)
@@ -143,231 +113,124 @@ function closeLightbox() {
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && lightboxImage.value) closeLightbox()
 }
-onMounted(() => {
-  load()
-  document.addEventListener('keydown', onKeydown)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown)
-})
+onMounted(() => { load(); document.addEventListener('keydown', onKeydown) })
+onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown) })
 </script>
 
 <template>
   <div>
-    <!-- Page header -->
     <div class="admin-page-header">
       <div>
         <h1>Productos</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Catalogo <span>/</span> Productos
-        </div>
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Catalogo <span>/</span> Productos</div>
       </div>
-      <div>
-        <button class="admin-btn admin-btn--primary" @click="router.push('/admin/productos/new')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          Nuevo Producto
-        </button>
-      </div>
+      <Button label="Nuevo Producto" icon="pi pi-plus" @click="router.push('/admin/productos/new')" />
     </div>
 
-    <!-- Products DataTable -->
-    <div class="admin-content-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Listado de Productos</h3>
-      </div>
-      <div class="admin-content-card__body">
-        <p v-if="loading" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-          Cargando productos...
-        </p>
+    <Card>
+      <template #title>Listado de Productos</template>
+      <template #content>
+        <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
+          <ProgressSpinner />
+        </div>
 
         <template v-else>
-          <div class="admin-datatable">
-            <!-- Toolbar -->
-            <div class="admin-datatable__toolbar">
-              <div class="admin-datatable__search">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                <input v-model="search" type="text" placeholder="Buscar producto..." @input="onSearchInput" />
-              </div>
+          <!-- Toolbar -->
+          <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+            <div class="p-inputgroup" style="max-width:280px;">
+              <span class="p-inputgroup-addon"><i class="pi pi-search"></i></span>
+              <InputText v-model="search" placeholder="Buscar producto..." />
+            </div>
+            <Select v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Estado" />
+          </div>
 
-              <div class="admin-datatable__filters">
+          <DataTable
+            :value="filtered"
+            paginator
+            :rows="10"
+            :rowsPerPageOptions="[5, 10, 25, 50]"
+            paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
+            currentPageReportTemplate="{first} - {last} de {totalRecords}"
+            class="p-datatable-sm"
+          >
+            <template #empty>
+              <div style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No se encontraron productos.</div>
+            </template>
 
-                <select v-model="statusFilter" class="admin-datatable__filter-select" @change="onStatusFilterChange">
-                  <option value="all">Todos los estados</option>
-                  <option value="active">Activos</option>
-                  <option value="inactive">Inactivos</option>
-                </select>
-
-                <div class="admin-datatable__per-page">
-                  <span>Mostrar</span>
-                  <select v-model.number="perPage" @change="currentPage = 1">
-                    <option :value="5">5</option>
-                    <option :value="10">10</option>
-                    <option :value="25">25</option>
-                    <option :value="50">50</option>
-                  </select>
-                  <span>registros</span>
+            <Column header="Imagen" style="width:80px;">
+              <template #body="{ data }">
+                <div
+                  class="product-thumb"
+                  :class="{ 'product-thumb--clickable': !!validImageUrl(data.image) }"
+                  @click="openLightbox(data)"
+                >
+                  <img v-if="validImageUrl(data.image)" :src="validImageUrl(data.image)!" :alt="data.name" />
+                  <i v-else class="pi pi-image" style="color:var(--admin-text-muted); opacity:0.4; font-size:1.2rem;"></i>
                 </div>
+              </template>
+            </Column>
 
-              </div>
+            <Column header="Nombre" sortable field="name">
+              <template #body="{ data }">
+                <span style="font-weight:500; display:block;">{{ data.name }}</span>
+                <small style="color:var(--admin-primary); font-family:monospace; opacity:0.65;">/{{ data.slug }}</small>
+              </template>
+            </Column>
 
-            </div>
+            <Column header="Precio Base" sortable field="base_price.amount">
+              <template #body="{ data }">
+                {{ money(data.base_price.amount, data.base_price.currency) }}
+              </template>
+            </Column>
 
-            <p v-if="filtered.length === 0" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-              No se encontraron productos.
-            </p>
+            <Column header="Estado" style="width:120px;">
+              <template #body="{ data }">
+                <Tag :value="data.is_active ? 'Activo' : 'Inactivo'" :severity="data.is_active ? 'success' : 'danger'" />
+              </template>
+            </Column>
 
-            <table v-else class="admin-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px;">#</th>
-                  <th>Nombre</th>
-                  <th style="width: 70px;">Imagen</th>
-                  <th>Precio Base</th>
-                  <th>Estado</th>
-                  <th style="width: 80px;">Opciones</th>
-                  <th style="width: 120px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(product, idx) in paginated" :key="product.id">
-                  <td style="color: var(--admin-text-muted);">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-                  <td>
-                    <span style="font-weight: 500; display: block;">{{ product.name }}</span>
-                    <span class="product-list-slug">/{{ product.slug }}</span>
-                  </td>
-                  <td>
-                    <div class="product-list-thumb" :class="{ 'product-list-thumb--clickable': !!validImageUrl(product.image) }" @click="openLightbox(product)">
-                      <img v-if="validImageUrl(product.image)" :src="validImageUrl(product.image)!" :alt="product.name" />
-                      <span v-else class="product-list-thumb__empty">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                        </svg>
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="product-price-currency">{{ product.base_price.currency }}</span>
-                    {{ money(product.base_price.amount, product.base_price.currency) }}
-                  </td>
-                  <td>
-                    <span class="product-status-badge" :class="product.is_active ? 'product-status-badge--stock' : 'product-status-badge--out'">
-                      {{ product.is_active ? 'Activo' : 'Inactivo' }}
-                    </span>
-                  </td>
-                  <td style="text-align: center;">{{ product.options_count ?? 0 }}</td>
-                  <td>
-                    <div style="display: flex; gap: 0.25rem;">
-                      <button class="admin-action-btn admin-action-btn--edit" title="Editar" @click="router.push(`/admin/productos/${product.id}`)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                      <button class="admin-action-btn admin-action-btn--toggle" :title="product.is_active ? 'Desactivar' : 'Activar'" @click="toggleActive(product)">
-                        <svg v-if="product.is_active" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                        </svg>
-                        <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                        </svg>
-                      </button>
-                      <button class="admin-action-btn admin-action-btn--delete" title="Eliminar" @click="deleteProduct(product)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <Column header="Opciones" style="width:90px; text-align:center;">
+              <template #body="{ data }">{{ data.options_count ?? 0 }}</template>
+            </Column>
 
-            <!-- Footer -->
-            <div v-if="filtered.length > 0" class="admin-datatable__footer">
-              <div class="admin-datatable__info">
-                Mostrando {{ (currentPage - 1) * perPage + 1 }} a {{ Math.min(currentPage * perPage, filtered.length) }} de {{ filtered.length }} productos
-              </div>
-              <div class="admin-datatable__pagination">
-                <button class="admin-datatable__page-btn" :disabled="currentPage <= 1" @click="currentPage--">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
-                </button>
-                <button v-for="p in pageRange" :key="p" class="admin-datatable__page-btn" :class="{ 'admin-datatable__page-btn--active': p === currentPage }" @click="currentPage = p">
-                  {{ p }}
-                </button>
-                <button class="admin-datatable__page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
-                </button>
-              </div>
-            </div>
-          </div>
+            <Column header="Acciones" style="width:130px;">
+              <template #body="{ data }">
+                <div style="display:flex; gap:0.25rem;">
+                  <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="router.push(`/admin/productos/${data.id}`)" />
+                  <Button
+                    :icon="data.is_active ? 'pi pi-times-circle' : 'pi pi-check-circle'"
+                    size="small"
+                    severity="warn"
+                    text
+                    rounded
+                    :title="data.is_active ? 'Desactivar' : 'Activar'"
+                    @click="toggleActive(data)"
+                  />
+                  <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="deleteProduct(data)" />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
         </template>
-      </div>
-    </div>
+      </template>
+    </Card>
 
-    <!-- Image lightbox -->
-    <Teleport to="body">
-      <Transition name="confirm-fade">
-        <div v-if="lightboxImage" class="product-lightbox" @click.self="closeLightbox">
-          <button class="product-lightbox__close-btn" @click="closeLightbox">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-          <div class="product-lightbox__content">
-            <img :src="lightboxImage" :alt="lightboxProduct?.name" />
-            <div v-if="lightboxProduct" class="product-lightbox__meta">
-              <h4 class="product-lightbox__meta-name">{{ lightboxProduct.name }}</h4>
-              <div class="product-lightbox__meta-details">
-                <span>/{{ lightboxProduct.slug }}</span>
-                <span class="product-lightbox__meta-sep">·</span>
-                <span>{{ money(lightboxProduct.base_price.amount, lightboxProduct.base_price.currency) }}</span>
-                <span class="product-lightbox__meta-sep">·</span>
-                <span :class="lightboxProduct.is_active ? 'product-lightbox__meta-active' : 'product-lightbox__meta-inactive'">
-                  {{ lightboxProduct.is_active ? 'Activo' : 'Inactivo' }}
-                </span>
-              </div>
-            </div>
-          </div>
+    <!-- Lightbox dialog -->
+    <Dialog v-model:visible="lightboxImage" modal :showHeader="false" :style="{ background: 'transparent', boxShadow: 'none' }" contentStyle="background:rgba(0,0,0,0.88); padding:2rem; border-radius:12px; position:relative;" @hide="closeLightbox">
+      <Button icon="pi pi-times" rounded text :style="{ position:'absolute', top:'1rem', right:'1rem', color:'#fff', background:'rgba(255,255,255,0.15)' }" @click="closeLightbox" />
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <img :src="lightboxImage!" :alt="lightboxProduct?.name" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:10px;" />
+        <div v-if="lightboxProduct" style="margin-top:1.25rem; text-align:center; color:#fff;">
+          <h4 style="font-size:1.1rem; font-weight:600; margin:0 0 0.35rem;">{{ lightboxProduct.name }}</h4>
+          <div style="font-size:0.82rem; opacity:0.7;">/{{ lightboxProduct.slug }} · {{ money(lightboxProduct.base_price.amount, lightboxProduct.base_price.currency) }}</div>
         </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Confirm dialog -->
-    <ConfirmDialog
-      :visible="confirmVisible"
-      :title="confirmTitle"
-      :message="confirmMessage"
-      :action="confirmAction"
-      :confirm-text="confirmText"
-      :cancel-text="cancelText"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
-    />
+      </div>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
-
-.product-price-currency {
-  display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 700;
-  background: var(--admin-primary-light, #e8f0fe);
-  color: var(--admin-primary, #4361ee);
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  margin-right: 0.3rem;
-  vertical-align: middle;
-  letter-spacing: 0.02em;
-}
-
-.product-list-slug {
-  font-size: 0.75rem;
-  color: var(--admin-primary);
-  opacity: 0.65;
-  font-family: monospace;
-}
-
-.product-list-thumb {
+.product-thumb {
   width: 48px;
   height: 48px;
   border-radius: 8px;
@@ -378,152 +241,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
 }
-
-.product-list-thumb--clickable {
-  cursor: pointer;
-  transition: box-shadow 0.15s ease;
-}
-
-.product-list-thumb--clickable:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.product-list-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-list-thumb__empty {
-  color: var(--admin-text-muted);
-  opacity: 0.5;
-}
-
-.product-list-thumb__empty svg {
-  display: block;
-}
-
-/* Status badges — matching the screenshot style */
-.product-status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-.product-status-badge--stock {
-  background: #e8f4fd;
-  color: #3b8bdb;
-}
-.product-status-badge--out {
-  background: #fde8e4;
-  color: #e8684a;
-}
-/* Filter select */
-.admin-datatable__filters {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.admin-datatable__filter-select {
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-sm, 8px);
-  font-family: var(--admin-font);
-  font-size: 0.82rem;
-  color: var(--admin-text);
-  background: var(--admin-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-.admin-datatable__filter-select:focus {
-  outline: none;
-  border-color: var(--admin-primary);
-  box-shadow: 0 0 0 3px var(--admin-primary-light);
-}
-
-/* Lightbox — dark background, centered image with metadata */
-.product-lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.88);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 2rem;
-}
-
-.product-lightbox__close-btn {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease;
-  z-index: 10;
-}
-.product-lightbox__close-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.product-lightbox__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 720px;
-  max-height: 85vh;
-}
-
-.product-lightbox__content img {
-  display: block;
-  max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.product-lightbox__meta {
-  margin-top: 1.25rem;
-  text-align: center;
-  color: #fff;
-}
-
-.product-lightbox__meta-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 0.35rem;
-  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
-}
-
-.product-lightbox__meta-details {
-  font-size: 0.82rem;
-  opacity: 0.7;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  justify-content: center;
-  font-family: var(--admin-font, 'Plus Jakarta Sans', sans-serif);
-}
-.product-lightbox__meta-sep {
-  opacity: 0.4;
-}
-.product-lightbox__meta-active {
-  color: #13deb9;
-}
-
-.product-lightbox__meta-inactive {
-  color: #fa896b;
-}
+.product-thumb--clickable { cursor: pointer; }
+.product-thumb--clickable:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.product-thumb img { width: 100%; height: 100%; object-fit: cover; }
 </style>

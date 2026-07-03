@@ -1,26 +1,5 @@
-import { useEditor, type Editor } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import type { ShallowRef } from 'vue'
-
-interface RichTextEditorOptions {
-    placeholder?: string
-    content?: string
-    onUpdate?: (html: string) => void
-}
-
-export function useRichTextEditor(options: RichTextEditorOptions = {}): ShallowRef<Editor | undefined> {
-    const editorOptions: Record<string, unknown> = {
-        extensions: [
-            StarterKit,
-            Placeholder.configure({
-                placeholder: options.placeholder ?? '',
-            }),
-        ],
-        content: options.content ?? '',
-    }
-    if (options.onUpdate) {
-        editorOptions.onUpdate = ({ editor: e }: { editor: Editor }) => options.onUpdate!(e.getHTML())
-    }
-    return useEditor(editorOptions as Parameters<typeof useEditor>[0])
+// Rich text content is now managed as plain HTML strings via PrimeVue <Editor>
+// This composable is kept as a no-op for backward compatibility during migration.
+export function useRichTextEditor(_options: { placeholder?: string; content?: string; onUpdate?: (html: string) => void } = {}) {
+  return null
 }

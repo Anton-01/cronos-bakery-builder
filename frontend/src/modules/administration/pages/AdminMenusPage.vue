@@ -1,34 +1,35 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive } from 'vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Tag from 'primevue/tag'
+import Card from 'primevue/card'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 
 import { adminPanelService, type CmsMenu } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
+const { confirm } = useConfirm()
 
-const {
-  visible: confirmVisible,
-  title: confirmTitle,
-  message: confirmMessage,
-  action: confirmAction,
-  confirmText,
-  cancelText,
-  confirm,
-  handleConfirm,
-  handleCancel,
-} = useConfirm()
+const locationOptions = [
+  { label: 'Header', value: 'header' },
+  { label: 'Footer', value: 'footer' },
+  { label: 'Sidebar', value: 'sidebar' },
+]
 
 const menus = ref<CmsMenu[]>([])
 const loading = ref(true)
 
-// --- New menu form ---
 const showNewForm = ref(false)
 const newForm = reactive({ name: '', location: 'header' as 'header' | 'footer' | 'sidebar' })
 const saving = ref(false)
 
-// --- Edit state ---
 interface EditState { name: string; location: string }
 const editingId = ref<string | null>(null)
 const editForm = reactive<EditState>({ name: '', location: '' })
@@ -114,188 +115,130 @@ function locationLabel(location: string): string {
 
 <template>
   <div>
-    <!-- Page header -->
     <div class="admin-page-header">
       <div>
         <h1>Menus de Navegacion</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Contenido <span>/</span> Menus
-        </div>
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Contenido <span>/</span> Menus</div>
       </div>
-      <button class="admin-btn admin-btn--primary" @click="showNewForm = !showNewForm">
-        Nuevo Menu
-      </button>
+      <Button label="Nuevo Menu" icon="pi pi-plus" @click="showNewForm = true" />
     </div>
 
-    <!-- New menu form -->
-    <div v-if="showNewForm" class="admin-content-card" style="margin-bottom: 1.5rem;">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Crear nuevo menu</h3>
-      </div>
-      <div class="admin-content-card__body">
-        <div class="admin-form-row">
-          <label>
-            Nombre
-            <input v-model="newForm.name" type="text" placeholder="Nombre del menu" />
-          </label>
-          <label>
-            Ubicacion
-            <select v-model="newForm.location">
-              <option value="header">Header</option>
-              <option value="footer">Footer</option>
-              <option value="sidebar">Sidebar</option>
-            </select>
-          </label>
-          <button
-            class="admin-btn admin-btn--primary admin-btn--sm"
-            :disabled="saving || !newForm.name.trim()"
-            @click="createMenu"
-          >
-            {{ saving ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button
-            class="admin-btn admin-btn--sm"
-            :disabled="saving"
-            @click="showNewForm = false"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
+    <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
+      <ProgressSpinner />
     </div>
 
-    <!-- Loading state -->
-    <p v-if="loading" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-      Cargando menus...
-    </p>
-
-    <!-- Empty state -->
-    <div
-      v-else-if="menus.length === 0"
-      style="text-align: center; padding: 3rem; color: var(--admin-text-muted);"
-    >
-      No hay menus registrados. Crea uno con el boton "Nuevo Menu".
-    </div>
-
-    <!-- Menu cards -->
     <template v-else>
-      <div
-        v-for="menu in menus"
-        :key="menu.id"
-        class="admin-content-card admin-menu-card"
-      >
-        <!-- Card header -->
-        <div class="admin-content-card__header admin-menu-header">
+      <p v-if="menus.length === 0 && !showNewForm" style="text-align:center; padding:3rem; color:var(--admin-text-muted);">
+        No hay menus registrados. Crea uno con el boton "Nuevo Menu".
+      </p>
+
+      <Card v-for="menu in menus" :key="menu.id" style="margin-bottom:1rem;">
+        <template #content>
           <!-- Editing mode -->
           <template v-if="editingId === menu.id">
-            <div class="admin-form-row" style="margin-bottom: 0;">
-              <label>
-                Nombre
-                <input v-model="editForm.name" type="text" />
-              </label>
-              <label>
-                Ubicacion
-                <select v-model="editForm.location">
-                  <option value="header">Header</option>
-                  <option value="footer">Footer</option>
-                  <option value="sidebar">Sidebar</option>
-                </select>
-              </label>
+            <div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; margin-bottom:1rem;">
+              <div class="menu-field" style="flex:1; min-width:200px;">
+                <label>Nombre</label>
+                <InputText v-model="editForm.name" fluid />
+              </div>
+              <div class="menu-field" style="min-width:160px;">
+                <label>Ubicacion</label>
+                <Select v-model="editForm.location" :options="locationOptions" optionLabel="label" optionValue="value" fluid />
+              </div>
+              <div style="display:flex; gap:0.5rem; padding-bottom:0.1rem;">
+                <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" size="small" @click="saveEdit(menu)" />
+                <Button label="Cancelar" severity="secondary" outlined size="small" :disabled="saving" @click="cancelEdit" />
+              </div>
             </div>
           </template>
 
           <!-- View mode -->
           <template v-else>
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <h3 class="admin-content-card__title">{{ menu.name }}</h3>
-              <span class="admin-badge">{{ locationLabel(menu.location) }}</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <h3 style="margin:0; font-size:1rem; font-weight:600;">{{ menu.name }}</h3>
+                <Tag :value="locationLabel(menu.location)" severity="secondary" />
+              </div>
+              <div style="display:flex; gap:0.25rem;">
+                <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="startEdit(menu)" />
+                <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="deleteMenu(menu.id)" />
+              </div>
             </div>
           </template>
 
-          <!-- Actions -->
-          <div class="admin-menu-actions">
-            <template v-if="editingId === menu.id">
-              <button
-                class="admin-btn admin-btn--primary admin-btn--sm"
-                :disabled="saving"
-                @click="saveEdit(menu)"
-              >
-                {{ saving ? 'Guardando...' : 'Guardar' }}
-              </button>
-              <button
-                class="admin-btn admin-btn--sm"
-                :disabled="saving"
-                @click="cancelEdit"
-              >
-                Cancelar
-              </button>
-            </template>
-            <template v-else>
-              <button class="admin-btn admin-btn--sm" @click="startEdit(menu)">Editar</button>
-              <button
-                class="admin-btn admin-btn--sm" style="color: var(--admin-danger, #e53e3e);" @click="deleteMenu(menu.id)">
-                Eliminar
-              </button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Card body: menu items -->
-        <div class="admin-content-card__body">
+          <!-- Menu items -->
           <template v-if="menu.items && menu.items.length > 0">
-            <ul class="admin-menu-items">
+            <ul class="menu-items-list">
               <li v-for="item in menu.items" :key="item.id">
-                <div class="admin-menu-item">
+                <div class="menu-item-row">
                   <span>
                     <strong>{{ item.label }}</strong>
-                    <span style="margin-left: 0.5rem; color: var(--admin-text-muted); font-size: 0.8rem;">{{ item.url }}</span>
+                    <small style="margin-left:0.5rem; color:var(--admin-text-muted);">{{ item.url }}</small>
                   </span>
-                  <span style="font-size: 0.8rem; color: var(--admin-text-muted);">Pos. {{ item.position }}</span>
+                  <small style="color:var(--admin-text-muted);">Pos. {{ item.position }}</small>
                 </div>
-                <ul v-if="item.children && item.children.length > 0" class="admin-menu-items admin-menu-children">
+                <ul v-if="item.children && item.children.length > 0" class="menu-items-list menu-items-list--nested">
                   <li v-for="child in item.children" :key="child.id">
-                    <div class="admin-menu-item">
+                    <div class="menu-item-row">
                       <span>
                         <strong>{{ child.label }}</strong>
-                        <span style="margin-left: 0.5rem; color: var(--admin-text-muted); font-size: 0.8rem;">{{ child.url }}</span>
+                        <small style="margin-left:0.5rem; color:var(--admin-text-muted);">{{ child.url }}</small>
                       </span>
-                      <span style="font-size: 0.8rem; color: var(--admin-text-muted);">Pos. {{ child.position }}</span>
+                      <small style="color:var(--admin-text-muted);">Pos. {{ child.position }}</small>
                     </div>
                   </li>
                 </ul>
               </li>
             </ul>
           </template>
-          <p v-else style="color: var(--admin-text-muted); margin: 0;">
-            Este menu no tiene elementos.
-          </p>
-        </div>
-      </div>
+          <p v-else style="color:var(--admin-text-muted); margin:0; font-size:0.85rem;">Este menu no tiene elementos.</p>
+        </template>
+      </Card>
     </template>
 
-    <ConfirmDialog
-      :visible="confirmVisible"
-      :title="confirmTitle"
-      :message="confirmMessage"
-      :action="confirmAction"
-      :confirm-text="confirmText"
-      :cancel-text="cancelText"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
-    />
+    <!-- New menu dialog -->
+    <Dialog v-model:visible="showNewForm" modal header="Crear nuevo menu" :style="{ width: '440px' }">
+      <div class="menu-field">
+        <label>Nombre</label>
+        <InputText v-model="newForm.name" fluid placeholder="Nombre del menu" />
+      </div>
+      <div class="menu-field">
+        <label>Ubicacion</label>
+        <Select v-model="newForm.location" :options="locationOptions" optionLabel="label" optionValue="value" fluid />
+      </div>
+      <template #footer>
+        <Button label="Cancelar" severity="secondary" outlined :disabled="saving" @click="showNewForm = false" />
+        <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" :disabled="!newForm.name.trim()" @click="createMenu" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
-
 <style scoped>
-.admin-menu-card { margin-bottom: 1rem; }
-.admin-menu-header { display: flex; justify-content: space-between; align-items: center; }
-.admin-menu-actions { display: flex; gap: 0.5rem; }
-.admin-menu-items { list-style: none; padding: 0; margin: 0; }
-.admin-menu-item { padding: 0.5rem 0; border-bottom: 1px solid var(--admin-border); display: flex; justify-content: space-between; align-items: center; }
-.admin-menu-item:last-child { border-bottom: none; }
-.admin-menu-children { padding-left: 1.5rem; }
-.admin-form-row { display: flex; gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
-.admin-form-row label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; font-weight: 500; }
-.admin-form-row input, .admin-form-row select { padding: 0.4rem 0.6rem; border: 1px solid var(--admin-border); border-radius: 6px; font-size: 0.85rem; }
+.menu-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+.menu-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+}
+.menu-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.menu-item-row {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--admin-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+.menu-item-row:last-child { border-bottom: none; }
+.menu-items-list--nested { padding-left: 1.5rem; }
 </style>

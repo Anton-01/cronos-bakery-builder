@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Tag from 'primevue/tag'
+import Card from 'primevue/card'
+import ProgressSpinner from 'primevue/progressspinner'
 
 import { adminPanelService, type NotificationLog, type Paginated } from '../services/adminPanelService'
 
@@ -11,20 +16,18 @@ function formatDate(dateStr: string): string {
   return new Intl.DateTimeFormat('es-CR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(dateStr))
 }
 
-function channelBadgeClass(channel: string): Record<string, boolean> {
-  return {
-    'admin-badge--info': channel === 'email',
-    'admin-badge--warning': channel === 'sms',
-    'admin-badge--success': channel === 'push',
-  }
+function channelSeverity(channel: string): 'info' | 'warn' | 'success' | 'secondary' {
+  if (channel === 'email') return 'info'
+  if (channel === 'sms') return 'warn'
+  if (channel === 'push') return 'success'
+  return 'secondary'
 }
 
-function statusBadgeClass(status: string): Record<string, boolean> {
-  return {
-    'admin-badge--success': status === 'sent' || status === 'delivered',
-    'admin-badge--warning': status === 'pending',
-    'admin-badge--error': status === 'failed',
-  }
+function statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' {
+  if (status === 'sent' || status === 'delivered') return 'success'
+  if (status === 'pending') return 'warn'
+  if (status === 'failed') return 'danger'
+  return 'secondary'
 }
 
 onMounted(async () => {
@@ -38,72 +41,49 @@ onMounted(async () => {
 
 <template>
   <div>
-    <!-- Page header -->
     <div class="admin-page-header">
       <div>
         <h1>Notificaciones</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Comunicaciones <span>/</span> Notificaciones
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Comunicaciones <span>/</span> Notificaciones</div>
+      </div>
+    </div>
+
+    <Card>
+      <template #title>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Registro de Notificaciones</span>
+          <span v-if="logsResponse?.meta" style="font-size:0.875rem; font-weight:400; color:var(--admin-text-muted);">
+            Página {{ logsResponse.meta.current_page }} — {{ logsResponse.meta.total }} registros
+          </span>
         </div>
-      </div>
-    </div>
+      </template>
+      <template #content>
+        <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
+          <ProgressSpinner />
+        </div>
 
-    <div class="admin-content-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Registro de Notificaciones</h3>
-        <span
-          v-if="logsResponse?.meta"
-          style="font-size: 0.875rem; color: var(--admin-text-muted);"
-        >
-          Página {{ logsResponse.meta.current_page }} &mdash; {{ logsResponse.meta.total }} registros en total
-        </span>
-      </div>
-      <div class="admin-content-card__body">
-        <p
-          v-if="loading"
-          style="text-align: center; padding: 2rem; color: var(--admin-text-muted);"
-        >
-          Cargando notificaciones...
-        </p>
+        <DataTable v-else-if="logsResponse" :value="logsResponse.data" class="p-datatable-sm">
+          <template #empty>
+            <div style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No hay notificaciones registradas.</div>
+          </template>
 
-        <template v-else-if="logsResponse">
-          <p
-            v-if="logsResponse.data.length === 0"
-            style="text-align: center; padding: 2rem; color: var(--admin-text-muted);"
-          >
-            No hay notificaciones registradas.
-          </p>
-
-          <table v-else class="admin-table">
-            <thead>
-              <tr>
-                <th>Canal</th>
-                <th>Destinatario</th>
-                <th>Asunto</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="log in logsResponse.data" :key="log.id">
-                <td>
-                  <span class="admin-badge" :class="channelBadgeClass(log.channel)">
-                    {{ log.channel }}
-                  </span>
-                </td>
-                <td>{{ log.recipient }}</td>
-                <td>{{ log.subject }}</td>
-                <td>
-                  <span class="admin-badge" :class="statusBadgeClass(log.status)">
-                    {{ log.status }}
-                  </span>
-                </td>
-                <td>{{ formatDate(log.sent_at) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </template>
-      </div>
-    </div>
+          <Column header="Canal" style="width:100px;">
+            <template #body="{ data }">
+              <Tag :value="data.channel" :severity="channelSeverity(data.channel)" />
+            </template>
+          </Column>
+          <Column header="Destinatario" field="recipient" />
+          <Column header="Asunto" field="subject" />
+          <Column header="Estado" style="width:110px;">
+            <template #body="{ data }">
+              <Tag :value="data.status" :severity="statusSeverity(data.status)" />
+            </template>
+          </Column>
+          <Column header="Fecha" style="width:180px;">
+            <template #body="{ data }">{{ formatDate(data.sent_at) }}</template>
+          </Column>
+        </DataTable>
+      </template>
+    </Card>
   </div>
 </template>

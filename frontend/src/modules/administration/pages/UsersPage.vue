@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
@@ -202,32 +205,31 @@ async function handleDelete(user: AdminUser) {
 
     <!-- Toolbar -->
     <div class="users-page__toolbar">
-      <div class="users-page__search-wrapper">
-        <svg class="users-page__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-        </svg>
-        <input
-            v-model="store.search"
-            type="search"
-            placeholder="Buscar usuario..."
-            class="users-page__search"
+      <span class="p-input-icon-left" style="flex:1; max-width:340px; display:flex; align-items:center; position:relative;">
+        <i class="pi pi-search" style="position:absolute; left:0.75rem; color:#9ca3af; pointer-events:none;" />
+        <InputText
+          v-model="store.search"
+          placeholder="Buscar usuario..."
+          fluid
+          style="padding-left:2.5rem;"
         />
-      </div>
+      </span>
       <div class="users-page__toolbar-actions">
-        <select v-model="store.statusFilter" class="users-page__filter" @change="store.currentPage = 1; store.fetchUsers()">
-          <option value="">Todos los estados</option>
-          <option value="active">Activos</option>
-          <option value="suspended">Suspendidos</option>
-        </select>
-        <select v-model="store.roleFilter" class="users-page__filter" @change="store.currentPage = 1; store.fetchUsers()">
-          <option value="">Todos los roles</option>
-          <option value="customer">Customer</option>
-          <option value="staff">Staff</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button class="users-page__add-btn" @click="openCreateForm">
-          Agregar Usuario
-        </button>
+        <Select
+          v-model="store.statusFilter"
+          :options="[{ label: 'Todos los estados', value: '' }, { label: 'Activos', value: 'active' }, { label: 'Suspendidos', value: 'suspended' }]"
+          optionLabel="label"
+          optionValue="value"
+          @change="store.currentPage = 1; store.fetchUsers()"
+        />
+        <Select
+          v-model="store.roleFilter"
+          :options="[{ label: 'Todos los roles', value: '' }, { label: 'Customer', value: 'customer' }, { label: 'Staff', value: 'staff' }, { label: 'Admin', value: 'admin' }]"
+          optionLabel="label"
+          optionValue="value"
+          @change="store.currentPage = 1; store.fetchUsers()"
+        />
+        <Button label="Agregar Usuario" icon="pi pi-plus" @click="openCreateForm" />
       </div>
     </div>
 
@@ -269,7 +271,6 @@ async function handleDelete(user: AdminUser) {
 </template>
 
 <style scoped>
-
 .users-page__header-illustration {
   width: 180px;
   height: 140px;
@@ -282,67 +283,15 @@ async function handleDelete(user: AdminUser) {
   gap: 1rem;
   margin-bottom: 1.25rem;
   padding: 1rem 1.25rem;
-  background: #f8fafc;
+  background: var(--admin-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-.users-page__search-wrapper {
-  position: relative;
-  flex: 1;
-  max-width: 340px;
-}
-.users-page__search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  pointer-events: none;
-}
-.users-page__search {
-  width: 100%;
-  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-family: inherit;
-  background: #fff;
-  color: #111827;
-  transition: border-color 0.15s;
-}
-.users-page__search:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  border: 1px solid var(--admin-border);
+  flex-wrap: wrap;
 }
 .users-page__toolbar-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-.users-page__filter {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.8125rem;
-  font-family: inherit;
-  background: #fff;
-  color: #374151;
-  cursor: pointer;
-}
-.users-page__add-btn {
-  padding: 0.5rem 1.25rem;
-  background: #6366f1;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-.users-page__add-btn:hover {
-  background: #4f46e5;
+  flex-wrap: wrap;
 }
 </style>

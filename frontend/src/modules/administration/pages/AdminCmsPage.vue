@@ -1,31 +1,28 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Checkbox from 'primevue/checkbox'
+import Tag from 'primevue/tag'
+import Card from 'primevue/card'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 
 import { adminPanelService, type CmsSection, type CmsPage } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const { success, error } = useToast()
-
-const {
-  visible: confirmVisible,
-  title: confirmTitle,
-  message: confirmMessage,
-  action: confirmAction,
-  confirmText,
-  cancelText,
-  confirm,
-  handleConfirm,
-  handleCancel,
-} = useConfirm()
+const { confirm } = useConfirm()
 
 const sections = ref<CmsSection[]>([])
 const pages = ref<CmsPage[]>([])
 const loading = ref(true)
 const activeSectionId = ref<string | null>(null)
 
-// Form state
 const showForm = ref(false)
 const editingPage = ref<CmsPage | null>(null)
 const formTitle = ref('')
@@ -38,6 +35,10 @@ const filteredPages = computed(() => {
   if (!activeSectionId.value) return pages.value
   return pages.value.filter((p) => p.section_id === activeSectionId.value)
 })
+
+const sectionOptions = computed(() =>
+  sections.value.map((s) => ({ label: s.name, value: s.id }))
+)
 
 function sectionName(sectionId: string): string {
   return sections.value.find((s) => s.id === sectionId)?.name ?? '—'
@@ -75,11 +76,6 @@ function openEditForm(page: CmsPage): void {
   showForm.value = true
 }
 
-function cancelForm(): void {
-  showForm.value = false
-  editingPage.value = null
-}
-
 async function saveForm(): Promise<void> {
   formSaving.value = true
   try {
@@ -98,7 +94,8 @@ async function saveForm(): Promise<void> {
       pages.value.push(created)
     }
     success(editingPage.value ? 'Pagina actualizada' : 'Pagina creada exitosamente')
-    cancelForm()
+    showForm.value = false
+    editingPage.value = null
   } catch {
     error('Error al guardar la pagina')
   } finally {
@@ -139,150 +136,139 @@ onMounted(load)
 
 <template>
   <div>
-    <!-- Page header -->
     <div class="admin-page-header">
       <div>
         <h1>CMS - Paginas</h1>
-        <div class="admin-page-header__breadcrumb">
-          Inicio <span>/</span> Contenido <span>/</span> CMS
-        </div>
+        <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Contenido <span>/</span> CMS</div>
       </div>
-      <div>
-        <button class="admin-btn admin-btn--primary" @click="openNewForm">Nueva Pagina</button>
-      </div>
-    </div>
-
-    <!-- New / Edit form -->
-    <div v-if="showForm" class="admin-content-card admin-form-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">{{ editingPage ? 'Editar Pagina' : 'Nueva Pagina' }}</h3>
-      </div>
-      <div class="admin-content-card__body">
-        <div class="admin-form-grid">
-          <div class="admin-form-group">
-            <label for="form-title">Titulo</label>
-            <input id="form-title" v-model="formTitle" type="text" placeholder="Titulo de la pagina" />
-          </div>
-          <div class="admin-form-group">
-            <label for="form-slug">Slug</label>
-            <input id="form-slug" v-model="formSlug" type="text" placeholder="url-slug" />
-          </div>
-          <div class="admin-form-group">
-            <label for="form-section">Seccion</label>
-            <select id="form-section" v-model="formSectionId">
-              <option v-for="section in sections" :key="section.id" :value="section.id">
-                {{ section.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="admin-form-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-          <input id="form-published" v-model="formIsPublished" type="checkbox" />
-          <label for="form-published" style="font-size: 0.875rem; color: inherit; font-weight: normal;">Publicado</label>
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="admin-btn admin-btn--primary" :disabled="formSaving" @click="saveForm">
-            {{ formSaving ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button class="admin-btn" @click="cancelForm">Cancelar</button>
-        </div>
-      </div>
+      <Button label="Nueva Pagina" icon="pi pi-plus" @click="openNewForm" />
     </div>
 
     <!-- Section filter chips -->
-    <div v-if="!loading" class="admin-filters">
-      <button
-        class="admin-filter-chip"
-        :class="{ 'admin-filter-chip--active': activeSectionId === null }"
+    <div v-if="!loading" class="cms-filters">
+      <Button
+        :label="'Todas'"
+        :severity="activeSectionId === null ? 'primary' : 'secondary'"
+        size="small"
+        rounded
         @click="activeSectionId = null"
-      >
-        Todas
-      </button>
-      <button
+      />
+      <Button
         v-for="section in sections"
         :key="section.id"
-        class="admin-filter-chip"
-        :class="{ 'admin-filter-chip--active': activeSectionId === section.id }"
+        :label="section.name"
+        :severity="activeSectionId === section.id ? 'primary' : 'secondary'"
+        size="small"
+        rounded
         @click="activeSectionId = section.id"
-      >
-        {{ section.name }}
-      </button>
+      />
     </div>
 
-    <!-- Pages table -->
-    <div class="admin-content-card">
-      <div class="admin-content-card__header">
-        <h3 class="admin-content-card__title">Listado de Paginas</h3>
-      </div>
-      <div class="admin-content-card__body">
-        <p v-if="loading" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-          Cargando paginas...
-        </p>
+    <Card>
+      <template #title>Listado de Paginas</template>
+      <template #content>
+        <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
+          <ProgressSpinner />
+        </div>
 
-        <template v-else>
-          <p v-if="filteredPages.length === 0" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
-            No hay paginas registradas.
-          </p>
+        <DataTable v-else :value="filteredPages" class="p-datatable-sm">
+          <template #empty>
+            <div style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No hay paginas registradas.</div>
+          </template>
 
-          <table v-else class="admin-table">
-            <thead>
-              <tr>
-                <th>Titulo</th>
-                <th>Slug</th>
-                <th>Seccion</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="page in filteredPages" :key="page.id">
-                <td>{{ page.title }}</td>
-                <td><code>{{ page.slug }}</code></td>
-                <td>{{ sectionName(page.section_id) }}</td>
-                <td>
-                  <span
-                    class="admin-badge"
-                    :class="page.is_published ? 'admin-badge--success' : 'admin-badge--default'"
-                  >
-                    {{ page.is_published ? 'Publicado' : 'Borrador' }}
-                  </span>
-                </td>
-                <td style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                  <button class="admin-btn admin-btn--sm" @click="openEditForm(page)">Editar</button>
-                  <button class="admin-btn admin-btn--sm" @click="togglePublish(page)">
-                    {{ page.is_published ? 'Despublicar' : 'Publicar' }}
-                  </button>
-                  <button class="admin-btn admin-btn--sm" style="color: var(--admin-error, #e53e3e);" @click="deletePage(page)">
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </template>
-      </div>
-    </div>
+          <Column header="Titulo" field="title">
+            <template #body="{ data }">
+              <span style="font-weight:500;">{{ data.title }}</span>
+            </template>
+          </Column>
 
-    <ConfirmDialog
-      :visible="confirmVisible"
-      :title="confirmTitle"
-      :message="confirmMessage"
-      :action="confirmAction"
-      :confirm-text="confirmText"
-      :cancel-text="cancelText"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
-    />
+          <Column header="Slug" field="slug">
+            <template #body="{ data }">
+              <code style="font-size:0.82rem; color:var(--admin-primary);">{{ data.slug }}</code>
+            </template>
+          </Column>
+
+          <Column header="Seccion" style="width:160px;">
+            <template #body="{ data }">{{ sectionName(data.section_id) }}</template>
+          </Column>
+
+          <Column header="Estado" style="width:120px;">
+            <template #body="{ data }">
+              <Tag :value="data.is_published ? 'Publicado' : 'Borrador'" :severity="data.is_published ? 'success' : 'secondary'" />
+            </template>
+          </Column>
+
+          <Column header="Acciones" style="width:160px;">
+            <template #body="{ data }">
+              <div style="display:flex; gap:0.25rem;">
+                <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="openEditForm(data)" />
+                <Button
+                  :icon="data.is_published ? 'pi pi-eye-slash' : 'pi pi-eye'"
+                  size="small"
+                  severity="warn"
+                  text
+                  rounded
+                  :title="data.is_published ? 'Despublicar' : 'Publicar'"
+                  @click="togglePublish(data)"
+                />
+                <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="deletePage(data)" />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </template>
+    </Card>
+
+    <!-- Page form dialog -->
+    <Dialog
+      v-model:visible="showForm"
+      modal
+      :header="editingPage ? 'Editar Pagina' : 'Nueva Pagina'"
+      :style="{ width: '480px' }"
+      @hide="editingPage = null"
+    >
+      <form @submit.prevent="saveForm">
+        <div class="cms-field">
+          <label>Titulo</label>
+          <InputText v-model="formTitle" fluid required placeholder="Titulo de la pagina" />
+        </div>
+        <div class="cms-field">
+          <label>Slug</label>
+          <InputText v-model="formSlug" fluid required placeholder="url-slug" style="font-family:monospace;" />
+        </div>
+        <div class="cms-field">
+          <label>Seccion</label>
+          <Select v-model="formSectionId" :options="sectionOptions" optionLabel="label" optionValue="value" fluid />
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+          <Checkbox v-model="formIsPublished" inputId="form-published" binary />
+          <label for="form-published" style="font-size:0.875rem; cursor:pointer;">Publicado</label>
+        </div>
+      </form>
+      <template #footer>
+        <Button label="Cancelar" severity="secondary" outlined @click="showForm = false" />
+        <Button :label="formSaving ? 'Guardando...' : 'Guardar'" :loading="formSaving" @click="saveForm" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
-.admin-filters { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.admin-filter-chip { padding: 0.35rem 0.85rem; border: 1px solid var(--admin-border); border-radius: 20px; background: white; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
-.admin-filter-chip--active { background: var(--admin-primary); color: white; border-color: var(--admin-primary); }
-.admin-form-card { margin-bottom: 1.5rem; }
-.admin-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.admin-form-group { display: flex; flex-direction: column; gap: 0.25rem; }
-.admin-form-group label { font-size: 0.8rem; font-weight: 500; color: var(--admin-text-muted); }
-.admin-form-group input, .admin-form-group select { padding: 0.5rem 0.75rem; border: 1px solid var(--admin-border); border-radius: 6px; font-size: 0.875rem; }
+.cms-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.cms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+.cms-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+}
 </style>

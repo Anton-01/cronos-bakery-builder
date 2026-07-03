@@ -1,6 +1,4 @@
-import { computed, ref } from 'vue'
-import type { Editor } from '@tiptap/vue-3'
-import type { ShallowRef } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import {
@@ -42,7 +40,7 @@ function mapOptionsToLinks(options: PbOption[]): MappedOptionLink[] {
 
 export function useProductOptions(
     productId: () => string | undefined,
-    legendEditor: ShallowRef<Editor | undefined>,
+    legendContent: Ref<string>,
 ) {
     const { success, error } = useToast()
     const { confirm } = useConfirm()
@@ -63,8 +61,8 @@ export function useProductOptions(
     })
 
     const legendHasChanged = computed(() => {
-        const html = legendEditor.value?.getHTML() || ''
-        const current = html === '<p></p>' ? null : html
+        const html = legendContent.value
+        const current = html === '<p></p>' || html === '' ? null : html
         return current !== legendOriginal.value
     })
 
@@ -97,7 +95,7 @@ export function useProductOptions(
     function openLegendModal(link: ProductOptionLink) {
         legendLinkId.value = link.id
         legendOriginal.value = link.legend || null
-        legendEditor.value?.commands.setContent(link.legend || '')
+        legendContent.value = link.legend || ''
         legendModal.value = true
     }
 
@@ -115,8 +113,8 @@ export function useProductOptions(
     async function saveLegend() {
         const pid = productId()
         if (!legendLinkId.value || !pid) return
-        const html = legendEditor.value?.getHTML() || ''
-        const content = html === '<p></p>' ? null : html
+        const html = legendContent.value
+        const content = html === '<p></p>' || html === '' ? null : html
         if (content === legendOriginal.value) {
             legendModal.value = false
             return
@@ -252,6 +250,7 @@ export function useProductOptions(
         expandedLinks,
         legendModal,
         legendLinkId,
+        legendContent,
         legendHasChanged,
         getOptionTypeLabel,
         isValueEnabled,
