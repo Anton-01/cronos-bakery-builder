@@ -20,14 +20,14 @@ class SyncProductTaxonomyRequest extends FormRequest
     {
         return [
             'categories' => ['array'],
-            'categories.*' => ['uuid', 'exists:catalog_categories,id'],
-            'primary_category' => ['nullable', 'uuid', 'in_array:categories.*'],
+            'categories.*' => ['integer', 'exists:catalog_categories,id'],
+            'primary_category' => ['nullable', 'integer', 'in_array:categories.*'],
             'collections' => ['array'],
-            'collections.*' => ['uuid', 'exists:catalog_collections,id'],
+            'collections.*' => ['integer', 'exists:catalog_collections,id'],
             'attribute_values' => ['array'],
-            'attribute_values.*' => ['uuid', 'exists:catalog_attribute_values,id'],
+            'attribute_values.*' => ['integer', 'exists:catalog_attribute_values,id'],
             'tags' => ['array'],
-            'tags.*' => ['uuid', 'exists:catalog_tags,id'],
+            'tags.*' => ['integer', 'exists:catalog_tags,id'],
         ];
     }
 }

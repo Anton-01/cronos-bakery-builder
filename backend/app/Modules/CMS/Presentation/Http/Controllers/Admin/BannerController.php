@@ -22,7 +22,7 @@ class BannerController extends Controller
         return BannerResource::collection($this->banners->all());
     }
 
-    public function show(string $banner): BannerResource
+    public function show(int $banner): BannerResource
     {
         return new BannerResource($this->banners->get($banner));
     }
@@ -34,12 +34,12 @@ class BannerController extends Controller
         return (new BannerResource($banner))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreBannerRequest $request, string $banner): BannerResource
+    public function update(StoreBannerRequest $request, int $banner): BannerResource
     {
         return new BannerResource($this->banners->update($banner, $request->validated()));
     }
 
-    public function destroy(string $banner): JsonResponse
+    public function destroy(int $banner): JsonResponse
     {
         $this->banners->delete($banner);
 

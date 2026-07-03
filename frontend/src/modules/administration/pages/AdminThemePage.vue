@@ -21,7 +21,7 @@ const themes = ref<Theme[]>([])
 const banners = ref<CmsBanner[]>([])
 const loadingThemes = ref(true)
 const loadingBanners = ref(true)
-const savingTheme = ref<Record<string, boolean>>({})
+const savingTheme = ref<Record<number, boolean>>({})
 
 interface StoreSettings {
   currency: string
@@ -33,7 +33,7 @@ interface StoreSettings {
   timezone: string
 }
 
-const settingsForms = ref<Record<string, StoreSettings>>({})
+const settingsForms = ref<Record<number, StoreSettings>>({})
 
 const currencyOptions = [
   { label: 'MXN — Peso Mexicano', value: 'MXN' },
@@ -91,7 +91,7 @@ async function loadBanners(): Promise<void> {
   }
 }
 
-async function activateTheme(id: string): Promise<void> {
+async function activateTheme(id: number): Promise<void> {
   const ok = await confirm({
     title: '¿Activar este tema?',
     message: 'El tema seleccionado se aplicará a toda la tienda.',
@@ -112,7 +112,7 @@ async function activateTheme(id: string): Promise<void> {
   }
 }
 
-function onCurrencyChange(themeId: string) {
+function onCurrencyChange(themeId: number) {
   const form = settingsForms.value[themeId]
   if (form.currency === 'MXN') form.currency_symbol = '$'
   else if (form.currency === 'USD') form.currency_symbol = 'US$'

@@ -26,7 +26,7 @@ class StoreCategoryRequest extends FormRequest
                 'nullable', 'string', 'max:255',
                 Rule::unique('catalog_categories', 'slug')->ignore($this->route('category')),
             ],
-            'parent_id' => ['nullable', 'uuid', 'exists:catalog_categories,id'],
+            'parent_id' => ['nullable', 'integer', 'exists:catalog_categories,id'],
             'description' => ['nullable', 'string'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],

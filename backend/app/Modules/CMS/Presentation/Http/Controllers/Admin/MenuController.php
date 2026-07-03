@@ -22,7 +22,7 @@ class MenuController extends Controller
         return MenuResource::collection($this->menus->all());
     }
 
-    public function show(string $menu): MenuResource
+    public function show(int $menu): MenuResource
     {
         return new MenuResource($this->menus->get($menu));
     }
@@ -34,12 +34,12 @@ class MenuController extends Controller
         return (new MenuResource($menu))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreMenuRequest $request, string $menu): MenuResource
+    public function update(StoreMenuRequest $request, int $menu): MenuResource
     {
         return new MenuResource($this->menus->update($menu, $request->validated()));
     }
 
-    public function destroy(string $menu): JsonResponse
+    public function destroy(int $menu): JsonResponse
     {
         $this->menus->delete($menu);
 

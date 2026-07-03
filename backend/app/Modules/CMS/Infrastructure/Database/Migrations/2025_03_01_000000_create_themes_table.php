@@ -10,7 +10,7 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('themes', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('name');
 
             // Branding assets.
@@ -18,13 +18,13 @@ return new class () extends Migration {
             $table->string('favicon_path')->nullable();
 
             // Corporate palette: primary, secondary, accent, success, warning, danger.
-            $table->json('colors');
+            $table->jsonb('colors');
 
             // Google Fonts: heading & body families (+ optional stylesheet URL).
-            $table->json('fonts');
+            $table->jsonb('fonts');
 
             // Visual footer editor payload (columns, links, copyright).
-            $table->json('footer')->nullable();
+            $table->jsonb('footer')->nullable();
 
             $table->boolean('is_active')->default(false)->index();
             $table->timestamps();

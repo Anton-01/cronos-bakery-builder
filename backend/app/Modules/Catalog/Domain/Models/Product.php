@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Domain\Models;
 
 use App\Modules\Catalog\Infrastructure\Database\Factories\ProductFactory;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * Catalog aggregate root: a sellable artisanal cake product, classified by
  * categories, collections, attributes and tags for dynamic filtering.
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property string $slug
  * @property string|null $description
@@ -29,8 +29,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Product extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'catalog_products';
 

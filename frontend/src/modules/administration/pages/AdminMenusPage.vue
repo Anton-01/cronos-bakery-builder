@@ -31,7 +31,7 @@ const newForm = reactive({ name: '', location: 'header' as 'header' | 'footer' |
 const saving = ref(false)
 
 interface EditState { name: string; location: string }
-const editingId = ref<string | null>(null)
+const editingId = ref<number | null>(null)
 const editForm = reactive<EditState>({ name: '', location: '' })
 
 onMounted(async () => {
@@ -90,7 +90,7 @@ async function saveEdit(menu: CmsMenu): Promise<void> {
   }
 }
 
-async function deleteMenu(id: string): Promise<void> {
+async function deleteMenu(id: number): Promise<void> {
   const ok = await confirm({
     title: 'Eliminar menu',
     message: '¿Eliminar este menu? Esta accion no se puede deshacer.',

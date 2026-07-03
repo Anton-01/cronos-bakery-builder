@@ -7,6 +7,7 @@ namespace App\Modules\CMS\Domain\Models;
 use App\Modules\CMS\Domain\Enums\PageStatus;
 use App\Modules\CMS\Domain\Enums\PageType;
 use App\Modules\CMS\Infrastructure\Database\Factories\PageFactory;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Page extends Model
 {
+    use Auditable;
     use HasFactory;
 
     protected $table = 'cms_pages';

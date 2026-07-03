@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 final readonly class RollbackContentAction
 {
-    public function execute(Page $page, string $versionId, int $actorId): Page
+    public function execute(Page $page, int $versionId, int $actorId): Page
     {
         $version = ContentVersion::query()
             ->where('id', $versionId)

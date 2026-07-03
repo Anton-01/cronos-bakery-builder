@@ -207,7 +207,7 @@ export interface ThemeFooter {
 }
 
 export interface Theme {
-  id: string
+  id: number
   name: string
   logo: string | null
   favicon: string | null
@@ -218,18 +218,18 @@ export interface Theme {
 }
 
 export interface MenuItemNode {
-  id: string
+  id: number
   label: string
   url: string | null
   target: string
   position: number
   is_active: boolean
-  parent_id: string | null
+  parent_id: number | null
   children: MenuItemNode[]
 }
 
 export interface Menu {
-  id: string
+  id: number
   name: string
   location: string
   is_active: boolean
@@ -237,7 +237,7 @@ export interface Menu {
 }
 
 export interface Banner {
-  id: string
+  id: number
   title: string
   image: string
   link: string | null
@@ -250,9 +250,9 @@ export interface Banner {
 export type ContentStatus = 'draft' | 'pending_review' | 'published' | 'scheduled' | 'archived'
 
 export interface ContentVersion {
-  id: string
+  id: number
   versionable_type: string
-  versionable_id: string
+  versionable_id: number
   version_number: number
   payload_before: Record<string, unknown> | null
   payload_after: Record<string, unknown>
@@ -265,7 +265,7 @@ export interface ContentVersion {
 }
 
 export interface ContentWorkflow {
-  id: string
+  id: number
   from_status: ContentStatus
   to_status: ContentStatus
   requested_by: number
@@ -280,7 +280,7 @@ export interface ContentWorkflow {
 // --- Media Library ---------------------------------------------------------
 
 export interface MediaAsset {
-  id: string
+  id: number
   original_name: string
   disk: string
   path: string
@@ -288,14 +288,14 @@ export interface MediaAsset {
   size: number
   transformations: Record<string, unknown> | null
   processing_status: 'pending' | 'processing' | 'completed' | 'failed'
-  storage_provider_id: string | null
+  storage_provider_id: number | null
   uploaded_by: number
   url?: string
   created_at: string
 }
 
 export interface StorageProvider {
-  id: string
+  id: number
   name: string
   driver: 's3' | 'gcs' | 'azure'
   bucket: string

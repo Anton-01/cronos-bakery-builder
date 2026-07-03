@@ -84,7 +84,7 @@ export const useContentManagementStore = defineStore('contentManagement', () => 
         })
     }
 
-    async function rollbackToVersion(pageId: number, versionId: string) {
+    async function rollbackToVersion(pageId: number, versionId: number) {
         await withSudo(async () => {
             await cmsContentService.rollback(pageId, versionId)
             await fetchPages()

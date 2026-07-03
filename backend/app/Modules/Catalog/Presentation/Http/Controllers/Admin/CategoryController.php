@@ -29,12 +29,12 @@ class CategoryController extends Controller
         return (new CategoryResource($category))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreCategoryRequest $request, string $category): CategoryResource
+    public function update(StoreCategoryRequest $request, int $category): CategoryResource
     {
         return new CategoryResource($this->taxonomy->updateCategory($category, $request->toAttributes()));
     }
 
-    public function destroy(string $category): JsonResponse
+    public function destroy(int $category): JsonResponse
     {
         $this->taxonomy->deleteCategory($category);
 

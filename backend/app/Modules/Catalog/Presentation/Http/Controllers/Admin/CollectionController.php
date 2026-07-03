@@ -29,12 +29,12 @@ class CollectionController extends Controller
         return (new CollectionResource($collection))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreCollectionRequest $request, string $collection): CollectionResource
+    public function update(StoreCollectionRequest $request, int $collection): CollectionResource
     {
         return new CollectionResource($this->taxonomy->updateCollection($collection, $request->toAttributes()));
     }
 
-    public function destroy(string $collection): JsonResponse
+    public function destroy(int $collection): JsonResponse
     {
         $this->taxonomy->deleteCollection($collection);
 

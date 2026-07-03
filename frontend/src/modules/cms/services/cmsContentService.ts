@@ -46,7 +46,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    rollback(pageId: number, versionId: string): Promise<void> {
+    rollback(pageId: number, versionId: number): Promise<void> {
         return request({
             url: `/admin/cms/pages/${pageId}/rollback`,
             method: 'POST',
@@ -77,7 +77,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    deleteMedia(id: string): Promise<void> {
+    deleteMedia(id: number): Promise<void> {
         return request({ url: `/admin/media/${id}`, method: 'DELETE' })
     },
 
@@ -89,7 +89,7 @@ export const cmsContentService = {
         }).then((r) => r.data)
     },
 
-    updateStorageProvider(id: string, data: Partial<StorageProvider> & { credentials?: Record<string, string> }): Promise<StorageProvider> {
+    updateStorageProvider(id: number, data: Partial<StorageProvider> & { credentials?: Record<string, string> }): Promise<StorageProvider> {
         return request<Wrapped<StorageProvider>>({
             url: `/admin/storage-providers/${id}`,
             method: 'PUT',

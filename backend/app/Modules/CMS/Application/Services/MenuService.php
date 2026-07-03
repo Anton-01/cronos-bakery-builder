@@ -19,7 +19,7 @@ final class MenuService
         return Menu::query()->with('rootItems')->orderBy('name')->get();
     }
 
-    public function get(string $id): Menu
+    public function get(int $id): Menu
     {
         return Menu::query()->with('rootItems')->findOrFail($id);
     }
@@ -47,7 +47,7 @@ final class MenuService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function update(string $id, array $attributes): Menu
+    public function update(int $id, array $attributes): Menu
     {
         $menu = Menu::query()->findOrFail($id);
         $menu->update($attributes);
@@ -55,7 +55,7 @@ final class MenuService
         return $menu->refresh()->load('rootItems');
     }
 
-    public function delete(string $id): void
+    public function delete(int $id): void
     {
         Menu::query()->findOrFail($id)->delete();
     }
@@ -63,7 +63,7 @@ final class MenuService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function addItem(string $menuId, array $attributes): MenuItem
+    public function addItem(int $menuId, array $attributes): MenuItem
     {
         $menu = Menu::query()->findOrFail($menuId);
 
@@ -76,7 +76,7 @@ final class MenuService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function updateItem(string $menuId, string $itemId, array $attributes): MenuItem
+    public function updateItem(int $menuId, int $itemId, array $attributes): MenuItem
     {
         $item = MenuItem::query()->where('menu_id', $menuId)->where('id', $itemId)->firstOrFail();
         $item->update($attributes);
@@ -84,7 +84,7 @@ final class MenuService
         return $item->refresh();
     }
 
-    public function removeItem(string $menuId, string $itemId): void
+    public function removeItem(int $menuId, int $itemId): void
     {
         MenuItem::query()->where('menu_id', $menuId)->where('id', $itemId)->firstOrFail()->delete();
     }

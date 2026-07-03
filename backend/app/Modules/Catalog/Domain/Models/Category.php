@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Domain\Models;
 
 use App\Modules\Catalog\Infrastructure\Database\Factories\CategoryFactory;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A catalog category (e.g. Floral, Moderno, Mini, Signature). Categories may
  * nest via parent_id to form breadcrumb trails and SEO-friendly hierarchies.
  *
- * @property string $id
+ * @property int $id
  * @property string|null $parent_id
  * @property string $name
  * @property string $slug
@@ -28,8 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Category extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'catalog_categories';
 

@@ -10,7 +10,7 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('banners', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('title');
             $table->string('image_path');
             $table->string('link_url')->nullable();

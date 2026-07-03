@@ -14,8 +14,8 @@ return new class () extends Migration {
             $table->morphs('workflowable');
             $table->string('from_status');
             $table->string('to_status');
-            $table->foreignId('requested_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('requested_by')->constrained('admins')->cascadeOnDelete();
+            $table->foreignId('approved_by')->nullable()->constrained('admins')->nullOnDelete();
             $table->text('comment')->nullable();
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamps();
@@ -24,7 +24,7 @@ return new class () extends Migration {
         });
 
         Schema::table('cms_pages', function (Blueprint $table): void {
-            $table->foreignId('last_editor_id')->nullable()->after('published_at')->constrained('users')->nullOnDelete();
+            $table->foreignId('last_editor_id')->nullable()->after('published_at')->constrained('admins')->nullOnDelete();
             $table->timestamp('scheduled_at')->nullable()->after('last_editor_id');
         });
     }

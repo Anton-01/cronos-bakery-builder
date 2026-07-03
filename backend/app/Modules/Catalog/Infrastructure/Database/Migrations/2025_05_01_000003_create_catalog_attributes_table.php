@@ -12,7 +12,7 @@ return new class () extends Migration {
         // Admin-defined product attributes (e.g. Tamaño, Sabor, Color). Flagging
         // an attribute as filterable surfaces it as a catalog filter — no code.
         Schema::create('catalog_attributes', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('code')->unique();
             $table->string('type')->default('select'); // select | color
@@ -22,11 +22,11 @@ return new class () extends Migration {
         });
 
         Schema::create('catalog_attribute_values', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('attribute_id')->constrained('catalog_attributes')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('attribute_id')->constrained('catalog_attributes')->cascadeOnDelete();
             $table->string('label');
             $table->string('value');
-            $table->json('metadata')->nullable(); // e.g. color hex
+            $table->jsonb('metadata')->nullable(); // e.g. color hex
             $table->unsignedInteger('position')->default(0);
             $table->timestamps();
 

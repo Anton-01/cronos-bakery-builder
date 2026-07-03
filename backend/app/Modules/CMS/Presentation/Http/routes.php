@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\BannerController as AdminBannerController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\BrandController;
+use App\Modules\CMS\Presentation\Http\Controllers\Admin\ContentWorkflowController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuController as AdminMenuController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuItemController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\PageBlockController;
@@ -54,6 +55,16 @@ Route::prefix('admin/cms')
         Route::put('pages/{page}/blocks/reorder', [PageBlockController::class, 'reorder']);
         Route::put('pages/{page}/blocks/{block}', [PageBlockController::class, 'update']);
         Route::delete('pages/{page}/blocks/{block}', [PageBlockController::class, 'destroy']);
+
+        // Editorial workflow: review/approval transitions, version history
+        // and rollback. Every transition snapshots into content_versions.
+        Route::post('pages/{page}/submit-review', [ContentWorkflowController::class, 'submitReview']);
+        Route::post('pages/{page}/approve', [ContentWorkflowController::class, 'approve']);
+        Route::post('pages/{page}/reject', [ContentWorkflowController::class, 'reject']);
+        Route::post('pages/{page}/schedule', [ContentWorkflowController::class, 'schedule']);
+        Route::get('pages/{page}/versions', [ContentWorkflowController::class, 'versions']);
+        Route::post('pages/{page}/rollback', [ContentWorkflowController::class, 'rollback']);
+        Route::get('pages/{page}/workflows', [ContentWorkflowController::class, 'workflows']);
     });
 
 // --- Admin: Theme Builder (manage theme) -----------------------------------

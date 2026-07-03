@@ -6,8 +6,8 @@ namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\BannerPlacement;
 use App\Modules\CMS\Infrastructure\Database\Factories\BannerFactory;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * An administrable promotional banner shown in a given placement, optionally
  * scheduled with a start/end window.
  *
- * @property string $id
+ * @property int $id
  * @property string $title
  * @property string $image_path
  * @property string|null $link_url
@@ -27,8 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Banner extends Model
 {
+    use Auditable;
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'banners';
 

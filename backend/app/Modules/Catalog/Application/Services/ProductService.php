@@ -26,7 +26,7 @@ final readonly class ProductService
         return $this->products->activeProducts();
     }
 
-    public function get(string $id): Product
+    public function get(int $id): Product
     {
         return $this->products->findOrFail($id);
     }
@@ -41,7 +41,7 @@ final readonly class ProductService
         return $product;
     }
 
-    public function update(string $id, ProductData $data): Product
+    public function update(int $id, ProductData $data): Product
     {
         /** @var Product $product */
         $product = $this->products->update($id, $data->toArray());
@@ -49,7 +49,7 @@ final readonly class ProductService
         return $product;
     }
 
-    public function delete(string $id): void
+    public function delete(int $id): void
     {
         $this->products->delete($id);
     }

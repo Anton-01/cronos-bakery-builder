@@ -50,16 +50,16 @@ export interface TwoFactorSetup {
 // Page/block types live in `@/modules/cms/types` (brand-aware page builder).
 
 // --- Theme types ---
-export interface Theme { id: string; name: string; is_active: boolean; settings: Record<string, unknown> }
-export interface CmsMenu { id: string; name: string; location: string; items: CmsMenuItem[] }
-export interface CmsMenuItem { id: string; label: string; url: string; position: number; children: CmsMenuItem[] }
-export interface CmsBanner { id: string; placement: string; title: string; image: string | null; url: string | null; is_active: boolean }
+export interface Theme { id: number; name: string; is_active: boolean; settings: Record<string, unknown> }
+export interface CmsMenu { id: number; name: string; location: string; items: CmsMenuItem[] }
+export interface CmsMenuItem { id: number; label: string; url: string; position: number; children: CmsMenuItem[] }
+export interface CmsBanner { id: number; placement: string; title: string; image: string | null; url: string | null; is_active: boolean }
 
 // --- Catalog types ---
-export interface AdminCategory { id: string; name: string; slug: string; position: number; parent_id: string | null; products_count?: number }
-export interface AdminCollection { id: string; name: string; slug: string }
-export interface AdminAttribute { id: string; name: string; code: string; type: string; values: AdminAttributeValue[] }
-export interface AdminAttributeValue { id: string; label: string; value: string; position: number; metadata: Record<string, unknown> | null }
+export interface AdminCategory { id: number; name: string; slug: string; position: number; parent_id: number | null; products_count?: number }
+export interface AdminCollection { id: number; name: string; slug: string }
+export interface AdminAttribute { id: number; name: string; code: string; type: string; values: AdminAttributeValue[] }
+export interface AdminAttributeValue { id: number; label: string; value: string; position: number; metadata: Record<string, unknown> | null }
 
 // --- Product Builder types ---
 export interface ProductImage {
@@ -260,7 +260,7 @@ export const adminPanelService = {
     return request<Wrapped<Theme[]>>({ url: '/admin/themes', method: 'GET' }).then((r) => r.data)
   },
 
-  updateTheme(id: string, data: Partial<Theme>): Promise<Theme> {
+  updateTheme(id: number, data: Partial<Theme>): Promise<Theme> {
     return request<Wrapped<Theme>>({ url: `/admin/themes/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
@@ -273,11 +273,11 @@ export const adminPanelService = {
     return request<Wrapped<CmsMenu>>({ url: '/admin/menus', method: 'POST', data }).then((r) => r.data)
   },
 
-  updateMenu(id: string, data: Partial<CmsMenu>): Promise<CmsMenu> {
+  updateMenu(id: number, data: Partial<CmsMenu>): Promise<CmsMenu> {
     return request<Wrapped<CmsMenu>>({ url: `/admin/menus/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteMenu(id: string): Promise<void> {
+  deleteMenu(id: number): Promise<void> {
     return request({ url: `/admin/menus/${id}`, method: 'DELETE' })
   },
 
@@ -295,11 +295,11 @@ export const adminPanelService = {
     return request<Wrapped<AdminCategory>>({ url: '/admin/catalog/categories', method: 'POST', data }).then((r) => r.data)
   },
 
-  updateCategory(id: string, data: Partial<AdminCategory>): Promise<AdminCategory> {
+  updateCategory(id: number, data: Partial<AdminCategory>): Promise<AdminCategory> {
     return request<Wrapped<AdminCategory>>({ url: `/admin/catalog/categories/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteCategory(id: string): Promise<void> {
+  deleteCategory(id: number): Promise<void> {
     return request({ url: `/admin/catalog/categories/${id}`, method: 'DELETE' })
   },
 

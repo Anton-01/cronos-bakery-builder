@@ -10,10 +10,10 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('storage_providers', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('driver')->index(); // s3, gcs, azure
-            $table->json('credentials');       // encrypted at model level
+            $table->jsonb('credentials');       // encrypted at model level
             $table->string('bucket');
             $table->string('region')->nullable();
             $table->string('endpoint')->nullable();
@@ -23,15 +23,15 @@ return new class () extends Migration {
         });
 
         Schema::create('media_assets', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('original_name');
             $table->string('disk');
             $table->string('path');
             $table->string('mime_type');
             $table->unsignedBigInteger('size');
-            $table->json('transformations')->nullable();
+            $table->jsonb('transformations')->nullable();
             $table->string('processing_status')->default('pending')->index(); // pending, processing, completed, failed
-            $table->uuid('storage_provider_id')->nullable();
+            $table->unsignedBigInteger('storage_provider_id')->nullable();
             $table->foreignId('uploaded_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 

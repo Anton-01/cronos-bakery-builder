@@ -18,7 +18,7 @@ return new class () extends Migration {
             $table->string('status_before')->nullable();
             $table->string('status_after');
             $table->string('change_summary', 500)->nullable();
-            $table->foreignId('author_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('author_id')->constrained('admins')->cascadeOnDelete();
             $table->timestamp('created_at')->useCurrent();
 
             $table->index(['versionable_type', 'versionable_id', 'version_number'], 'cv_poly_version');

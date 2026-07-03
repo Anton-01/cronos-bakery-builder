@@ -18,7 +18,7 @@ class ProductTaxonomyController extends Controller
     {
     }
 
-    public function update(SyncProductTaxonomyRequest $request, string $product): CatalogProductResource
+    public function update(SyncProductTaxonomyRequest $request, int $product): CatalogProductResource
     {
         return new CatalogProductResource(
             $this->taxonomy->syncProductTaxonomy($product, $request->validated()),

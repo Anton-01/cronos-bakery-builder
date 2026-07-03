@@ -34,15 +34,15 @@ class ContentWorkflow extends Model
         return $this->morphTo();
     }
 
-    /** @return BelongsTo<\App\Modules\Authentication\Domain\Models\User, $this> */
+    /** @return BelongsTo<\App\Modules\Administration\Domain\Models\Admin, $this> */
     public function requester(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Authentication\Domain\Models\User::class, 'requested_by');
+        return $this->belongsTo(\App\Modules\Administration\Domain\Models\Admin::class, 'requested_by');
     }
 
-    /** @return BelongsTo<\App\Modules\Authentication\Domain\Models\User, $this> */
+    /** @return BelongsTo<\App\Modules\Administration\Domain\Models\Admin, $this> */
     public function approver(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Authentication\Domain\Models\User::class, 'approved_by');
+        return $this->belongsTo(\App\Modules\Administration\Domain\Models\Admin::class, 'approved_by');
     }
 }

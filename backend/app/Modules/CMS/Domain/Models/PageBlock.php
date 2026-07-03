@@ -6,6 +6,7 @@ namespace App\Modules\CMS\Domain\Models;
 
 use App\Modules\CMS\Domain\Enums\BlockType;
 use App\Modules\CMS\Infrastructure\Database\Factories\PageBlockFactory;
+use App\Shared\Domain\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class PageBlock extends Model
 {
+    use Auditable;
     use HasFactory;
 
     protected $table = 'cms_page_blocks';
