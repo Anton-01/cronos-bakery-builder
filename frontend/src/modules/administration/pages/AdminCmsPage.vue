@@ -219,18 +219,39 @@ onMounted(load)
             </template>
           </Column>
 
-          <Column header="Acciones" style="width: 280px">
+          <Column header="Acciones" style="width: 150px">
             <template #body="{ data }">
-              <div style="display: flex; gap: 0.25rem">
-                <Button label="Construir" size="small" severity="info" text @click="openBuilder(data)" />
+              <div class="cms-actions">
                 <Button
-                  :label="data.status === 'published' ? 'Despublicar' : 'Publicar'"
+                  v-tooltip.top="'Abrir Constructor'"
+                  icon="pi pi-palette"
+                  size="small"
+                  severity="secondary"
+                  text
+                  rounded
+                  aria-label="Abrir Constructor"
+                  @click="openBuilder(data)"
+                />
+                <Button
+                  v-tooltip.top="data.status === 'published' ? 'Despublicar página' : 'Publicar página'"
+                  :icon="data.status === 'published' ? 'pi pi-eye-slash' : 'pi pi-eye'"
                   size="small"
                   severity="warn"
                   text
+                  rounded
+                  :aria-label="data.status === 'published' ? 'Despublicar página' : 'Publicar página'"
                   @click="togglePublish(data)"
                 />
-                <Button label="Eliminar" size="small" severity="danger" text @click="deletePage(data)" />
+                <Button
+                  v-tooltip.top="'Eliminar página'"
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  text
+                  rounded
+                  aria-label="Eliminar página"
+                  @click="deletePage(data)"
+                />
               </div>
             </template>
           </Column>
@@ -287,6 +308,11 @@ onMounted(load)
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--admin-text-secondary);
+}
+.cms-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
 }
 .cms-page-title {
   font-weight: 500;
