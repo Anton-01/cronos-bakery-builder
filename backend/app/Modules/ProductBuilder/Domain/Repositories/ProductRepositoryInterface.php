@@ -24,6 +24,12 @@ interface ProductRepositoryInterface extends RepositoryInterface
     public function findConfiguration(string $id): ?Product;
 
     /**
+     * Any product (active or draft) by slug with its full configuration
+     * graph eager-loaded. Used by tokenized previews.
+     */
+    public function findConfigurationBySlug(string $slug): ?Product;
+
+    /**
      * @return Collection<int, Product>
      */
     public function activeProducts(): Collection;

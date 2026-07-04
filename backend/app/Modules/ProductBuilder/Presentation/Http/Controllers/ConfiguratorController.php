@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\ProductBuilder\Presentation\Http\Controllers;
 
 use App\Modules\ProductBuilder\Application\Services\ConfiguratorService;
+use App\Modules\ProductBuilder\Application\Services\PreviewTokenService;
 use App\Modules\ProductBuilder\Domain\Repositories\ProductRepositoryInterface;
 use App\Modules\ProductBuilder\Presentation\Http\Requests\QuoteRequest;
 use App\Modules\ProductBuilder\Presentation\Http\Resources\ProductResource;
@@ -21,6 +22,7 @@ class ConfiguratorController extends Controller
     public function __construct(
         private readonly ConfiguratorService $configurator,
         private readonly ProductRepositoryInterface $products,
+        private readonly PreviewTokenService $previewTokens,
     ) {
     }
 
@@ -36,7 +38,12 @@ class ConfiguratorController extends Controller
 
     public function quote(QuoteRequest $request, string $slug): JsonResponse
     {
-        $result = $this->configurator->quote($slug, $request->selections());
+        // A valid preview token for this same product unlocks quoting drafts.
+        $previewedId = $this->previewTokens->resolve($request->previewToken());
+        $includeDraft = $previewedId !== null
+            && $this->products->findConfigurationBySlug($slug)?->id === $previewedId;
+
+        $result = $this->configurator->quote($slug, $request->selections(), $includeDraft);
 
         return response()->json([
             'data' => [

@@ -32,6 +32,11 @@ class EloquentProductRepository extends AbstractEloquentRepository implements Pr
         return $this->configurationQuery()->whereKey($id)->first();
     }
 
+    public function findConfigurationBySlug(string $slug): ?Product
+    {
+        return $this->configurationQuery()->where('slug', $slug)->first();
+    }
+
     public function activeProducts(): Collection
     {
         return $this->model->newQuery()

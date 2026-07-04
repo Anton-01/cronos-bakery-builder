@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import Card from 'primevue/card'
+import ToggleSwitch from 'primevue/toggleswitch'
 
 import type { OptionTemplate } from '../services/adminPanelService'
 import type { MappedOptionLink } from '../composables/useProductOptions'
@@ -28,10 +30,12 @@ defineEmits<{
   'add-link': []
 }>()
 
-const templateOptions = props.availableTemplates.map((tpl) => ({
-  label: `${tpl.label} (${props.getOptionTypeLabel(tpl.type)})`,
-  value: tpl.id,
-}))
+const templateOptions = computed(() =>
+  props.availableTemplates.map((tpl) => ({
+    label: `${tpl.label} (${props.getOptionTypeLabel(tpl.type)})`,
+    value: tpl.id,
+  })),
+)
 </script>
 
 <template>
@@ -100,8 +104,26 @@ const templateOptions = props.availableTemplates.map((tpl) => ({
               <span class="option-link-item__name">{{ link.template?.label ?? '...' }}</span>
               <Tag :value="getOptionTypeLabel(link.template?.type ?? '')" severity="info" style="font-size:0.6rem;" />
               <div class="option-link-item__actions">
-                <Button icon="pi pi-info-circle" size="small" severity="info" text rounded title="Leyenda" @click="$emit('open-legend', link)" />
-                <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Desvincular" @click="$emit('remove-link', link)" />
+                <Button
+                  v-tooltip.top="'Editar leyenda'"
+                  icon="pi pi-info-circle"
+                  size="small"
+                  severity="info"
+                  text
+                  rounded
+                  aria-label="Editar leyenda"
+                  @click="$emit('open-legend', link)"
+                />
+                <Button
+                  v-tooltip.top="'Desvincular opción'"
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  text
+                  rounded
+                  aria-label="Desvincular opción"
+                  @click="$emit('remove-link', link)"
+                />
               </div>
             </div>
 
@@ -123,14 +145,23 @@ const templateOptions = props.availableTemplates.map((tpl) => ({
                   class="option-link-value-row"
                   :class="{ 'option-link-value-row--disabled': !isValueEnabled(link, val.id) }"
                 >
-                  <label class="option-link-value-check">
-                    <input type="checkbox" :checked="isValueEnabled(link, val.id)" @change="$emit('toggle-value', link, val.id)" />
-                    <span class="option-link-value-check__mark" />
-                  </label>
+                  <ToggleSwitch
+                    v-tooltip.left="isValueEnabled(link, val.id) ? 'Excluir este valor para el producto' : 'Incluir este valor para el producto'"
+                    :modelValue="isValueEnabled(link, val.id)"
+                    class="option-link-value-switch"
+                    :aria-label="`${isValueEnabled(link, val.id) ? 'Excluir' : 'Incluir'} ${val.label}`"
+                    @update:modelValue="$emit('toggle-value', link, val.id)"
+                  />
                   <template v-if="link.template!.type === 'color' && val.metadata?.hex">
                     <span class="option-link-value-swatch" :style="{ background: (val.metadata.hex as string) }" />
                   </template>
                   <span class="option-link-value-label">{{ val.label }}</span>
+                  <Tag
+                    v-if="!isValueEnabled(link, val.id)"
+                    value="Excluido"
+                    severity="warn"
+                    style="font-size:0.55rem;"
+                  />
                   <span v-if="val.price_modifier_type !== 'none'" class="option-link-value-price">
                     {{ val.price_modifier_type === 'add' ? '+' : val.price_modifier_type === 'subtract' ? '-' : '=' }}{{ ((val.price_modifier_amount ?? 0) / 100).toFixed(2) }}
                   </span>

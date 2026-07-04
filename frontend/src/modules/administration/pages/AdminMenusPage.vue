@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref, reactive } from 'vue'
-import DataTable from 'primevue/datatable'
+import { computed, onMounted, reactive, ref } from 'vue'
+import TreeTable from 'primevue/treetable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
+import type { TreeNode } from 'primevue/treenode'
 
-import { adminPanelService, type CmsMenu } from '../services/adminPanelService'
+import { adminPanelService, type CmsMenu, type CmsMenuItem } from '../services/adminPanelService'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -23,93 +25,209 @@ const locationOptions = [
   { label: 'Sidebar', value: 'sidebar' },
 ]
 
+const targetOptions = [
+  { label: 'Misma pestaña', value: '_self' },
+  { label: 'Pestaña nueva', value: '_blank' },
+]
+
 const menus = ref<CmsMenu[]>([])
 const loading = ref(true)
-
-const showNewForm = ref(false)
-const newForm = reactive({ name: '', location: 'header' as 'header' | 'footer' | 'sidebar' })
 const saving = ref(false)
+const expandedKeys = ref<Record<string, boolean>>({})
 
-interface EditState { name: string; location: string }
-const editingId = ref<number | null>(null)
-const editForm = reactive<EditState>({ name: '', location: '' })
+// --- TreeTable nodes: menús como raíz, enlaces e hijos anidados ---
+interface MenuNodeData {
+  type: 'menu' | 'item'
+  label: string
+  url: string | null
+  location?: string
+  position: number | null
+  menuId: number
+  item?: CmsMenuItem
+  menu?: CmsMenu
+  depth: number
+}
 
-onMounted(async () => {
+function itemToNode(item: CmsMenuItem, menuId: number, depth: number): TreeNode {
+  return {
+    key: `item-${item.id}`,
+    data: {
+      type: 'item',
+      label: item.label,
+      url: item.url,
+      position: item.position,
+      menuId,
+      item,
+      depth,
+    } satisfies MenuNodeData,
+    children: (item.children ?? []).map((child) => itemToNode(child, menuId, depth + 1)),
+  }
+}
+
+const nodes = computed<TreeNode[]>(() =>
+  menus.value.map((menu) => ({
+    key: `menu-${menu.id}`,
+    data: {
+      type: 'menu',
+      label: menu.name,
+      url: null,
+      location: menu.location,
+      position: null,
+      menuId: menu.id,
+      menu,
+      depth: 0,
+    } satisfies MenuNodeData,
+    children: (menu.items ?? []).map((item) => itemToNode(item, menu.id, 1)),
+  })),
+)
+
+function expandAll(): void {
+  const keys: Record<string, boolean> = {}
+  const walk = (list: TreeNode[]) => {
+    for (const node of list) {
+      if (node.children?.length) {
+        keys[node.key as string] = true
+        walk(node.children)
+      }
+    }
+  }
+  walk(nodes.value)
+  expandedKeys.value = keys
+}
+
+async function loadMenus(expand = true): Promise<void> {
   try {
     menus.value = await adminPanelService.menus()
+    if (expand) expandAll()
+  } catch {
+    error('Error al cargar los menus')
   } finally {
     loading.value = false
   }
-})
+}
 
-async function createMenu(): Promise<void> {
-  if (!newForm.name.trim()) return
+onMounted(() => loadMenus())
+
+// --- Menú: crear / editar / eliminar ---
+const menuDialog = ref(false)
+const menuForm = reactive({ id: null as number | null, name: '', location: 'header' })
+
+function openMenuDialog(menu?: CmsMenu): void {
+  menuForm.id = menu?.id ?? null
+  menuForm.name = menu?.name ?? ''
+  menuForm.location = menu?.location ?? 'header'
+  menuDialog.value = true
+}
+
+async function saveMenu(): Promise<void> {
+  if (!menuForm.name.trim()) return
   saving.value = true
   try {
-    const created = await adminPanelService.createMenu({ name: newForm.name.trim(), location: newForm.location })
-    menus.value.push(created)
-    newForm.name = ''
-    newForm.location = 'header'
-    showNewForm.value = false
-    success('Menu creado exitosamente')
+    if (menuForm.id === null) {
+      await adminPanelService.createMenu({ name: menuForm.name.trim(), location: menuForm.location })
+      success('Menu creado exitosamente')
+    } else {
+      await adminPanelService.updateMenu(menuForm.id, { name: menuForm.name.trim(), location: menuForm.location })
+      success('Menu actualizado')
+    }
+    menuDialog.value = false
+    await loadMenus(false)
   } catch {
-    error('Error al crear el menu')
+    error('Error al guardar el menu')
   } finally {
     saving.value = false
   }
 }
 
-function startEdit(menu: CmsMenu): void {
-  editingId.value = menu.id
-  editForm.name = menu.name
-  editForm.location = menu.location
-}
-
-function cancelEdit(): void {
-  editingId.value = null
-  editForm.name = ''
-  editForm.location = ''
-}
-
-async function saveEdit(menu: CmsMenu): Promise<void> {
-  if (!editForm.name.trim()) return
-  saving.value = true
-  try {
-    const updated = await adminPanelService.updateMenu(menu.id, {
-      name: editForm.name.trim(),
-      location: editForm.location,
-    })
-    const idx = menus.value.findIndex((m) => m.id === menu.id)
-    if (idx !== -1) menus.value[idx] = updated
-    cancelEdit()
-    success('Menu actualizado')
-  } catch {
-    error('Error al actualizar el menu')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function deleteMenu(id: number): Promise<void> {
+async function deleteMenu(menu: CmsMenu): Promise<void> {
   const ok = await confirm({
     title: 'Eliminar menu',
-    message: '¿Eliminar este menu? Esta accion no se puede deshacer.',
+    message: `¿Eliminar el menu "${menu.name}" y todos sus enlaces? Esta accion no se puede deshacer.`,
     action: 'delete',
     confirmText: 'Eliminar',
   })
   if (!ok) return
   try {
-    await adminPanelService.deleteMenu(id)
-    menus.value = menus.value.filter((m) => m.id !== id)
+    await adminPanelService.deleteMenu(menu.id)
+    menus.value = menus.value.filter((m) => m.id !== menu.id)
     success('Menu eliminado')
   } catch {
     error('Error al eliminar el menu')
   }
 }
 
-function locationLabel(location: string): string {
+// --- Enlaces (menu items): crear / editar / eliminar ---
+const itemDialog = ref(false)
+const itemForm = reactive({
+  id: null as number | null,
+  menuId: null as number | null,
+  parentId: null as number | null,
+  parentLabel: '' as string,
+  label: '',
+  url: '',
+  target: '_self' as '_self' | '_blank',
+  position: 0,
+})
+
+function openItemDialog(menuId: number, parent?: CmsMenuItem, item?: CmsMenuItem): void {
+  itemForm.id = item?.id ?? null
+  itemForm.menuId = menuId
+  itemForm.parentId = item ? (item.parent_id ?? null) : (parent?.id ?? null)
+  itemForm.parentLabel = parent?.label ?? ''
+  itemForm.label = item?.label ?? ''
+  itemForm.url = item?.url ?? ''
+  itemForm.target = (item?.target as '_self' | '_blank') ?? '_self'
+  itemForm.position = item?.position ?? 0
+  itemDialog.value = true
+}
+
+async function saveItem(): Promise<void> {
+  if (!itemForm.label.trim() || itemForm.menuId === null) return
+  saving.value = true
+  const payload = {
+    label: itemForm.label.trim(),
+    url: itemForm.url.trim() || null,
+    target: itemForm.target,
+    parent_id: itemForm.parentId,
+    position: itemForm.position,
+  }
+  try {
+    if (itemForm.id === null) {
+      await adminPanelService.createMenuItem(itemForm.menuId, payload)
+      success('Enlace agregado al menu')
+    } else {
+      await adminPanelService.updateMenuItem(itemForm.menuId, itemForm.id, payload)
+      success('Enlace actualizado')
+    }
+    itemDialog.value = false
+    await loadMenus(false)
+  } catch {
+    error('Error al guardar el enlace')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function deleteItem(menuId: number, item: CmsMenuItem): Promise<void> {
+  const ok = await confirm({
+    title: 'Eliminar enlace',
+    message: `¿Eliminar el enlace "${item.label}"? Sus subenlaces tambien se eliminaran.`,
+    action: 'delete',
+    confirmText: 'Eliminar',
+  })
+  if (!ok) return
+  try {
+    await adminPanelService.deleteMenuItem(menuId, item.id)
+    success('Enlace eliminado')
+    await loadMenus(false)
+  } catch {
+    error('Error al eliminar el enlace')
+  }
+}
+
+function locationLabel(location?: string): string {
   const map: Record<string, string> = { header: 'Header', footer: 'Footer', sidebar: 'Sidebar' }
-  return map[location] ?? location
+  return location ? (map[location] ?? location) : ''
 }
 </script>
 
@@ -120,95 +238,179 @@ function locationLabel(location: string): string {
         <h1>Menus de Navegacion</h1>
         <div class="admin-page-header__breadcrumb">Inicio <span>/</span> Contenido <span>/</span> Menus</div>
       </div>
-      <Button label="Nuevo Menu" icon="pi pi-plus" @click="showNewForm = true" />
+      <Button label="Nuevo Menu" icon="pi pi-plus" @click="openMenuDialog()" />
     </div>
 
     <div v-if="loading" style="display:flex; justify-content:center; padding:3rem;">
       <ProgressSpinner />
     </div>
 
-    <template v-else>
-      <p v-if="menus.length === 0 && !showNewForm" style="text-align:center; padding:3rem; color:var(--admin-text-muted);">
-        No hay menus registrados. Crea uno con el boton "Nuevo Menu".
-      </p>
+    <Card v-else>
+      <template #content>
+        <p v-if="menus.length === 0" style="text-align:center; padding:2.5rem; color:var(--admin-text-muted); margin:0;">
+          No hay menus registrados. Crea uno con el boton "Nuevo Menu".
+        </p>
 
-      <Card v-for="menu in menus" :key="menu.id" style="margin-bottom:1rem;">
-        <template #content>
-          <!-- Editing mode -->
-          <template v-if="editingId === menu.id">
-            <div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; margin-bottom:1rem;">
-              <div class="menu-field" style="flex:1; min-width:200px;">
-                <label>Nombre</label>
-                <InputText v-model="editForm.name" fluid />
-              </div>
-              <div class="menu-field" style="min-width:160px;">
-                <label>Ubicacion</label>
-                <Select v-model="editForm.location" :options="locationOptions" optionLabel="label" optionValue="value" fluid />
-              </div>
-              <div style="display:flex; gap:0.5rem; padding-bottom:0.1rem;">
-                <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" size="small" @click="saveEdit(menu)" />
-                <Button label="Cancelar" severity="secondary" outlined size="small" :disabled="saving" @click="cancelEdit" />
-              </div>
-            </div>
-          </template>
+        <TreeTable
+          v-else
+          :value="nodes"
+          v-model:expandedKeys="expandedKeys"
+          class="menus-tree"
+        >
+          <Column field="label" header="Menu / Enlace" expander style="min-width:16rem;">
+            <template #body="{ node }">
+              <span
+                class="menus-tree__label"
+                :class="{ 'menus-tree__label--menu': node.data.type === 'menu' }"
+              >
+                <i
+                  :class="node.data.type === 'menu' ? 'pi pi-bars' : 'pi pi-link'"
+                  class="menus-tree__label-icon"
+                />
+                {{ node.data.label }}
+              </span>
+            </template>
+          </Column>
 
-          <!-- View mode -->
-          <template v-else>
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-              <div style="display:flex; align-items:center; gap:0.75rem;">
-                <h3 style="margin:0; font-size:1rem; font-weight:600;">{{ menu.name }}</h3>
-                <Tag :value="locationLabel(menu.location)" severity="secondary" />
-              </div>
-              <div style="display:flex; gap:0.25rem;">
-                <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="startEdit(menu)" />
-                <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="deleteMenu(menu.id)" />
-              </div>
-            </div>
-          </template>
+          <Column field="url" header="URL" style="min-width:12rem;">
+            <template #body="{ node }">
+              <code v-if="node.data.url" class="menus-tree__url">{{ node.data.url }}</code>
+              <span v-else-if="node.data.type === 'item'" class="menus-tree__muted">—</span>
+            </template>
+          </Column>
 
-          <!-- Menu items -->
-          <template v-if="menu.items && menu.items.length > 0">
-            <ul class="menu-items-list">
-              <li v-for="item in menu.items" :key="item.id">
-                <div class="menu-item-row">
-                  <span>
-                    <strong>{{ item.label }}</strong>
-                    <small style="margin-left:0.5rem; color:var(--admin-text-muted);">{{ item.url }}</small>
-                  </span>
-                  <small style="color:var(--admin-text-muted);">Pos. {{ item.position }}</small>
-                </div>
-                <ul v-if="item.children && item.children.length > 0" class="menu-items-list menu-items-list--nested">
-                  <li v-for="child in item.children" :key="child.id">
-                    <div class="menu-item-row">
-                      <span>
-                        <strong>{{ child.label }}</strong>
-                        <small style="margin-left:0.5rem; color:var(--admin-text-muted);">{{ child.url }}</small>
-                      </span>
-                      <small style="color:var(--admin-text-muted);">Pos. {{ child.position }}</small>
-                    </div>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-          </template>
-          <p v-else style="color:var(--admin-text-muted); margin:0; font-size:0.85rem;">Este menu no tiene elementos.</p>
-        </template>
-      </Card>
-    </template>
+          <Column header="Ubicacion / Posicion" style="width:11rem;">
+            <template #body="{ node }">
+              <Tag v-if="node.data.type === 'menu'" :value="locationLabel(node.data.location)" severity="secondary" />
+              <span v-else class="menus-tree__muted">Pos. {{ node.data.position }}</span>
+            </template>
+          </Column>
 
-    <!-- New menu dialog -->
-    <Dialog v-model:visible="showNewForm" modal header="Crear nuevo menu" :style="{ width: '440px' }">
+          <Column header="Acciones" style="width:9rem;">
+            <template #body="{ node }">
+              <!-- Menú raíz -->
+              <div v-if="node.data.type === 'menu'" class="menus-tree__actions">
+                <Button
+                  v-tooltip.top="'Agregar enlace'"
+                  icon="pi pi-plus"
+                  size="small"
+                  severity="secondary"
+                  text
+                  rounded
+                  aria-label="Agregar enlace"
+                  @click="openItemDialog(node.data.menuId)"
+                />
+                <Button
+                  v-tooltip.top="'Editar menu'"
+                  icon="pi pi-pencil"
+                  size="small"
+                  severity="info"
+                  text
+                  rounded
+                  aria-label="Editar menu"
+                  @click="openMenuDialog(node.data.menu)"
+                />
+                <Button
+                  v-tooltip.top="'Eliminar menu'"
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  text
+                  rounded
+                  aria-label="Eliminar menu"
+                  @click="deleteMenu(node.data.menu)"
+                />
+              </div>
+
+              <!-- Enlace / subenlace -->
+              <div v-else class="menus-tree__actions">
+                <Button
+                  v-if="node.data.depth === 1"
+                  v-tooltip.top="'Agregar submenu'"
+                  icon="pi pi-plus"
+                  size="small"
+                  severity="secondary"
+                  text
+                  rounded
+                  aria-label="Agregar submenu"
+                  @click="openItemDialog(node.data.menuId, node.data.item)"
+                />
+                <Button
+                  v-tooltip.top="'Editar enlace'"
+                  icon="pi pi-pencil"
+                  size="small"
+                  severity="info"
+                  text
+                  rounded
+                  aria-label="Editar enlace"
+                  @click="openItemDialog(node.data.menuId, undefined, node.data.item)"
+                />
+                <Button
+                  v-tooltip.top="'Eliminar enlace'"
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  text
+                  rounded
+                  aria-label="Eliminar enlace"
+                  @click="deleteItem(node.data.menuId, node.data.item)"
+                />
+              </div>
+            </template>
+          </Column>
+        </TreeTable>
+      </template>
+    </Card>
+
+    <!-- Menu dialog (crear / editar) -->
+    <Dialog
+      v-model:visible="menuDialog"
+      modal
+      :header="menuForm.id === null ? 'Crear nuevo menu' : 'Editar menu'"
+      :style="{ width: '440px' }"
+    >
       <div class="menu-field">
         <label>Nombre</label>
-        <InputText v-model="newForm.name" fluid placeholder="Nombre del menu" />
+        <InputText v-model="menuForm.name" fluid placeholder="Nombre del menu" />
       </div>
       <div class="menu-field">
         <label>Ubicacion</label>
-        <Select v-model="newForm.location" :options="locationOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="menuForm.location" :options="locationOptions" optionLabel="label" optionValue="value" fluid />
       </div>
       <template #footer>
-        <Button label="Cancelar" severity="secondary" outlined :disabled="saving" @click="showNewForm = false" />
-        <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" :disabled="!newForm.name.trim()" @click="createMenu" />
+        <Button label="Cancelar" severity="secondary" outlined :disabled="saving" @click="menuDialog = false" />
+        <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" :disabled="!menuForm.name.trim()" @click="saveMenu" />
+      </template>
+    </Dialog>
+
+    <!-- Item dialog (crear / editar enlace) -->
+    <Dialog
+      v-model:visible="itemDialog"
+      modal
+      :header="itemForm.id === null ? (itemForm.parentLabel ? `Agregar submenu a “${itemForm.parentLabel}”` : 'Agregar enlace') : 'Editar enlace'"
+      :style="{ width: '480px' }"
+    >
+      <div class="menu-field">
+        <label>Etiqueta</label>
+        <InputText v-model="itemForm.label" fluid placeholder="Ej. Pasteles de temporada" />
+      </div>
+      <div class="menu-field">
+        <label>URL</label>
+        <InputText v-model="itemForm.url" fluid placeholder="/catalogo/pasteles" />
+      </div>
+      <div style="display:flex; gap:1rem;">
+        <div class="menu-field" style="flex:1;">
+          <label>Abrir en</label>
+          <Select v-model="itemForm.target" :options="targetOptions" optionLabel="label" optionValue="value" fluid />
+        </div>
+        <div class="menu-field" style="width:8rem;">
+          <label>Posicion</label>
+          <InputNumber v-model="itemForm.position" :min="0" fluid showButtons />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancelar" severity="secondary" outlined :disabled="saving" @click="itemDialog = false" />
+        <Button :label="saving ? 'Guardando...' : 'Guardar'" :loading="saving" :disabled="!itemForm.label.trim()" @click="saveItem" />
       </template>
     </Dialog>
   </div>
@@ -226,19 +428,31 @@ function locationLabel(location: string): string {
   font-weight: 600;
   color: var(--admin-text-secondary);
 }
-.menu-items-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.menu-item-row {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--admin-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.menus-tree__label {
   font-size: 0.875rem;
+  color: var(--admin-text);
 }
-.menu-item-row:last-child { border-bottom: none; }
-.menu-items-list--nested { padding-left: 1.5rem; }
+.menus-tree__label--menu {
+  font-weight: 600;
+}
+.menus-tree__label-icon {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin-right: 0.35rem;
+}
+.menus-tree__url {
+  font-size: 0.78rem;
+  color: var(--admin-text-secondary);
+  background: var(--admin-bg);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+.menus-tree__muted {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+.menus-tree__actions {
+  display: flex;
+  gap: 0.2rem;
+}
 </style>

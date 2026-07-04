@@ -4,34 +4,45 @@ declare(strict_types=1);
 
 namespace App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin;
 
+use App\Modules\ProductBuilder\Application\Services\PreviewTokenService;
 use App\Modules\ProductBuilder\Application\Services\ProductAdminService;
 use App\Modules\ProductBuilder\Presentation\Http\Resources\ProductResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
 
 class ProductPreviewController extends Controller
 {
-    public function __construct(private readonly ProductAdminService $service)
-    {
+    public function __construct(
+        private readonly ProductAdminService $service,
+        private readonly PreviewTokenService $tokens,
+    ) {
     }
 
+    /**
+     * Admin-only: mints a short-lived token so the product can be viewed on
+     * the public storefront (new tab) even while in draft.
+     */
     public function generateToken(string $product): JsonResponse
     {
-        $this->service->get($product);
+        $this->service->get($product); // 404 if the product does not exist
 
-        $token = Str::random(64);
-        Cache::put("product_preview:{$token}", $product, now()->addMinutes(30));
-
-        return response()->json(['data' => ['token' => $token]]);
+        return response()->json([
+            'data' => [
+                'token' => $this->tokens->mint($product),
+                'expires_in_minutes' => PreviewTokenService::TTL_MINUTES,
+            ],
+        ]);
     }
 
+    /**
+     * Public: full configuration of the previewed product; the token is the
+     * only credential and expires automatically.
+     */
     public function show(string $token): ProductResource|JsonResponse
     {
-        $productId = Cache::get("product_preview:{$token}");
+        $productId = $this->tokens->resolve($token);
 
-        if (! $productId) {
+        if ($productId === null) {
             return response()->json(['message' => 'Preview token expired or invalid.'], 403);
         }
 

@@ -51,8 +51,25 @@ export interface TwoFactorSetup {
 
 // --- Theme types ---
 export interface Theme { id: number; name: string; is_active: boolean; settings: Record<string, unknown> }
-export interface CmsMenu { id: number; name: string; location: string; items: CmsMenuItem[] }
-export interface CmsMenuItem { id: number; label: string; url: string; position: number; children: CmsMenuItem[] }
+export interface CmsMenu { id: number; name: string; location: string; is_active?: boolean; items: CmsMenuItem[] }
+export interface CmsMenuItem {
+  id: number
+  label: string
+  url: string | null
+  target?: '_self' | '_blank' | null
+  position: number
+  is_active?: boolean
+  parent_id?: number | null
+  children: CmsMenuItem[]
+}
+export interface CmsMenuItemPayload {
+  label: string
+  url?: string | null
+  target?: '_self' | '_blank' | null
+  parent_id?: number | null
+  position?: number
+  is_active?: boolean
+}
 export interface CmsBanner { id: number; placement: string; title: string; image: string | null; url: string | null; is_active: boolean }
 
 // --- Catalog types ---
@@ -146,9 +163,12 @@ export interface ProductOptionLink {
   product_id: string
   template_id: string
   legend: string | null
-  enabled_value_ids: string[] | null
+  /** IDs de valores de la plantilla EXCLUIDOS para este producto (null/[] = hereda todos). */
+  excluded_value_ids: string[] | null
   position: number
   template?: OptionTemplate
+  /** Valores efectivos (con exclusiones aplicadas) — lo que ve el storefront. */
+  values?: OptionTemplateValue[]
 }
 
 // --- Orders types ---
@@ -281,6 +301,18 @@ export const adminPanelService = {
     return request({ url: `/admin/menus/${id}`, method: 'DELETE' })
   },
 
+  createMenuItem(menuId: number, data: CmsMenuItemPayload): Promise<CmsMenuItem> {
+    return request<Wrapped<CmsMenuItem>>({ url: `/admin/menus/${menuId}/items`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateMenuItem(menuId: number, itemId: number, data: CmsMenuItemPayload): Promise<CmsMenuItem> {
+    return request<Wrapped<CmsMenuItem>>({ url: `/admin/menus/${menuId}/items/${itemId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteMenuItem(menuId: number, itemId: number): Promise<void> {
+    return request({ url: `/admin/menus/${menuId}/items/${itemId}`, method: 'DELETE' })
+  },
+
   // --- Banners ---
   banners(): Promise<CmsBanner[]> {
     return request<Wrapped<CmsBanner[]>>({ url: '/admin/banners', method: 'GET' }).then((r) => r.data)
@@ -408,11 +440,11 @@ export const adminPanelService = {
     return request<Wrapped<ProductOptionLink[]>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'GET' }).then((r) => r.data)
   },
 
-  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; enabled_value_ids?: string[] }): Promise<ProductOptionLink> {
+  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; excluded_value_ids?: string[] }): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateProductOptionLink(productId: string, linkId: string, data: Partial<ProductOptionLink>): Promise<ProductOptionLink> {
+  updateProductOptionLink(productId: string, linkId: string, data: Partial<Pick<ProductOptionLink, 'legend' | 'excluded_value_ids' | 'position'>>): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
@@ -420,12 +452,8 @@ export const adminPanelService = {
     return request({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'DELETE' })
   },
 
-  generatePreviewToken(productId: string): Promise<{ token: string }> {
-    return request<Wrapped<{ token: string }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
-  },
-
-  getPreview(token: string): Promise<Record<string, unknown>> {
-    return request<Wrapped<Record<string, unknown>>>({ url: `/admin/product-builder/preview/${token}`, method: 'GET' }).then((r) => r.data)
+  generatePreviewToken(productId: string): Promise<{ token: string; expires_in_minutes: number }> {
+    return request<Wrapped<{ token: string; expires_in_minutes: number }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
   },
 
   // --- Orders ---

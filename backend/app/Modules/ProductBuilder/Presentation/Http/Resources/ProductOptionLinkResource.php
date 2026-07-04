@@ -23,9 +23,14 @@ class ProductOptionLinkResource extends JsonResource
             'product_id' => $this->product_id,
             'template_id' => $this->template_id,
             'legend' => $this->legend,
-            'enabled_value_ids' => $this->enabled_value_ids,
+            'excluded_value_ids' => $this->excluded_value_ids,
             'position' => $this->position,
             'template' => new OptionTemplateResource($this->whenLoaded('template')),
+            // Template values with exclusions applied — what the storefront renders.
+            'values' => $this->whenLoaded(
+                'template',
+                fn () => OptionTemplateValueResource::collection($this->effectiveValues()),
+            ),
         ];
     }
 }

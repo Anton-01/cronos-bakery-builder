@@ -149,7 +149,7 @@ El `AdminLayout.vue` define las secciones del menú lateral:
 | `ProductGeneralForm.vue` | Nombre, slug, descripción con editor rico |
 | `ProductMediaGallery.vue` | Upload de imagen principal y galería drag-drop |
 | `ProductPricing.vue` | Gestión de precios base |
-| `ProductOptionsManager.vue` | Vinculación de opciones de producto con leyendas |
+| `ProductOptionsManager.vue` | Vinculación de opciones con leyendas y exclusión de valores por producto |
 | `UserTable.vue` | Tabla de usuarios con acciones |
 | `UserFormModal.vue` | Modal de creación/edición de usuario |
 | `SuspendUserModal.vue` | Modal de suspensión de usuario |
@@ -162,8 +162,8 @@ El `AdminLayout.vue` define las secciones del menú lateral:
 | `useProductForm.ts` | Estado del formulario de producto, validación, submit |
 | `useRichTextEditor.ts` | Setup del editor de texto enriquecido (PrimeVue Editor) |
 | `useMediaGallery.ts` | Upload de imágenes, drag-drop para thumbnail y galería |
-| `useProductOptions.ts` | Links de opciones, leyendas, toggle de valores |
-| `useProductPreview.ts` | Estado del modal de preview del producto |
+| `useProductOptions.ts` | Links de opciones, leyendas, exclusión de valores por producto |
+| `useProductPreview.ts` | Genera token temporal y abre la vista previa del storefront en pestaña nueva |
 
 ### 5.5 Tipos principales (`adminPanelService.ts`)
 
@@ -210,7 +210,7 @@ app.use(ToastService)
 | Categoría | Componentes |
 |---|---|
 | Layout | `Sidebar`, `Menubar`, `PanelMenu`, `Card`, `Panel`, `Divider` |
-| Data | `DataTable`, `Column`, `Paginator`, `Tag` |
+| Data | `DataTable`, `TreeTable`, `Column`, `Paginator`, `Tag` |
 | Form | `InputText`, `Textarea`, `Select` (ex-Dropdown), `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `Editor` |
 | Button | `Button` |
 | Overlay | `Dialog`, `ConfirmDialog`, `Toast`, `OverlayPanel` |
@@ -384,3 +384,27 @@ Convención para la columna de "Acciones" de todos los `DataTable` del admin:
 - Estilo uniforme: `size="small"`, `text`, `rounded`. Variantes de `severity` semánticas: `secondary`/`info` para navegación/edición, `warn` para publicar/despublicar, `danger` para eliminar.
 - **Registro de la directiva `Tooltip`:** se registra **globalmente** en `main.ts` con `app.directive('tooltip', Tooltip)` (import de `primevue/tooltip`), habilitando `v-tooltip` en toda la app sin re-declararla por componente. Alternativa local por componente: `import Tooltip from 'primevue/tooltip'` + `const vTooltip = Tooltip` en `<script setup>`.
 - Implementación de referencia: columna "Acciones" de `AdminCmsPage.vue`.
+
+## 18. Exclusión de Valores en Opciones de Producto (Product Builder)
+
+**Estrategia de BD (2026-07):** el pivote `pb_product_option_links` (producto ↔ plantilla de opción global) guarda las exclusiones en la columna **`excluded_value_ids` (JSONB, nullable)** — un array de IDs de `pb_option_template_values` que ese producto **oculta**. Se eligió **semántica de exclusión** (antes existía `enabled_value_ids`, lista de inclusión, ya eliminada por migración con conversión de datos):
+
+- `null` o `[]` ⇒ el producto **hereda todos** los valores de la plantilla, **incluidos los que se agreguen a la plantilla en el futuro** (ventaja clave frente a la lista de inclusión, que congelaba el set).
+- No se usó tabla relacional intermedia adicional: la cardinalidad es baja (decenas de valores por opción), el array JSONB vive junto al vínculo que califica y nunca se consulta por valor individual desde SQL. *(Nota: el módulo ProductBuilder sigue en UUIDs — pendiente de la conversión a IDs autoincrementales de la regla §13; los IDs dentro del array son UUIDs de valores de plantilla.)*
+- **Validación (Form Requests dedicados):** `StoreProductOptionLinkRequest` / `UpdateProductOptionLinkRequest` exigen que cada ID excluido **pertenezca a la plantilla vinculada** (`Rule::exists(...)->where('template_id', …)`) ⇒ 422 si no.
+- **Contrato del API (`ProductOptionLinkResource`):** devuelve **ambas vistas**: `excluded_value_ids` + `template.values` completo (para que el admin pinte los toggles) y `values` = **valores efectivos ya filtrados** vía `ProductOptionLink::effectiveValues()` (lo que consume el storefront). Helpers de dominio: `isValueExcluded()`, `effectiveValues()`.
+- **Frontend:** en `ProductOptionsManager.vue` cada opción vinculada es desplegable y cada valor tiene un **`ToggleSwitch`** con `v-tooltip` (encendido = heredado, apagado = excluido, con `Tag` "Excluido"). El guardado es inmediato por valor (PUT del link con el array recalculado; array vacío se normaliza a `null`).
+
+## 19. Vista Previa Real del Producto (Tokenized Storefront View)
+
+**Flujo de seguridad (2026-07):** la vista previa "Ver como usuario" abandonó la modal del admin y abre una **pestaña nueva con el layout público real** (`/builder/preview/:token`, ruta `builder.preview`, misma `ConfiguratorPage.vue` del storefront). Autorización por **token opaco temporal**, no por sesión:
+
+- **Minteo (admin-only):** `POST /api/admin/product-builder/products/{id}/preview-token` → `PreviewTokenService::mint()` genera `Str::random(64)` y lo guarda en **Cache con TTL de 30 min** (`product_preview:{token}` → product id). Se eligió token opaco en cache sobre `URL::temporarySignedRoute` porque la URL que se comparte es una ruta del **SPA** (no del API) y el token debe poder viajar como parámetro de ruta del frontend y usarse en **varios** endpoints (show + quote); la caducidad y revocación quedan del lado del servidor.
+- **Consumo (público, sin sesión):** `GET /api/product-builder/preview/{token}` — el token es la **única credencial**; devuelve la configuración completa aunque el producto esté en **borrador** (403 si expiró/es inválido). `POST products/{slug}/quote` acepta `preview_token` opcional: si resuelve al mismo producto, permite cotizar borradores.
+- **Frontend:** `useProductPreview.openPreview()` abre `window.open('', '_blank')` **antes** del `await` (evita el popup-blocker), pide el token y redirige la pestaña a `builder.preview`. En modo preview la página muestra un banner de advertencia y el carrito queda deshabilitado.
+
+## 20. Estándar absoluto de UI para jerarquías y menús: `TreeTable` + iconos con tooltips
+
+- Toda vista del admin que represente **estructuras jerárquicas** (menús de navegación padre/hijo, árboles de categorías, etc.) usa **`TreeTable` de PrimeVue** (o `DataTable` con `rowGroupMode` cuando la agrupación es plana) — nunca listas `<ul>` anidadas a mano ni tarjetas apiladas.
+- Las **acciones por fila** siguen la regla de §17 sin excepción: botones **solo-icono** (`pi-pencil` editar, `pi-trash` eliminar, `pi-plus` agregar hijo/submenú) con `size="small"`, `text`, `rounded`, `severity` semántico, texto explicativo **solo** vía `v-tooltip` + `aria-label`.
+- Implementación de referencia: `AdminMenusPage.vue` — nodos raíz = menús (con `Tag` de ubicación), nivel 1 = enlaces, nivel 2 = subenlaces; CRUD de enlaces contra `POST/PUT/DELETE /admin/menus/{menu}/items/…` (expuesto en `adminPanelService` como `createMenuItem` / `updateMenuItem` / `deleteMenuItem`).

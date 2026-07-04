@@ -21,6 +21,8 @@ class QuoteRequest extends FormRequest
         return [
             // Map of option key => value (string) or values (array) for checkboxes.
             'selections' => ['present', 'array'],
+            // Optional admin preview token: allows quoting a draft product.
+            'preview_token' => ['nullable', 'string', 'max:128'],
         ];
     }
 
@@ -30,5 +32,10 @@ class QuoteRequest extends FormRequest
     public function selections(): array
     {
         return $this->validated('selections') ?? [];
+    }
+
+    public function previewToken(): ?string
+    {
+        return $this->validated('preview_token');
     }
 }

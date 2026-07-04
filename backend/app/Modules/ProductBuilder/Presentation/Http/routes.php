@@ -25,6 +25,10 @@ Route::prefix('product-builder')->group(function (): void {
     Route::get('products', [ConfiguratorController::class, 'index']);
     Route::get('products/{slug}', [ConfiguratorController::class, 'show']);
     Route::post('products/{slug}/quote', [ConfiguratorController::class, 'quote']);
+
+    // Tokenized storefront preview: the token (minted by an admin) is the only
+    // credential, so drafts can be viewed in the public layout without a session.
+    Route::get('preview/{token}', [ProductPreviewController::class, 'show']);
 });
 
 // --- Admin management (admin guard + manage products permission) -----------
@@ -70,7 +74,6 @@ Route::prefix('admin/product-builder')
         Route::put('products/{product}/images/{image}', [ProductImageController::class, 'update']);
         Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
 
-        // Product Preview.
+        // Product Preview (token minting stays admin-only).
         Route::post('products/{product}/preview-token', [ProductPreviewController::class, 'generateToken']);
-        Route::get('preview/{token}', [ProductPreviewController::class, 'show']);
     });

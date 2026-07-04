@@ -62,10 +62,7 @@ const {
   loadOptionLinks,
 })
 
-const {
-  previewVisible, previewLoading, previewData,
-  openPreview, closePreview,
-} = useProductPreview(() => productId.value)
+const { previewLoading, openPreview } = useProductPreview(() => productId.value)
 
 // --- Unsaved changes dialog ---
 const unsavedModalVisible = ref(false)
@@ -182,12 +179,14 @@ onMounted(() => {
               <span style="font-size:0.8rem; font-weight:600; color:var(--admin-text-secondary);">Vista Previa</span>
               <Button
                 v-if="isEdit && form.slug"
+                v-tooltip.top="'Abre el producto en una pestaña nueva con el layout del storefront'"
                 label="Ver como usuario"
-                icon="pi pi-eye"
+                icon="pi pi-external-link"
                 size="small"
                 severity="secondary"
                 outlined
                 type="button"
+                :loading="previewLoading"
                 @click="openPreview"
               />
               <span v-else style="font-size:0.75rem; color:var(--admin-text-muted);">
@@ -226,37 +225,6 @@ onMounted(() => {
         </Card>
       </div>
     </form>
-
-    <!-- Preview dialog -->
-    <Dialog v-model:visible="previewVisible" modal header="Vista previa del producto" :style="{ width: '800px' }" @hide="closePreview">
-      <div v-if="previewLoading" style="display:flex; justify-content:center; padding:3rem;">
-        <ProgressSpinner />
-      </div>
-      <template v-else-if="previewData">
-        <div class="preview-product">
-          <div class="preview-product__media">
-            <div v-if="(previewData as any).image" class="preview-product__img-wrap">
-              <img :src="(previewData as any).image" :alt="(previewData as any).name" />
-            </div>
-            <div v-else class="preview-product__no-img">Sin imagen</div>
-          </div>
-          <div class="preview-product__info">
-            <h2 class="preview-product__name">{{ (previewData as any).name }}</h2>
-            <div class="preview-product__price">
-              {{ new Intl.NumberFormat('es-MX', { style: 'currency', currency: (previewData as any).base_price?.currency || 'MXN' }).format(((previewData as any).base_price?.amount || 0) / 100) }}
-            </div>
-            <div v-if="(previewData as any).description" class="preview-product__desc" v-html="(previewData as any).description"></div>
-            <div v-if="(previewData as any).tags" class="preview-product__tags">
-              <span
-                v-for="tag in ((previewData as any).tags || '').split(',').map((t: string) => t.trim()).filter(Boolean)"
-                :key="tag"
-                class="preview-product__tag"
-              >{{ tag }}</span>
-            </div>
-          </div>
-        </div>
-      </template>
-    </Dialog>
 
     <!-- Legend dialog -->
     <Dialog
@@ -437,42 +405,10 @@ onMounted(() => {
   transition: opacity 0.15s ease;
 }
 .option-link-value-row--disabled { opacity: 0.45; }
-.option-link-value-check {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
+.option-link-value-switch {
+  transform: scale(0.75);
+  transform-origin: left center;
   flex-shrink: 0;
-}
-.option-link-value-check input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.option-link-value-check__mark {
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid var(--admin-border);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--admin-surface);
-  transition: all 0.15s ease;
-}
-.option-link-value-check input:checked + .option-link-value-check__mark {
-  background: var(--admin-primary);
-  border-color: var(--admin-primary);
-}
-.option-link-value-check input:checked + .option-link-value-check__mark::after {
-  content: '';
-  width: 4px;
-  height: 8px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  margin-top: -1px;
 }
 .option-link-value-swatch {
   width: 14px;
@@ -591,53 +527,4 @@ onMounted(() => {
 }
 .media-file-meta__sep { opacity: 0.4; }
 
-/* Preview product layout */
-.preview-product {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 2rem;
-}
-.preview-product__img-wrap {
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--admin-bg);
-  aspect-ratio: 1;
-}
-.preview-product__img-wrap img { width: 100%; height: 100%; object-fit: cover; }
-.preview-product__no-img {
-  aspect-ratio: 1;
-  background: var(--admin-bg);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--admin-text-muted);
-  font-size: 0.85rem;
-}
-.preview-product__name { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem; }
-.preview-product__price {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--admin-primary);
-  margin-bottom: 1rem;
-}
-.preview-product__desc {
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--admin-text-secondary);
-  margin-bottom: 1rem;
-}
-.preview-product__desc p { margin: 0 0 0.5rem; }
-.preview-product__tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-.preview-product__tag {
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  background: var(--admin-bg);
-  font-size: 0.75rem;
-  color: var(--admin-text-secondary);
-  font-weight: 500;
-}
-@media (max-width: 640px) {
-  .preview-product { grid-template-columns: 1fr; }
-}
 </style>

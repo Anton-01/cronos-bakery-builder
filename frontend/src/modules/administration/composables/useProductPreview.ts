@@ -1,56 +1,45 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { adminPanelService } from '../services/adminPanelService'
 
-export interface PreviewData {
-    name: string
-    image: string | null
-    description: string | null
-    base_price: { amount: number; currency: string }
-    tags: string | null
-}
-
+/**
+ * "Ver como usuario": solicita un token temporal al API y abre el storefront
+ * público (`builder.preview`) en una pestaña nueva. La pestaña no necesita
+ * sesión de admin — el token es la única credencial y expira solo.
+ */
 export function useProductPreview(productId: () => string | undefined) {
     const { error } = useToast()
+    const router = useRouter()
 
-    const previewVisible = ref(false)
     const previewLoading = ref(false)
-    const previewData = ref<PreviewData | null>(null)
 
     async function openPreview() {
         const pid = productId()
-        if (!pid) return
+        if (!pid || previewLoading.value) return
+
+        // Abrir la ventana ANTES del await evita que el navegador la bloquee
+        // como popup; luego se redirige a la ruta tokenizada.
+        const win = window.open('', '_blank')
         previewLoading.value = true
-        previewVisible.value = true
         try {
             const { token } = await adminPanelService.generatePreviewToken(pid)
-            const data = await adminPanelService.getPreview(token)
-            previewData.value = data as unknown as PreviewData
+            const url = router.resolve({ name: 'builder.preview', params: { token } }).href
+            if (win) {
+                win.location.href = url
+            } else {
+                window.open(url, '_blank')
+            }
         } catch {
-            error('Error al cargar la vista previa')
-            previewVisible.value = false
+            win?.close()
+            error('Error al generar la vista previa')
         } finally {
             previewLoading.value = false
         }
     }
 
-    function closePreview() {
-        previewVisible.value = false
-        previewData.value = null
-    }
-
-    function onPreviewKeydown(e: KeyboardEvent) {
-        if (e.key === 'Escape' && previewVisible.value) closePreview()
-    }
-
-    onMounted(() => document.addEventListener('keydown', onPreviewKeydown))
-    onBeforeUnmount(() => document.removeEventListener('keydown', onPreviewKeydown))
-
     return {
-        previewVisible,
         previewLoading,
-        previewData,
         openPreview,
-        closePreview,
     }
 }
