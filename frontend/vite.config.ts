@@ -14,4 +14,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
   },
+  optimizeDeps: {
+    // PrimeVue's <Editor> resolves "quill" at runtime. Pre-bundling it here
+    // prevents the "Failed to resolve import 'quill'" 500 from vite:import-analysis.
+    include: ['quill'],
+  },
 })

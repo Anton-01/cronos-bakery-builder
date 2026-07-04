@@ -1,6 +1,6 @@
 # Cronos Bakery Builder — Context.md
 
-Fecha de última actualización: 2026-07-03
+Fecha de última actualización: 2026-07-04
 
 ---
 
@@ -366,3 +366,21 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 - **Dos tablas con propósitos distintos:** `audit_logs` (Administration) registra **requests HTTP** del panel (method, path, status, payload redactado); la nueva **`model_audit_logs`** registra **diffs de estado por modelo**: `brand_id` (multitenant, nullable), `user_id` (→ `admins`, null para acciones de sistema), `event` (created/updated/deleted/restored), morphs `auditable`, `old_values`/`new_values` JSONB, `ip_address`. Se nombró `model_audit_logs` porque `audit_logs` ya existía con otro esquema.
 - **Patrón:** trait opt-in `App\Shared\Domain\Concerns\Auditable` → registra `AuditObserver` (captura contexto en el request: diff `getOriginal()` vs `getChanges()`, admin autenticado, IP, brand) → despacha `RecordModelAuditJob` **encolado y `afterCommit()`** (la escritura nunca añade latencia ni fallos al request). Atributos en `$hidden` o en `auditExclude()` jamás se auditan.
 - **Modelos auditados hoy:** Page, PageBlock, Section, Theme, Menu, MenuItem, Banner (CMS) y Product, Category, Collection (Catalog). Para auditar otro modelo basta `use Auditable;`.
+
+## 16. Dependencia obligatoria: Quill (PrimeVue `<Editor>`)
+
+El componente `<Editor>` de PrimeVue **no incluye Quill**; lo resuelve en runtime (`import "quill"`). Sin el paquete instalado, Vite lanza un **500** en `vite:import-analysis` (`Failed to resolve import "quill"`) y rompe la navegación de Vue Router hacia cualquier ruta que monte el editor (`AdminProductFormPage.vue`, `AdminPageBuilderPage.vue`).
+
+- **Instalación (regla innegociable mientras se use `<Editor>`):** `npm install quill` en `frontend/`.
+- **Tipos TypeScript:** **NO** instalar `@types/quill`. Quill **2.x** (v2.0.3) ya distribuye sus propias declaraciones (`node_modules/quill/quill.d.ts`); el paquete `@types/quill` es un stub deprecado de la era v1 y **entra en conflicto** con los tipos nativos.
+- **Configuración en `vite.config.ts`:** se añadió `optimizeDeps.include: ['quill']` para forzar el pre-bundling y evitar que el pre-bundler falle al resolver el import dinámico del editor. Tras cambiar esto conviene reiniciar el dev server (o borrar `node_modules/.vite`) para invalidar la caché de deps.
+
+## 17. Estándar de UI: Acciones en tablas (iconos + tooltips)
+
+Convención para la columna de "Acciones" de todos los `DataTable` del admin:
+
+- **Botones solo-icono** (PrimeIcons), **sin texto** (`label`). Íconos canónicos: `pi-pencil` (editar datos), `pi-palette` (abrir Constructor/Builder), `pi-eye` / `pi-eye-slash` (publicar / despublicar), `pi-trash` (eliminar).
+- Cada botón lleva la directiva **`v-tooltip`** (`v-tooltip.top="'…'"`) con texto descriptivo, más `aria-label` equivalente por accesibilidad.
+- Estilo uniforme: `size="small"`, `text`, `rounded`. Variantes de `severity` semánticas: `secondary`/`info` para navegación/edición, `warn` para publicar/despublicar, `danger` para eliminar.
+- **Registro de la directiva `Tooltip`:** se registra **globalmente** en `main.ts` con `app.directive('tooltip', Tooltip)` (import de `primevue/tooltip`), habilitando `v-tooltip` en toda la app sin re-declararla por componente. Alternativa local por componente: `import Tooltip from 'primevue/tooltip'` + `const vTooltip = Tooltip` en `<script setup>`.
+- Implementación de referencia: columna "Acciones" de `AdminCmsPage.vue`.

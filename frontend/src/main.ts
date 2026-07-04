@@ -5,6 +5,7 @@ import Aura from '@primevue/themes/aura'
 import { definePreset } from '@primevue/themes'
 import ConfirmationService from 'primevue/confirmationservice'
 import ToastService from 'primevue/toastservice'
+import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
@@ -44,5 +45,8 @@ app.use(PrimeVue, {
 })
 app.use(ConfirmationService)
 app.use(ToastService)
+
+// Registro global de la directiva Tooltip → habilita `v-tooltip` en toda la app.
+app.directive('tooltip', Tooltip)
 
 app.mount('#app')
