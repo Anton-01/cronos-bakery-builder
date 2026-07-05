@@ -5,12 +5,20 @@ declare(strict_types=1);
 namespace App\Modules\Payments\Domain\Enums;
 
 /**
- * Operating mode for a gateway, switchable from administration.
+ * Operating environment for a gateway, switchable from administration.
  */
-enum PaymentMode: string
+enum GatewayEnvironment: string
 {
     case Sandbox = 'sandbox';
     case Production = 'production';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Sandbox => 'Sandbox',
+            self::Production => 'Producción',
+        };
+    }
 
     /**
      * @return array<int, string>

@@ -10,21 +10,21 @@ return new class () extends Migration {
     public function up(): void
     {
         // Full traceability: every initiation, webhook, retry and status change.
-        Schema::create('payment_events', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('payment_id')->constrained('payments')->cascadeOnDelete();
-            $table->string('type'); // created | webhook | retry | status_change | reconciled
+        Schema::create('transaction_events', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('transaction_id')->constrained('transactions')->cascadeOnDelete();
+            $table->string('type'); // created | webhook | retry | status_change | reconciled | refund
             $table->string('status')->nullable();
             $table->boolean('signature_valid')->nullable();
-            $table->json('payload')->nullable();
+            $table->jsonb('payload')->nullable();
             $table->timestamps();
 
-            $table->index(['payment_id', 'type']);
+            $table->index(['transaction_id', 'type']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('payment_events');
+        Schema::dropIfExists('transaction_events');
     }
 };

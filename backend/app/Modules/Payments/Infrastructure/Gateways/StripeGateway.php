@@ -6,55 +6,122 @@ namespace App\Modules\Payments\Infrastructure\Gateways;
 
 use App\Modules\Payments\Application\DTO\ChargeRequest;
 use App\Modules\Payments\Application\DTO\ChargeResult;
+use App\Modules\Payments\Application\DTO\RefundResult;
 use App\Modules\Payments\Application\DTO\WebhookEvent;
-use App\Modules\Payments\Domain\Enums\GatewayType;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
-use App\Modules\Payments\Domain\Models\GatewayConfig;
+use App\Modules\Payments\Domain\Models\Transaction;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 
 /**
  * Stripe strategy. Webhook verification follows Stripe's scheme:
  * `Stripe-Signature: t=<ts>,v1=<hmacSHA256(secret, "<ts>.<body>")>`.
  *
- * In production the createCharge() body would call the Stripe SDK to create a
- * PaymentIntent; here it returns a sandbox-friendly reference + client secret.
+ * In production every call goes to the Stripe REST API through
+ * {@see AbstractGateway::callProvider()} (timeouts, retries, typed errors).
+ * In sandbox the charge/refund are simulated so local environments work
+ * without credentials or network access.
  */
 class StripeGateway extends AbstractGateway
 {
-    public function type(): GatewayType
+    private const API = 'https://api.stripe.com/v1';
+
+    public function driver(): string
     {
-        return GatewayType::Stripe;
+        return 'stripe';
     }
 
-    public function createCharge(ChargeRequest $request, GatewayConfig $config): ChargeResult
+    public function processPayment(ChargeRequest $request): ChargeResult
     {
-        $reference = 'pi_' . Str::random(24);
+        if (! $this->isProduction()) {
+            $reference = 'pi_' . Str::random(24);
+
+            return new ChargeResult(
+                reference: $reference,
+                status: PaymentStatus::Pending,
+                checkout: [
+                    'type' => 'client_secret',
+                    'client_secret' => $reference . '_secret_' . Str::random(16),
+                    'publishable_key' => $this->credential('public_key'),
+                ],
+                raw: ['intent' => $reference, 'amount' => $request->amount, 'simulated' => true],
+            );
+        }
+
+        $response = $this->callProvider(
+            fn (PendingRequest $http) => $http
+                ->withToken((string) $this->credential('secret_key'))
+                ->withHeaders(['Idempotency-Key' => $request->idempotencyKey])
+                ->asForm()
+                ->post(self::API . '/payment_intents', [
+                    'amount' => $request->amount,
+                    'currency' => strtolower($request->currency),
+                    'description' => 'Order ' . $request->orderNumber,
+                    'receipt_email' => $request->customerEmail,
+                    'automatic_payment_methods[enabled]' => 'true',
+                ]),
+        );
+
+        $data = $response->json();
 
         return new ChargeResult(
-            reference: $reference,
-            status: PaymentStatus::Pending,
+            reference: (string) $data['id'],
+            status: $this->mapStatus((string) ($data['status'] ?? 'pending')),
             checkout: [
                 'type' => 'client_secret',
-                'client_secret' => $reference . '_secret_' . Str::random(16),
-                'publishable_key' => $config->credential('public_key'),
+                'client_secret' => (string) ($data['client_secret'] ?? ''),
+                'publishable_key' => $this->credential('public_key'),
             ],
-            raw: ['intent' => $reference, 'amount' => $request->amount],
+            raw: (array) $data,
         );
     }
 
-    public function verifySignature(string $payload, array $headers, GatewayConfig $config): bool
+    public function refund(Transaction $transaction, ?int $amount = null): RefundResult
+    {
+        $amount ??= $transaction->amount;
+
+        if (! $this->isProduction()) {
+            return new RefundResult(
+                providerRefundId: 're_' . Str::random(24),
+                status: PaymentStatus::Refunded,
+                amount: $amount,
+                raw: ['simulated' => true],
+            );
+        }
+
+        $response = $this->callProvider(
+            fn (PendingRequest $http) => $http
+                ->withToken((string) $this->credential('secret_key'))
+                ->asForm()
+                ->post(self::API . '/refunds', [
+                    'payment_intent' => $transaction->provider_transaction_id,
+                    'amount' => $amount,
+                ]),
+        );
+
+        $data = $response->json();
+
+        return new RefundResult(
+            providerRefundId: (string) ($data['id'] ?? ''),
+            status: PaymentStatus::Refunded,
+            amount: $amount,
+            raw: (array) $data,
+        );
+    }
+
+    protected function verifySignature(string $payload, array $headers): bool
     {
         $header = $headers['stripe-signature'] ?? '';
         parse_str(str_replace(',', '&', $header), $parts);
 
         $timestamp = $parts['t'] ?? '';
         $given = $parts['v1'] ?? '';
-        $expected = $this->hmac($timestamp . '.' . $payload, $config->webhookSecret());
+        $expected = $this->hmac($timestamp . '.' . $payload, $this->config()->webhookSecret());
 
         return $this->secureEquals($expected, (string) $given);
     }
 
-    public function parseWebhook(string $payload): WebhookEvent
+    protected function parseWebhook(string $payload): WebhookEvent
     {
         $data = $this->decode($payload);
         $type = (string) ($data['type'] ?? '');
@@ -68,6 +135,12 @@ class StripeGateway extends AbstractGateway
             default => PaymentStatus::Processing,
         };
 
-        return new WebhookEvent($reference, $status, $type, $data);
+        return new WebhookEvent(
+            providerEventId: (string) ($data['id'] ?? '') ?: $this->fallbackEventId($payload),
+            reference: $reference,
+            status: $status,
+            eventType: $type,
+            raw: $data,
+        );
     }
 }

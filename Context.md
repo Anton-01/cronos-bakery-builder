@@ -209,9 +209,9 @@ app.use(ToastService)
 
 | Categoría | Componentes |
 |---|---|
-| Layout | `Sidebar`, `Menubar`, `PanelMenu`, `Card`, `Panel`, `Divider` |
+| Layout | `Sidebar`, `Menubar`, `PanelMenu`, `Card`, `Panel`, `Divider`, `Tabs` (TabList/Tab/TabPanels/TabPanel), `Accordion` (AccordionPanel/Header/Content) |
 | Data | `DataTable`, `TreeTable`, `Column`, `Paginator`, `Tag` |
-| Form | `InputText`, `Textarea`, `Select` (ex-Dropdown), `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `Editor` |
+| Form | `InputText`, `Textarea`, `Select` (ex-Dropdown), `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `Editor`, `Password`, `DatePicker` |
 | Button | `Button` |
 | Overlay | `Dialog`, `ConfirmDialog`, `Toast`, `OverlayPanel` |
 | Media | `Image`, `FileUpload` |
@@ -348,8 +348,8 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 
 **Decisión (2026-07):** todas las llaves primarias del sistema usan **BIGINT autoincremental nativo de PostgreSQL 16** (`$table->id()` → identity/bigserial). Queda **prohibido** generar UUIDs como PK desde la aplicación (ni `HasUuids` en modelos, ni `Str::uuid()` para llaves). Los UUIDs solo se admiten en valores no-clave (ej. nombres de archivo en MinIO).
 
-- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration) y **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes).
-- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Payments, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo), por lo que pueden migrarse en una fase posterior sin romper integridad.
+- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes) y **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21).
+- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
 - **Cómo se aplicó:** las migraciones se editaron **en sitio** (el proyecto está en desarrollo, sin datos productivos) → requiere `php artisan migrate:fresh --seed`. Las columnas JSON de los módulos convertidos pasaron a **JSONB**.
 - **Frontend:** las interfaces TS de los módulos convertidos usan `id: number` (cms/types, catalog/types, adminPanelService). Los módulos aún en UUID conservan `id: string`.
 
@@ -408,3 +408,31 @@ Convención para la columna de "Acciones" de todos los `DataTable` del admin:
 - Toda vista del admin que represente **estructuras jerárquicas** (menús de navegación padre/hijo, árboles de categorías, etc.) usa **`TreeTable` de PrimeVue** (o `DataTable` con `rowGroupMode` cuando la agrupación es plana) — nunca listas `<ul>` anidadas a mano ni tarjetas apiladas.
 - Las **acciones por fila** siguen la regla de §17 sin excepción: botones **solo-icono** (`pi-pencil` editar, `pi-trash` eliminar, `pi-plus` agregar hijo/submenú) con `size="small"`, `text`, `rounded`, `severity` semántico, texto explicativo **solo** vía `v-tooltip` + `aria-label`.
 - Implementación de referencia: `AdminMenusPage.vue` — nodos raíz = menús (con `Tag` de ubicación), nivel 1 = enlaces, nivel 2 = subenlaces; CRUD de enlaces contra `POST/PUT/DELETE /admin/menus/{menu}/items/…` (expuesto en `adminPanelService` como `createMenuItem` / `updateMenuItem` / `deleteMenuItem`).
+
+## 21. Módulo de Pasarelas de Pago (Payments) — Arquitectura y Seguridad
+
+Refactor completo del módulo Payments (2026-07): multi-tenant por `brand_id`, PKs identity (§13) y cuatro tablas: `payment_gateways` (instancia configurada por marca: `driver_name`, `name`, `environment` sandbox/production, `is_active`, `credentials` JSONB, soft deletes), `transactions` (histórico con `provider_transaction_id`, `raw_response` JSONB, `idempotency_key` única por gateway), `transaction_events` (audit trail por transacción) y `gateway_webhook_events` (ledger de idempotencia).
+
+### 21.1 Patrón Strategy para pasarelas (estándar absoluto)
+
+- **Contrato:** `PaymentGatewayInterface` (`initialize`, `processPayment`, `handleWebhook`, `refund`) en `Payments/Domain/Contracts`. Las estrategias (`StripeGateway`, `MercadoPagoGateway`, `PayPalGateway`, `OpenPayGateway`) extienden `AbstractGateway`, que aporta HTTP resiliente (`callProvider()`: timeout/connect-timeout/retries desde `config/payments.php`, mapeo tipado a `GatewayTimeoutException` 504, `GatewayRateLimitException` 429 + Retry-After, `GatewayException` 502 — cada excepción trae su propio `render()`).
+- **Resolución dinámica:** `PaymentGatewayManager::forGateway($gateway)` resuelve la clase desde el mapa `config('payments.drivers')` usando `driver_name` y la inicializa con credenciales+entorno. **Prohibido** el `if/else`/`match` por proveedor en controladores o servicios: agregar una pasarela = 1 entrada en config + 1 clase. `GET /admin/payments/drivers` expone labels y definición de campos de credenciales para que el frontend pinte formularios dinámicos sin hardcodear proveedores.
+- Los drivers en sandbox **simulan** el cargo/refund (sin red); en producción llaman al API real vía `callProvider()` (fakeable con `Http::fake`).
+
+### 21.2 Encriptación "At rest" de credenciales (política innegociable)
+
+- Campo `credentials` JSONB con cast custom **`EncryptedCredentials`**: encripta **cada valor individualmente** (`Crypt` AES-256 con `APP_KEY`) dejando las claves en claro — el documento JSONB sigue siendo inspeccionable ({"secret_key": "eyJpdiI6…"}) pero ningún secreto es legible sin la llave de la app. Transparente para el consumidor del modelo.
+- **El API jamás devuelve secretos en claro:** `PaymentGatewayResource` expone solo hints enmascarados (`••••••••1234`); el modelo además lleva `credentials` en `$hidden` (defensa en profundidad ante serializaciones ingenuas). Updates con **semántica de merge**: el frontend envía solo los campos re-escritos; valor no-vacío sobreescribe, `null` elimina la clave, clave omitida se conserva.
+- El middleware de auditoría (`LogAdminActivity`) ya redacta `credentials`/`secret_key`/`webhook_secret` en `audit_logs`.
+
+### 21.3 Estándar de webhooks: firma criptográfica + idempotencia obligatorias
+
+- **Endpoint genérico** `POST /api/payments/webhooks/{driver}/{gateway_id}` (público): cada instancia configurada tiene su propia URL, así siempre aplica el secreto correcto de esa marca. El body crudo se pasa byte a byte para que el HMAC cuadre.
+- **Autenticidad primero:** `AbstractGateway::handleWebhook()` es un template method que **verifica la firma antes de parsear**; firma inválida ⇒ `InvalidWebhookSignatureException` (400) **sin ningún write** en BD.
+- **Idempotencia a nivel BD:** todo evento se inserta en `gateway_webhook_events` bajo el unique `(payment_gateway_id, provider_event_id)`; un duplicado (incluso concurrente) dispara `UniqueConstraintViolationException` y responde `{handled:false, status:"duplicate"}` sin reprocesar. Si el proveedor no manda event id, se usa `sha256(body)` como fallback. Además `transactions.idempotency_key` es única por gateway (una re-iniciación nunca duplica un cargo).
+- **Nota transversal:** el callback `$exceptions->respond()` de `bootstrap/app.php` ahora respeta respuestas JSON ya renderizadas con status < 500 (excepciones con `render()` propio, 401/403/404 del framework) y solo sanitiza 5xx; `phpunit.xml` define `APP_KEY` (necesario para los casts encriptados en tests).
+
+### 21.4 Frontend (AdminPaymentsPage + Pinia)
+
+- Store `usePaymentGatewayStore` (`modules/administration/stores/paymentGateways.ts`): drivers, gateways, transacciones paginadas y filtros; todas las llamadas vía `adminPanelService` (tipos estrictos `PaymentGateway`, `Transaction`, `GatewayDriver`, enums de estado/entorno).
+- UI con `Tabs` (Transacciones / Pasarelas). Pasarelas: `Accordion` por instancia, formularios de credenciales **generados desde `GET /drivers`** (`Password` con `toggleMask` para secretos, placeholder = hint enmascarado), `ToggleSwitch` para activación y entorno (cambio a Producción pide confirmación). Transacciones: `DataTable` lazy paginado con filtros por estado (`Select`), pasarela y rango de fechas (`DatePicker` range); `Tag` con severidad semántica; acciones solo-icono con `v-tooltip` (§17): `pi-eye` detalle+auditoría, `pi-refresh` reintento de conciliación (pending/processing), `pi-undo` reembolso (solo paid, con confirmación).

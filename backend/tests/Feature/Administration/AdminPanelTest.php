@@ -96,14 +96,16 @@ class AdminPanelTest extends TestCase
     {
         $this->actingAsAdministrator();
 
-        $this->putJson('/api/admin/payments/gateways/stripe', [
-            'mode' => 'sandbox',
+        $this->postJson('/api/admin/payments/gateways', [
+            'driver_name' => 'stripe',
+            'name' => 'Stripe',
+            'environment' => 'sandbox',
             'credentials' => ['secret_key' => 'sk_live_secret'],
             'is_active' => true,
         ])->assertSuccessful();
 
         $log = \App\Modules\Administration\Domain\Models\AuditLog::query()
-            ->where('path', '/api/admin/payments/gateways/stripe')->firstOrFail();
+            ->where('path', '/api/admin/payments/gateways')->firstOrFail();
 
         $this->assertSame('[redacted]', $log->payload['credentials'] ?? null);
     }

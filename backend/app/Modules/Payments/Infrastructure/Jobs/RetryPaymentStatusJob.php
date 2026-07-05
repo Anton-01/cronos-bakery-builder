@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Payments\Infrastructure\Jobs;
 
 use App\Modules\Payments\Application\Services\ReconciliationService;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,9 +13,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Re-checks a still-pending payment, recording a retry attempt. With a live
- * gateway this is where a status fetch (poll) would happen; the exponential
- * backoff between attempts is driven by the queue.
+ * Re-checks a still-pending transaction, recording a retry attempt. With a
+ * live gateway this is where a status fetch (poll) would happen; the
+ * exponential backoff between attempts is driven by the queue.
  */
 class RetryPaymentStatusJob implements ShouldQueue
 {
@@ -36,18 +36,18 @@ class RetryPaymentStatusJob implements ShouldQueue
         return [60, 300, 900, 3600];
     }
 
-    public function __construct(public readonly string $paymentId)
+    public function __construct(public readonly int $transactionId)
     {
     }
 
     public function handle(ReconciliationService $reconciliation): void
     {
-        $payment = Payment::query()->find($this->paymentId);
+        $transaction = Transaction::query()->find($this->transactionId);
 
-        if ($payment === null || $payment->status->isFinal()) {
+        if ($transaction === null || $transaction->status->isFinal()) {
             return;
         }
 
-        $reconciliation->retry($payment);
+        $reconciliation->retry($transaction);
     }
 }

@@ -6,70 +6,86 @@ namespace App\Modules\Payments\Application\Services;
 
 use App\Modules\Notifications\Domain\Events\AutomationTriggered;
 use App\Modules\Orders\Domain\Enums\OrderStatus;
+use App\Modules\Payments\Application\DTO\RefundResult;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Applies authoritative payment status changes and reconciles the related
+ * Applies authoritative transaction status changes and reconciles the related
  * order, recording every transition for traceability.
  */
 final class ReconciliationService
 {
     /**
-     * Apply a new status to a payment (idempotently) and reconcile the order.
+     * Apply a new status to a transaction (idempotently) and reconcile the order.
      *
      * @param  array<string, mixed>  $payload
      */
-    public function applyStatus(Payment $payment, PaymentStatus $status, string $type, array $payload = []): Payment
+    public function applyStatus(Transaction $transaction, PaymentStatus $status, string $type, array $payload = []): Transaction
     {
-        return DB::transaction(function () use ($payment, $status, $type, $payload): Payment {
-            $changed = $payment->status !== $status;
+        return DB::transaction(function () use ($transaction, $status, $type, $payload): Transaction {
+            $changed = $transaction->status !== $status;
 
             if ($changed) {
-                $payment->status = $status;
+                $transaction->status = $status;
                 if ($status === PaymentStatus::Paid) {
-                    $payment->paid_at = now();
+                    $transaction->paid_at = now();
                 }
-                $payment->save();
+                if ($payload !== []) {
+                    $transaction->raw_response = $payload;
+                }
+                $transaction->save();
 
-                $payment->events()->create([
+                $transaction->events()->create([
                     'type' => 'status_change',
                     'status' => $status->value,
                     'payload' => $payload,
                 ]);
 
-                $this->reconcileOrder($payment, $status);
+                $this->reconcileOrder($transaction, $status);
             }
 
-            $payment->events()->create([
+            $transaction->events()->create([
                 'type' => $type,
                 'status' => $status->value,
                 'payload' => $payload,
             ]);
 
-            return $payment->refresh();
+            return $transaction->refresh();
         });
     }
 
     /**
-     * Record a retry attempt against a still-pending payment.
+     * Record a provider refund and move the transaction to Refunded.
      */
-    public function retry(Payment $payment): Payment
+    public function applyRefund(Transaction $transaction, RefundResult $refund): Transaction
     {
-        $payment->increment('attempts');
-        $payment->events()->create([
-            'type' => 'retry',
-            'status' => $payment->status->value,
-            'payload' => ['attempt' => $payment->attempts],
+        return $this->applyStatus($transaction, PaymentStatus::Refunded, 'refund', [
+            'provider_refund_id' => $refund->providerRefundId,
+            'amount' => $refund->amount,
+            'raw' => $refund->raw,
         ]);
-
-        return $payment->refresh();
     }
 
-    private function reconcileOrder(Payment $payment, PaymentStatus $status): void
+    /**
+     * Record a retry attempt against a still-pending transaction.
+     */
+    public function retry(Transaction $transaction): Transaction
     {
-        $order = $payment->order;
+        $transaction->increment('attempts');
+        $transaction->events()->create([
+            'type' => 'retry',
+            'status' => $transaction->status->value,
+            'payload' => ['attempt' => $transaction->attempts],
+        ]);
+
+        return $transaction->refresh();
+    }
+
+    private function reconcileOrder(Transaction $transaction, PaymentStatus $status): void
+    {
+        $order = $transaction->order;
         if ($order === null) {
             return;
         }

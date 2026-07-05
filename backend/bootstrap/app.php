@@ -5,12 +5,12 @@ declare(strict_types=1);
 use App\Modules\Administration\Presentation\Http\Middleware\EnsureAdmin;
 use App\Modules\Administration\Presentation\Http\Middleware\LogAdminActivity;
 use App\Shared\Http\Middleware\SecurityHeaders;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
@@ -62,9 +62,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], $e->status);
             }
 
-            $status = $e instanceof HttpExceptionInterface
-                ? $e->getStatusCode()
-                : 500;
+            // Respect responses that were already rendered intentionally with a
+            // non-5xx status: framework auth/HTTP exceptions (401/403/404...) and
+            // domain exceptions exposing their own render() (e.g. payments 400/429/502/504).
+            $status = $response->getStatusCode();
+            if ($status < 500 && $response instanceof JsonResponse) {
+                return $response;
+            }
 
             $body = ['message' => $e instanceof HttpExceptionInterface
                 ? $e->getMessage()

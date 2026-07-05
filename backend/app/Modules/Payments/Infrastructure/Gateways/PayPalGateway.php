@@ -13,37 +13,40 @@ use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Support\Str;
 
 /**
- * OpenPay strategy (skeleton). Creates a charge with a redirect (3DS / hosted)
- * URL and authenticates webhooks via an `Openpay-Signature` HMAC of the body.
+ * PayPal strategy (skeleton). Creates an order and redirects the buyer to the
+ * approval link. Webhooks are authenticated via HMAC of the body with the
+ * configured webhook secret (PayPal's certificate chain verification can be
+ * swapped in without touching callers).
  */
-class OpenPayGateway extends AbstractGateway
+class PayPalGateway extends AbstractGateway
 {
     public function driver(): string
     {
-        return 'openpay';
+        return 'paypal';
     }
 
     public function processPayment(ChargeRequest $request): ChargeResult
     {
-        // Skeleton: OpenPay hosted charge. Production wiring pending —
+        // Skeleton: PayPal order creation. Production wiring pending —
         // both environments simulate through the same code path for now.
-        $reference = 'trx_' . Str::random(20);
+        $reference = 'PAYID-' . strtoupper(Str::random(17));
+        $base = $this->isProduction() ? 'https://www.paypal.com' : 'https://www.sandbox.paypal.com';
 
         return new ChargeResult(
             reference: $reference,
             status: PaymentStatus::Pending,
             checkout: [
                 'type' => 'redirect',
-                'redirect_url' => 'https://sandbox-api.openpay.mx/redirect/' . $reference,
+                'redirect_url' => $base . '/checkoutnow?token=' . $reference,
             ],
-            raw: ['transaction_id' => $reference, 'simulated' => true],
+            raw: ['order_id' => $reference, 'simulated' => true],
         );
     }
 
     public function refund(Transaction $transaction, ?int $amount = null): RefundResult
     {
         return new RefundResult(
-            providerRefundId: 'opref_' . Str::random(16),
+            providerRefundId: 'PPREF-' . strtoupper(Str::random(12)),
             status: PaymentStatus::Refunded,
             amount: $amount ?? $transaction->amount,
             raw: ['simulated' => true],
@@ -52,7 +55,7 @@ class OpenPayGateway extends AbstractGateway
 
     protected function verifySignature(string $payload, array $headers): bool
     {
-        $given = $headers['openpay-signature'] ?? '';
+        $given = $headers['paypal-transmission-sig'] ?? '';
         $expected = $this->hmac($payload, $this->config()->webhookSecret());
 
         return $this->secureEquals($expected, (string) $given);
@@ -61,22 +64,21 @@ class OpenPayGateway extends AbstractGateway
     protected function parseWebhook(string $payload): WebhookEvent
     {
         $data = $this->decode($payload);
-        $type = (string) ($data['type'] ?? '');
-        $reference = (string) ($data['transaction']['id'] ?? $data['transaction']['order_id'] ?? '');
+        $type = (string) ($data['event_type'] ?? '');
+        $reference = (string) ($data['resource']['id'] ?? '');
 
         $status = match ($type) {
-            'charge.succeeded' => PaymentStatus::Paid,
-            'charge.failed' => PaymentStatus::Failed,
-            'charge.refunded' => PaymentStatus::Refunded,
-            'charge.cancelled' => PaymentStatus::Cancelled,
-            default => $this->mapStatus((string) ($data['transaction']['status'] ?? '')),
+            'PAYMENT.CAPTURE.COMPLETED', 'CHECKOUT.ORDER.APPROVED' => PaymentStatus::Paid,
+            'PAYMENT.CAPTURE.DENIED' => PaymentStatus::Failed,
+            'PAYMENT.CAPTURE.REFUNDED' => PaymentStatus::Refunded,
+            default => PaymentStatus::Processing,
         };
 
         return new WebhookEvent(
-            providerEventId: (string) ($data['event_id'] ?? '') ?: $this->fallbackEventId($payload),
+            providerEventId: (string) ($data['id'] ?? '') ?: $this->fallbackEventId($payload),
             reference: $reference,
             status: $status,
-            eventType: $type ?: 'charge',
+            eventType: $type ?: 'payment',
             raw: $data,
         );
     }

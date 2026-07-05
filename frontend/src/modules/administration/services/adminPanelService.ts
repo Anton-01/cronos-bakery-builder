@@ -182,8 +182,67 @@ export interface AdminOrder {
 }
 
 // --- Payments types ---
-export interface PaymentGateway { id: string; name: string; driver: string; is_active: boolean; settings: Record<string, unknown> }
-export interface AdminPayment { id: string; order_id: string; order_number?: string; gateway: string; status: string; amount: number; currency: string; created_at: string }
+export type GatewayEnvironment = 'sandbox' | 'production'
+export type TransactionStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded' | 'cancelled'
+
+export interface GatewayDriverField { key: string; label: string; secret: boolean }
+export interface GatewayDriver { driver_name: string; label: string; fields: GatewayDriverField[] }
+
+export interface PaymentGateway {
+  id: number
+  brand_id: number | null
+  driver_name: string
+  driver_label: string
+  name: string
+  environment: GatewayEnvironment
+  is_active: boolean
+  /** Solo hints enmascarados ("••••••••1234") — el API jamás devuelve secretos en claro. */
+  credentials: Record<string, string | null>
+  has_webhook_secret: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PaymentGatewayPayload {
+  brand_id?: number | null
+  driver_name?: string
+  name?: string
+  environment?: GatewayEnvironment
+  is_active?: boolean
+  /** Solo campos re-escritos por el usuario; null elimina la clave. */
+  credentials?: Record<string, string | null>
+}
+
+export interface TransactionEvent { id: number; type: string; status: string | null; signature_valid: boolean | null; at: string | null }
+
+export interface Transaction {
+  id: number
+  brand_id: number | null
+  order_id: string
+  order_number?: string
+  payment_gateway_id: number
+  gateway_name?: string
+  driver_name?: string
+  environment?: GatewayEnvironment
+  provider_transaction_id: string | null
+  status: TransactionStatus
+  status_label: string
+  amount: number
+  currency: string
+  attempts: number
+  paid_at: string | null
+  created_at: string
+  events?: TransactionEvent[]
+}
+
+export interface TransactionFilters {
+  status?: TransactionStatus | ''
+  gateway_id?: number | null
+  date_from?: string
+  date_to?: string
+  brand_id?: number | null
+  page?: number
+}
 
 // --- Calendar types ---
 export interface CalendarSchedule { id: string; day_of_week: number; opens_at: string; closes_at: string; is_active: boolean }
@@ -466,20 +525,51 @@ export const adminPanelService = {
   },
 
   // --- Payments ---
-  gateways(): Promise<PaymentGateway[]> {
-    return request<Wrapped<PaymentGateway[]>>({ url: '/admin/payments/gateways', method: 'GET' }).then((r) => r.data)
+  paymentDrivers(): Promise<GatewayDriver[]> {
+    return request<Wrapped<GatewayDriver[]>>({ url: '/admin/payments/drivers', method: 'GET' }).then((r) => r.data)
   },
 
-  updateGateway(id: string, data: Partial<PaymentGateway>): Promise<PaymentGateway> {
+  paymentGateways(brandId?: number | null): Promise<PaymentGateway[]> {
+    return request<Wrapped<PaymentGateway[]>>({
+      url: '/admin/payments/gateways',
+      method: 'GET',
+      params: brandId != null ? { brand_id: brandId } : undefined,
+    }).then((r) => r.data)
+  },
+
+  createPaymentGateway(data: PaymentGatewayPayload): Promise<PaymentGateway> {
+    return request<Wrapped<PaymentGateway>>({ url: '/admin/payments/gateways', method: 'POST', data }).then((r) => r.data)
+  },
+
+  updatePaymentGateway(id: number, data: PaymentGatewayPayload): Promise<PaymentGateway> {
     return request<Wrapped<PaymentGateway>>({ url: `/admin/payments/gateways/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  payments(): Promise<Paginated<AdminPayment>> {
-    return request<Paginated<AdminPayment>>({ url: '/admin/payments', method: 'GET' })
+  deletePaymentGateway(id: number): Promise<void> {
+    return request({ url: `/admin/payments/gateways/${id}`, method: 'DELETE' })
   },
 
-  retryPayment(id: string): Promise<AdminPayment> {
-    return request<Wrapped<AdminPayment>>({ url: `/admin/payments/${id}/retry`, method: 'POST' }).then((r) => r.data)
+  transactions(filters: TransactionFilters = {}): Promise<Paginated<Transaction>> {
+    const params: Record<string, string | number> = {}
+    if (filters.status) params.status = filters.status
+    if (filters.gateway_id != null) params.gateway_id = filters.gateway_id
+    if (filters.date_from) params.date_from = filters.date_from
+    if (filters.date_to) params.date_to = filters.date_to
+    if (filters.brand_id != null) params.brand_id = filters.brand_id
+    if (filters.page) params.page = filters.page
+    return request<Paginated<Transaction>>({ url: '/admin/payments/transactions', method: 'GET', params })
+  },
+
+  transaction(id: number): Promise<Transaction> {
+    return request<Wrapped<Transaction>>({ url: `/admin/payments/transactions/${id}`, method: 'GET' }).then((r) => r.data)
+  },
+
+  refundTransaction(id: number): Promise<Transaction> {
+    return request<Wrapped<Transaction>>({ url: `/admin/payments/transactions/${id}/refund`, method: 'POST' }).then((r) => r.data)
+  },
+
+  retryTransaction(id: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/payments/transactions/${id}/retry`, method: 'POST' })
   },
 
   // --- Calendar ---
