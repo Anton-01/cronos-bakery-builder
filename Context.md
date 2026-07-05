@@ -436,3 +436,30 @@ Refactor completo del módulo Payments (2026-07): multi-tenant por `brand_id`, P
 
 - Store `usePaymentGatewayStore` (`modules/administration/stores/paymentGateways.ts`): drivers, gateways, transacciones paginadas y filtros; todas las llamadas vía `adminPanelService` (tipos estrictos `PaymentGateway`, `Transaction`, `GatewayDriver`, enums de estado/entorno).
 - UI con `Tabs` (Transacciones / Pasarelas). Pasarelas: `Accordion` por instancia, formularios de credenciales **generados desde `GET /drivers`** (`Password` con `toggleMask` para secretos, placeholder = hint enmascarado), `ToggleSwitch` para activación y entorno (cambio a Producción pide confirmación). Transacciones: `DataTable` lazy paginado con filtros por estado (`Select`), pasarela y rango de fechas (`DatePicker` range); `Tag` con severidad semántica; acciones solo-icono con `v-tooltip` (§17): `pi-eye` detalle+auditoría, `pi-refresh` reintento de conciliación (pending/processing), `pi-undo` reembolso (solo paid, con confirmación).
+
+## 22. Identidad: Perfil Self-Service, Sesiones Sanctum Avanzadas y Gestión de Usuarios
+
+### 22.1 RBAC (estrategia vigente)
+
+- **Doble modelo de identidad** (§4): `admins` (panel) y `users` (clientes), ambos con PK identity.
+- **Admins → Spatie Laravel-Permission** con IDs numéricos (tablas `2026_06_01_011617_create_permission_tables`), `guard_name = 'admin'` fijado en el modelo `Admin`. Roles canónicos en `AdminRole` (Super Admin, Administrador, etc.) sembrados por `RolesAndPermissionsSeeder`; autorización por ruta con los middlewares `permission:` / `role:` de Spatie (ej. `permission:manage users`) y en frontend con `adminAuth.can(permission)`. Los **permisos explícitos por admin** se gestionan vía `PUT /admin/admins/{admin}/roles` (AccessControlController).
+- **Clientes → rol simple** (`users.role`: customer/staff/admin como enum de columna): los clientes no necesitan permisos granulares; se decide en el propio modelo (`isStaff()`, `isAdmin()`).
+- **Multi-tenant:** `users.brand_id` (FK nullable → `brands`, null = cuenta global/legacy) con índice `(brand_id, is_suspended)`; el listado admin filtra con `?brand_id=`, misma convención del CMS (§ PageController).
+
+### 22.2 Sesiones avanzadas con Sanctum (rastreo de dispositivos)
+
+- **Modelo extendido:** `App\Shared\Domain\Models\PersonalAccessToken` (registrado con `Sanctum::usePersonalAccessTokenModel()` en `AppServiceProvider`) agrega `ip_address`, `user_agent` y `device_name` (label derivado del UA: "Chrome · Windows") a `personal_access_tokens`. **Cada token = una sesión/dispositivo revocable.**
+- **Captura:** `recordClientContext($request)` se invoca al emitir tokens en los 3 puntos: login de cliente (`AuthService`), login de admin (`AdminAuthService`) y tokens de impersonación (`UserManagementController`).
+- **Self-service (`/admin/profile/sessions` y `/auth/profile/sessions`):** listar sesiones (`SessionResource` con `is_current`), revocar una específica (la actual se protege ⇒ 422; token ajeno ⇒ 404) y "cerrar las demás". El **cambio de contraseña revoca todas las sesiones menos la actual**.
+- **Admin-side:** `GET /admin/users/{user}/sessions` (auditoría de dispositivos recientes en el detalle de usuario) + `POST /admin/users/{user}/revoke-sessions` (cierre total). El middleware `LogAdminActivity` ahora sanitiza payloads no serializables (archivos subidos ⇒ `[file: nombre]`).
+
+### 22.3 Política de avatares y MinIO
+
+- **`AvatarService` (Shared):** disco desde `config('filesystems.avatar_disk')` (`AVATAR_DISK`; `public` en local, `s3` = MinIO en despliegue vía las vars `AWS_*` apuntando al endpoint MinIO). La BD guarda el **path de storage, nunca URLs absolutas** (el bucket/endpoint puede cambiar sin migrar datos); URLs de social login (http…) pasan intactas.
+- **Nombres aleatorios** (`avatars/{Y}/{m}/{uuid}.ext` — UUID permitido en valores no-clave §13); el filename del cliente jamás llega al storage. **Validación estricta** en FormRequest: `image` + allow-list `jpg,jpeg,png,webp` + 2 MB (sniffing real de contenido, no extensión). Reemplazo atómico: sube el nuevo → borra el anterior. Aplica igual a admins (`/admin/profile/avatar`) y clientes (`/auth/profile/avatar`).
+
+### 22.4 UI ("Mi Cuenta" + Gestión de Usuarios)
+
+- `AdminProfilePage.vue` con `Tabs`: **General** (datos + avatar con `FileUpload` mode basic/customUpload), **Seguridad** (cambio de contraseña con `Password` + activación TOTP reutilizando los endpoints `/admin/2fa/*` existentes), **Dispositivos** (`DataTable` de sesiones con icono por tipo, IP, última conexión, `Tag` "Este dispositivo"/"Impersonación" y `pi-sign-out` por fila) y **Notificaciones** (`ToggleSwitch` por canal → JSONB `notification_settings`; canales desconocidos se descartan en backend).
+- `UserTable.vue` alineado a §17: acciones solo-icono con `v-tooltip` (`pi-pencil`, `pi-ban`/`pi-check-circle`, `pi-key` reset, `pi-sign-out` cerrar sesiones, `pi-eye` impersonar, `pi-trash`), `Tag` verde/rojo para Activo/Suspendido. `UserFormModal` muestra la auditoría de **sesiones recientes** al editar.
+- Fix de modelo: los casts de suspensión de `User` vivían por error dentro de `$hidden`; se movieron a `casts()`.

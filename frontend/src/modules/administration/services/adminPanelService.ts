@@ -27,6 +27,8 @@ export interface AdminUser {
   email: string
   phone: string | null
   avatar: string | null
+  brand_id?: number | null
+  notification_settings?: Record<string, boolean>
   roles: string[]
   is_suspended: boolean
   suspended_at: string | null
@@ -44,6 +46,32 @@ export interface RoleDefinition {
 export interface TwoFactorSetup {
   secret: string
   otpauth_url: string
+}
+
+// --- Perfil y sesiones (Sanctum avanzado) ---
+export interface AdminProfile {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  avatar: string | null
+  notification_settings: Record<string, boolean>
+  two_factor_enabled: boolean
+  is_active: boolean
+  roles: string[]
+  permissions: string[]
+}
+
+/** Un token Sanctum presentado como sesión/dispositivo revocable. */
+export interface AdminSession {
+  id: number
+  name: string
+  device_name: string
+  ip_address: string | null
+  user_agent: string | null
+  last_used_at: string | null
+  created_at: string | null
+  is_current: boolean
 }
 
 // --- CMS types ---
@@ -281,6 +309,46 @@ export const adminPanelService = {
     return request<{ message: string }>({ url: '/admin/2fa/disable', method: 'POST' })
   },
 
+  // --- Mi Perfil (self-service del admin autenticado) ---
+  updateAdminProfile(data: { name?: string; email?: string; phone?: string | null }): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile', method: 'PUT', data }).then((r) => r.data)
+  },
+
+  uploadAdminAvatar(file: File): Promise<AdminProfile> {
+    const form = new FormData()
+    form.append('avatar', file)
+    return request<Wrapped<AdminProfile>>({
+      url: '/admin/profile/avatar',
+      method: 'POST',
+      data: form,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+
+  deleteAdminAvatar(): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile/avatar', method: 'DELETE' }).then((r) => r.data)
+  },
+
+  changeAdminPassword(data: { current_password: string; password: string; password_confirmation: string }): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/profile/password', method: 'PUT', data })
+  },
+
+  updateAdminNotifications(settings: Record<string, boolean>): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile/notifications', method: 'PUT', data: { settings } }).then((r) => r.data)
+  },
+
+  adminSessions(): Promise<AdminSession[]> {
+    return request<Wrapped<AdminSession[]>>({ url: '/admin/profile/sessions', method: 'GET' }).then((r) => r.data)
+  },
+
+  revokeAdminSession(tokenId: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/profile/sessions/${tokenId}`, method: 'DELETE' })
+  },
+
+  revokeOtherAdminSessions(): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/profile/sessions/revoke-others', method: 'POST' })
+  },
+
   // --- Users & Roles ---
   auditLogs(): Promise<Paginated<AuditLog>> {
     return request<Paginated<AuditLog>>({ url: '/admin/audit-logs', method: 'GET' })
@@ -320,6 +388,10 @@ export const adminPanelService = {
 
   revokeUserSessions(id: number): Promise<{ message: string }> {
     return request<{ message: string }>({ url: `/admin/users/${id}/revoke-sessions`, method: 'POST' })
+  },
+
+  userSessions(id: number): Promise<AdminSession[]> {
+    return request<Wrapped<AdminSession[]>>({ url: `/admin/users/${id}/sessions`, method: 'GET' }).then((r) => r.data)
   },
 
   sendPasswordReset(id: number): Promise<{ message: string }> {

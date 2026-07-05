@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
-import Menu from 'primevue/menu'
-import { ref } from 'vue'
 import type { AdminUser } from '../services/adminPanelService'
 
 const props = defineProps<{
@@ -27,14 +24,6 @@ const emit = defineEmits<{
   'per-page-change': [value: number]
 }>()
 
-const activeMenuUser = ref<AdminUser | null>(null)
-const menuRef = ref()
-
-function openMenu(event: Event, user: AdminUser) {
-  activeMenuUser.value = user
-  menuRef.value?.toggle(event)
-}
-
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 }
@@ -50,20 +39,6 @@ function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })
 }
-
-const menuItems = computed(() => {
-  if (!activeMenuUser.value) return []
-  const user = activeMenuUser.value
-  return [
-    ...(user.is_suspended
-      ? [{ label: 'Reactivar', icon: 'pi pi-check-circle', command: () => emit('reactivate', user) }]
-      : [{ label: 'Suspender', icon: 'pi pi-ban', command: () => emit('suspend', user) }]
-    ),
-    { label: 'Impersonar', icon: 'pi pi-eye', command: () => emit('impersonate', user) },
-    { label: 'Cerrar Sesiones', icon: 'pi pi-lock', command: () => emit('revoke-sessions', user) },
-    { label: 'Resetear Contraseña', icon: 'pi pi-key', command: () => emit('send-password-reset', user) },
-  ]
-})
 </script>
 
 <template>
@@ -137,16 +112,83 @@ const menuItems = computed(() => {
       <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
     </Column>
 
-    <Column header="Acciones" style="width: 130px;">
+    <Column header="Acciones" style="width: 220px;">
       <template #body="{ data }">
-        <div style="display:flex; gap:0.25rem;">
-          <Button icon="pi pi-pencil" size="small" severity="info" text rounded title="Editar" @click="emit('edit', data)" />
-          <Button icon="pi pi-trash" size="small" severity="danger" text rounded title="Eliminar" @click="emit('delete', data)" />
-          <Button icon="pi pi-ellipsis-v" size="small" severity="secondary" text rounded title="Más acciones" @click="openMenu($event, data)" />
+        <div style="display:flex; gap:0.15rem;">
+          <Button
+            v-tooltip.top="'Editar usuario'"
+            icon="pi pi-pencil"
+            size="small"
+            severity="info"
+            text
+            rounded
+            aria-label="Editar usuario"
+            @click="emit('edit', data)"
+          />
+          <Button
+            v-if="data.is_suspended"
+            v-tooltip.top="'Reactivar cuenta'"
+            icon="pi pi-check-circle"
+            size="small"
+            severity="success"
+            text
+            rounded
+            aria-label="Reactivar cuenta"
+            @click="emit('reactivate', data)"
+          />
+          <Button
+            v-else
+            v-tooltip.top="'Suspender cuenta'"
+            icon="pi pi-ban"
+            size="small"
+            severity="warn"
+            text
+            rounded
+            aria-label="Suspender cuenta"
+            @click="emit('suspend', data)"
+          />
+          <Button
+            v-tooltip.top="'Enviar reseteo de contraseña'"
+            icon="pi pi-key"
+            size="small"
+            severity="warn"
+            text
+            rounded
+            aria-label="Enviar reseteo de contraseña"
+            @click="emit('send-password-reset', data)"
+          />
+          <Button
+            v-tooltip.top="'Cerrar todas las sesiones'"
+            icon="pi pi-sign-out"
+            size="small"
+            severity="warn"
+            text
+            rounded
+            aria-label="Cerrar todas las sesiones"
+            @click="emit('revoke-sessions', data)"
+          />
+          <Button
+            v-tooltip.top="'Impersonar (soporte)'"
+            icon="pi pi-eye"
+            size="small"
+            severity="secondary"
+            text
+            rounded
+            aria-label="Impersonar usuario"
+            @click="emit('impersonate', data)"
+          />
+          <Button
+            v-tooltip.top="'Eliminar usuario'"
+            icon="pi pi-trash"
+            size="small"
+            severity="danger"
+            text
+            rounded
+            aria-label="Eliminar usuario"
+            @click="emit('delete', data)"
+          />
         </div>
       </template>
     </Column>
   </DataTable>
-
-  <Menu ref="menuRef" :model="menuItems" popup />
 </template>

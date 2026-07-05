@@ -2,6 +2,10 @@ export interface Admin {
   id: number
   name: string
   email: string
+  phone?: string | null
+  avatar?: string | null
+  notification_settings?: Record<string, boolean>
+  two_factor_enabled?: boolean
   is_active: boolean
   roles: string[]
   permissions: string[]

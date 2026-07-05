@@ -21,7 +21,7 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $result = $this->auth->login(LoginData::fromArray($request->validated()));
+        $result = $this->auth->login(LoginData::fromArray($request->validated()), $request);
 
         return response()->json([
             'user' => new UserResource($result['user']),

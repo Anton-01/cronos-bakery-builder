@@ -38,6 +38,9 @@ class Admin extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar',
+        'phone',
+        'notification_settings',
         'is_active',
         'two_factor_secret',
         'two_factor_confirmed_at',
@@ -55,6 +58,7 @@ class Admin extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'notification_settings' => 'array',
             'two_factor_secret' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
         ];

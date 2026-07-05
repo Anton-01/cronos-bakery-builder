@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Authentication\Presentation\Http\Resources;
 
 use App\Modules\Authentication\Domain\Models\User;
+use App\Shared\Application\Services\AvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,7 +26,9 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'avatar' => $this->avatar,
+            'avatar' => app(AvatarService::class)->urlFor($this->resource),
+            'brand_id' => $this->brand_id,
+            'notification_settings' => $this->notification_settings ?? (object) [],
             'email_verified' => $this->hasVerifiedEmail(),
             'roles' => [$this->role->value],
             'is_suspended' => $this->is_suspended,
