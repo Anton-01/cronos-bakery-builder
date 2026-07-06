@@ -18,7 +18,7 @@ function mapOptionsToLinks(options: PbOption[]): MappedOptionLink[] {
         product_id: opt.product_id,
         template_id: opt.id,
         legend: null,
-        enabled_value_ids: null,
+        excluded_value_ids: null,
         position: opt.position,
         _mapped: true,
         template: {
@@ -80,8 +80,7 @@ export function useProductOptions(
     }
 
     function isValueEnabled(link: ProductOptionLink, valueId: string): boolean {
-        if (!link.enabled_value_ids) return true
-        return link.enabled_value_ids.includes(valueId)
+        return !(link.excluded_value_ids ?? []).includes(valueId)
     }
 
     function toggleLinkExpand(linkId: string) {
@@ -147,16 +146,16 @@ export function useProductOptions(
     async function toggleValue(link: MappedOptionLink, valueId: string) {
         const pid = productId()
         if (!pid || !link.template) return
-        const allIds = link.template.values.map((v) => v.id)
-        let current = link.enabled_value_ids ? [...link.enabled_value_ids] : [...allIds]
+        let excluded = [...(link.excluded_value_ids ?? [])]
 
-        if (current.includes(valueId)) {
-            current = current.filter((id) => id !== valueId)
+        if (excluded.includes(valueId)) {
+            excluded = excluded.filter((id) => id !== valueId)
         } else {
-            current.push(valueId)
+            excluded.push(valueId)
         }
 
-        const enabledIds = current.length === allIds.length ? null : current
+        // null = sin exclusiones (hereda todos los valores de la plantilla).
+        const excludedIds = excluded.length === 0 ? null : excluded
 
         try {
             let updated: ProductOptionLink
@@ -168,10 +167,10 @@ export function useProductOptions(
                 }
                 updated = await adminPanelService.createProductOptionLink(pid, {
                     template_id: templateId,
-                    enabled_value_ids: enabledIds ?? undefined,
+                    excluded_value_ids: excludedIds ?? undefined,
                 })
             } else {
-                updated = await adminPanelService.updateProductOptionLink(pid, link.id, { enabled_value_ids: enabledIds })
+                updated = await adminPanelService.updateProductOptionLink(pid, link.id, { excluded_value_ids: excludedIds })
             }
             const idx = optionLinks.value.findIndex((l) => l.id === link.id)
             if (idx !== -1) optionLinks.value[idx] = updated

@@ -45,12 +45,14 @@ class User extends Authenticatable implements MustVerifyEmail
     use Notifiable;
 
     protected $fillable = [
+        'brand_id',
         'first_name',
         'last_name',
         'email',
         'phone',
         'password',
         'avatar',
+        'notification_settings',
         'role',
         'is_suspended',
         'suspended_at',
@@ -62,9 +64,6 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
-        'is_suspended' => 'boolean',
-        'suspended_at' => 'datetime',
-        'suspended_until' => 'datetime',
     ];
 
     protected function casts(): array
@@ -73,6 +72,11 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => Role::class,
+            'brand_id' => 'integer',
+            'notification_settings' => 'array',
+            'is_suspended' => 'boolean',
+            'suspended_at' => 'datetime',
+            'suspended_until' => 'datetime',
         ];
     }
 
@@ -84,6 +88,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return Attribute::get(
             fn (): string => trim("{$this->first_name} {$this->last_name}"),
         );
+    }
+
+    /**
+     * @return BelongsTo<\App\Modules\CMS\Domain\Models\Brand, $this>
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\CMS\Domain\Models\Brand::class);
     }
 
     /**

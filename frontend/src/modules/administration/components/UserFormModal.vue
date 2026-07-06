@@ -4,7 +4,8 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
-import type { AdminUser } from '../services/adminPanelService'
+import Tag from 'primevue/tag'
+import { adminPanelService, type AdminSession, type AdminUser } from '../services/adminPanelService'
 
 const props = defineProps<{
   open: boolean
@@ -32,6 +33,27 @@ const roleOptions = [
   { label: 'Admin', value: 'admin' },
 ]
 
+// --- Auditoría: sesiones recientes del usuario (solo al editar) ---
+const sessions = ref<AdminSession[]>([])
+const loadingSessions = ref(false)
+
+async function loadSessions(userId: number): Promise<void> {
+  loadingSessions.value = true
+  sessions.value = []
+  try {
+    sessions.value = await adminPanelService.userSessions(userId)
+  } catch {
+    // La auditoría es informativa: un fallo no bloquea la edición.
+  } finally {
+    loadingSessions.value = false
+  }
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—'
+  return new Intl.DateTimeFormat('es-CR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(dateStr))
+}
+
 watch(() => props.open, (val) => {
   if (val && props.user) {
     form.value = {
@@ -42,8 +64,10 @@ watch(() => props.open, (val) => {
       password: '',
       role: props.user.roles[0] ?? 'customer',
     }
+    loadSessions(props.user.id)
   } else if (val) {
     form.value = { first_name: '', last_name: '', email: '', phone: '', password: '', role: 'customer' }
+    sessions.value = []
   }
 })
 
@@ -98,6 +122,24 @@ function submit() {
         <InputText v-model="form.password" type="password" fluid required placeholder="Minimo 8 caracteres" />
       </div>
 
+      <!-- Auditoría: sesiones recientes (Sanctum) -->
+      <div v-if="isEditing" class="sessions-audit">
+        <div class="sessions-audit__title">
+          <i class="pi pi-history" style="font-size:0.8rem;" />
+          Sesiones recientes
+        </div>
+        <p v-if="loadingSessions" class="sessions-audit__empty">Cargando sesiones...</p>
+        <p v-else-if="!sessions.length" class="sessions-audit__empty">Sin sesiones registradas.</p>
+        <ul v-else class="sessions-audit__list">
+          <li v-for="session in sessions.slice(0, 6)" :key="session.id">
+            <span class="sessions-audit__device">{{ session.device_name }}</span>
+            <Tag v-if="session.name === 'impersonation'" value="Impersonación" severity="warn" style="font-size:0.55rem;" />
+            <code class="sessions-audit__ip">{{ session.ip_address ?? '—' }}</code>
+            <span class="sessions-audit__date">{{ formatDate(session.last_used_at ?? session.created_at) }}</span>
+          </li>
+        </ul>
+      </div>
+
       <div class="form-footer">
         <Button label="Cancelar" severity="secondary" outlined type="button" @click="emit('close')" />
         <Button :label="isEditing ? 'Guardar' : 'Crear Usuario'" type="submit" />
@@ -129,5 +171,59 @@ function submit() {
   justify-content: flex-end;
   gap: 0.75rem;
   padding-top: 0.5rem;
+}
+.sessions-audit {
+  margin: 0.25rem 0 1rem;
+  padding: 0.75rem;
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+}
+.sessions-audit__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted);
+  margin-bottom: 0.5rem;
+}
+.sessions-audit__empty {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+  margin: 0;
+}
+.sessions-audit__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sessions-audit__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.78rem;
+  border-bottom: 1px dashed var(--admin-border);
+}
+.sessions-audit__list li:last-child {
+  border-bottom: none;
+}
+.sessions-audit__device {
+  font-weight: 600;
+  min-width: 9rem;
+}
+.sessions-audit__ip {
+  background: var(--admin-surface, #fff);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+.sessions-audit__date {
+  margin-left: auto;
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
 }
 </style>

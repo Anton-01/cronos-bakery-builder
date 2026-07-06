@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Presentation\Http\Resources;
 
-use App\Modules\Payments\Domain\Models\PaymentEvent;
+use App\Modules\Payments\Domain\Models\TransactionEvent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin PaymentEvent
+ * @mixin TransactionEvent
  */
-class PaymentEventResource extends JsonResource
+class TransactionEventResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

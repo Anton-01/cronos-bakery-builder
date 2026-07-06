@@ -13,6 +13,12 @@ const route = useRoute()
 const router = useRouter()
 const cart = useCartStore()
 const auth = useAuthStore()
+
+// Modo vista previa (admin): la ruta `builder.preview` carga el producto por
+// token temporal — permite ver borradores con el layout real del storefront.
+const isPreview = computed(() => route.name === 'builder.preview')
+const previewToken = computed(() => (isPreview.value ? (route.params.token as string) : undefined))
+
 const product = ref<ConfigurableProduct | null>(null)
 const selections = reactive<Selections>({})
 const quote = ref<Quote | null>(null)
@@ -22,7 +28,7 @@ const addedMessage = ref(false)
 const errors = ref<Record<string, string[]>>({})
 
 async function addToCart(): Promise<void> {
-  if (!product.value || !quote.value) return
+  if (isPreview.value || !product.value || !quote.value) return
 
   addingToCart.value = true
   try {
@@ -79,7 +85,7 @@ function refreshQuote(): void {
   clearTimeout(timer)
   timer = setTimeout(async () => {
     try {
-      quote.value = await builderService.quote(product.value!.slug, { ...selections })
+      quote.value = await builderService.quote(product.value!.slug, { ...selections }, previewToken.value)
       errors.value = {}
     } catch (e: unknown) {
       const response = (e as { response?: { status?: number; data?: { errors?: Record<string, string[]> } } })
@@ -93,7 +99,9 @@ function refreshQuote(): void {
 
 onMounted(async () => {
   try {
-    const p = await builderService.product(route.params.slug as string)
+    const p = isPreview.value
+      ? await builderService.preview(previewToken.value as string)
+      : await builderService.product(route.params.slug as string)
     product.value = p
     seedDefaults(p)
     refreshQuote()
@@ -111,6 +119,14 @@ watch(selections, refreshQuote, { deep: true })
     <p v-else-if="!product" class="configurator__state">Producto no encontrado.</p>
 
     <template v-else>
+      <div v-if="isPreview" class="configurator__preview-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>
+          Vista previa de administrador — así verá el cliente este producto.
+          <template v-if="!product.is_active"> El producto aún está en borrador y no es visible al público.</template>
+        </span>
+      </div>
+
       <header class="configurator__header">
         <h1>{{ product.name }}</h1>
         <p v-if="product.description">{{ product.description }}</p>
@@ -138,8 +154,14 @@ watch(selections, refreshQuote, { deep: true })
             <strong>Total</strong>
             <strong>{{ formatMoney(quote.price.total, quote.price.currency) }}</strong>
           </p>
-          <button type="button" class="configurator__cta" :disabled="!quote || addingToCart" @click="addToCart">
-            {{ addingToCart ? 'Agregando...' : 'Agregar al Carrito' }}
+          <button
+            type="button"
+            class="configurator__cta"
+            :disabled="isPreview || !quote || addingToCart"
+            :title="isPreview ? 'Deshabilitado en vista previa' : undefined"
+            @click="addToCart"
+          >
+            {{ isPreview ? 'Vista previa — carrito deshabilitado' : addingToCart ? 'Agregando...' : 'Agregar al Carrito' }}
           </button>
 
           <div v-if="addedMessage" class="configurator__added">
@@ -154,6 +176,19 @@ watch(selections, refreshQuote, { deep: true })
 </template>
 
 <style scoped>
+.configurator__preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.65rem 1rem;
+  background: #fff8e6;
+  border: 1px solid #f0d48a;
+  color: #8a6100;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
 .configurator__added {
   display: flex;
   align-items: center;

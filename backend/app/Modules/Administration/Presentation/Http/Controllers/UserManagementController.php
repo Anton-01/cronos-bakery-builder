@@ -9,6 +9,8 @@ use App\Modules\Administration\Presentation\Http\Requests\SuspendUserRequest;
 use App\Modules\Administration\Presentation\Http\Requests\UpdateUserRequest;
 use App\Modules\Authentication\Domain\Models\User;
 use App\Modules\Authentication\Presentation\Http\Resources\UserResource;
+use App\Shared\Domain\Models\PersonalAccessToken;
+use App\Shared\Http\Resources\SessionResource;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,6 +41,9 @@ class UserManagementController extends Controller
             })
             ->when($request->filled('role'), function ($q) use ($request): void {
                 $q->where('role', $request->query('role'));
+            })
+            ->when($request->filled('brand_id'), function ($q) use ($request): void {
+                $q->where('brand_id', (int) $request->query('brand_id'));
             })
             ->latest()->paginate((int) $request->query('per_page', '15'));
 
@@ -100,7 +105,7 @@ class UserManagementController extends Controller
         return new UserResource($model->fresh());
     }
 
-    public function impersonate(string $user): JsonResponse
+    public function impersonate(Request $request, string $user): JsonResponse
     {
         $model = User::query()->findOrFail($user);
 
@@ -108,10 +113,13 @@ class UserManagementController extends Controller
             return response()->json(['message' => 'Cannot impersonate a suspended user.'], 422);
         }
 
-        $token = $model->createToken('impersonation', ['impersonated'])->plainTextToken;
+        $newToken = $model->createToken('impersonation', ['impersonated']);
+        if ($newToken->accessToken instanceof PersonalAccessToken) {
+            $newToken->accessToken->recordClientContext($request);
+        }
 
         return response()->json([
-            'token' => $token,
+            'token' => $newToken->plainTextToken,
             'user' => new UserResource($model),
         ]);
     }
@@ -126,6 +134,22 @@ class UserManagementController extends Controller
             ->delete();
 
         return response()->json(['message' => 'All sessions revoked.']);
+    }
+
+    /**
+     * Recent Sanctum sessions (devices) of a user, for the detail audit view.
+     */
+    public function sessions(string $user): AnonymousResourceCollection
+    {
+        $model = User::query()->findOrFail($user);
+
+        $tokens = $model->tokens()
+            ->orderByDesc('last_used_at')
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return SessionResource::collection($tokens);
     }
 
     public function sendPasswordReset(string $user): JsonResponse

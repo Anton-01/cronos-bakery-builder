@@ -44,5 +44,10 @@ Route::prefix('auth')->group(function (): void {
         Route::get('profile', [ProfileController::class, 'show']);
         Route::put('profile', [ProfileController::class, 'update']);
         Route::put('profile/password', [ProfileController::class, 'changePassword']);
+        Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar']);
+        Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar']);
+        Route::put('profile/notifications', [ProfileController::class, 'updateNotificationSettings']);
+        Route::get('profile/sessions', [ProfileController::class, 'sessions']);
+        Route::delete('profile/sessions/{token}', [ProfileController::class, 'revokeSession']);
     });
 });

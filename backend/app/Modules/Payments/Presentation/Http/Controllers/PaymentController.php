@@ -6,11 +6,10 @@ namespace App\Modules\Payments\Presentation\Http\Controllers;
 
 use App\Modules\Orders\Domain\Models\Order;
 use App\Modules\Payments\Application\Services\PaymentService;
-use App\Modules\Payments\Domain\Enums\GatewayType;
-use App\Modules\Payments\Domain\Models\GatewayConfig;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\PaymentGateway;
+use App\Modules\Payments\Domain\Models\Transaction;
 use App\Modules\Payments\Presentation\Http\Requests\InitiatePaymentRequest;
-use App\Modules\Payments\Presentation\Http\Resources\PaymentResource;
+use App\Modules\Payments\Presentation\Http\Resources\TransactionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -27,12 +26,17 @@ class PaymentController extends Controller
      */
     public function gateways(): JsonResponse
     {
-        $gateways = GatewayConfig::query()->where('is_active', true)->orderBy('gateway')->get()
-            ->map(fn (GatewayConfig $config) => [
-                'gateway' => $config->gateway->value,
-                'label' => $config->gateway->label(),
-                'mode' => $config->mode->value,
-            ])->values();
+        $gateways = PaymentGateway::query()
+            ->active()
+            ->orderBy('driver_name')
+            ->get()
+            ->unique('driver_name')
+            ->map(fn (PaymentGateway $gateway) => [
+                'gateway' => $gateway->driver_name,
+                'label' => $gateway->driverLabel(),
+                'environment' => $gateway->environment->value,
+            ])
+            ->values();
 
         return response()->json(['data' => $gateways]);
     }
@@ -44,22 +48,22 @@ class PaymentController extends Controller
             ->whereKey($request->validated('order_id'))
             ->firstOr(fn () => throw new NotFoundHttpException('Order not found.'));
 
-        $result = $this->payments->initiate($order, GatewayType::from($request->validated('gateway')));
+        $result = $this->payments->initiate($order, $request->validated('gateway'));
 
-        return (new PaymentResource($result['payment']))
+        return (new TransactionResource($result['transaction']))
             ->additional(['checkout' => $result['checkout']])
             ->response()
             ->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function show(Request $request, string $payment): PaymentResource
+    public function show(Request $request, int $transaction): TransactionResource
     {
-        $model = Payment::query()
+        $model = Transaction::query()
             ->where('user_id', $request->user()->id)
             ->with('events')
-            ->whereKey($payment)
-            ->firstOr(fn () => throw new NotFoundHttpException('Payment not found.'));
+            ->whereKey($transaction)
+            ->firstOr(fn () => throw new NotFoundHttpException('Transaction not found.'));
 
-        return new PaymentResource($model);
+        return new TransactionResource($model);
     }
 }

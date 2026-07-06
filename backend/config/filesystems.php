@@ -17,6 +17,9 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    // Disk for user/admin avatars: "public" locally, "s3" (MinIO) in prod.
+    'avatar_disk' => env('AVATAR_DISK', 'public'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Administration\Application\Services;
 
 use App\Modules\Administration\Domain\Models\Admin;
+use App\Shared\Domain\Models\PersonalAccessToken;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -28,7 +30,7 @@ final class AdminAuthService
      *
      * @throws ValidationException
      */
-    public function login(string $email, string $password, ?string $code = null): array
+    public function login(string $email, string $password, ?string $code = null, ?Request $request = null): array
     {
         /** @var Admin|null $admin */
         $admin = Admin::query()->where('email', $email)->first();
@@ -58,9 +60,13 @@ final class AdminAuthService
             }
         }
 
-        $token = $admin->createToken('admin', ['admin'])->plainTextToken;
+        $newToken = $admin->createToken('admin', ['admin']);
 
-        return ['admin' => $admin, 'token' => $token];
+        if ($request !== null && $newToken->accessToken instanceof PersonalAccessToken) {
+            $newToken->accessToken->recordClientContext($request);
+        }
+
+        return ['admin' => $admin, 'token' => $newToken->plainTextToken];
     }
 
     public function logout(Admin $admin): void

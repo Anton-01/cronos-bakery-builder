@@ -25,10 +25,13 @@ final class ConfiguratorService
     ) {
     }
 
-    public function configuration(string $slug): Product
+    public function configuration(string $slug, bool $includeDraft = false): Product
     {
-        return $this->products->findActiveConfiguration($slug)
-            ?? throw new NotFoundHttpException('Product not found.');
+        $product = $includeDraft
+            ? $this->products->findConfigurationBySlug($slug)
+            : $this->products->findActiveConfiguration($slug);
+
+        return $product ?? throw new NotFoundHttpException('Product not found.');
     }
 
     /**
@@ -44,9 +47,9 @@ final class ConfiguratorService
      *
      * @throws ValidationException
      */
-    public function quote(string $slug, array $rawSelections): array
+    public function quote(string $slug, array $rawSelections, bool $includeDraft = false): array
     {
-        $product = $this->configuration($slug);
+        $product = $this->configuration($slug, $includeDraft);
         $selections = $this->normalize($rawSelections);
 
         $visible = $this->resolver->visibleOptionKeys($product, $selections);

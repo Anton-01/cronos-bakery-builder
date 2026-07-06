@@ -6,25 +6,27 @@ namespace App\Modules\Payments\Infrastructure\Gateways;
 
 use App\Modules\Payments\Application\DTO\ChargeRequest;
 use App\Modules\Payments\Application\DTO\ChargeResult;
+use App\Modules\Payments\Application\DTO\RefundResult;
 use App\Modules\Payments\Application\DTO\WebhookEvent;
-use App\Modules\Payments\Domain\Enums\GatewayType;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
-use App\Modules\Payments\Domain\Models\GatewayConfig;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Support\Str;
 
 /**
- * OpenPay strategy. Creates a charge with a redirect (3DS / hosted) URL and
- * authenticates webhooks via an `Openpay-Signature` HMAC of the body.
+ * OpenPay strategy (skeleton). Creates a charge with a redirect (3DS / hosted)
+ * URL and authenticates webhooks via an `Openpay-Signature` HMAC of the body.
  */
 class OpenPayGateway extends AbstractGateway
 {
-    public function type(): GatewayType
+    public function driver(): string
     {
-        return GatewayType::OpenPay;
+        return 'openpay';
     }
 
-    public function createCharge(ChargeRequest $request, GatewayConfig $config): ChargeResult
+    public function processPayment(ChargeRequest $request): ChargeResult
     {
+        // Skeleton: OpenPay hosted charge. Production wiring pending —
+        // both environments simulate through the same code path for now.
         $reference = 'trx_' . Str::random(20);
 
         return new ChargeResult(
@@ -34,19 +36,29 @@ class OpenPayGateway extends AbstractGateway
                 'type' => 'redirect',
                 'redirect_url' => 'https://sandbox-api.openpay.mx/redirect/' . $reference,
             ],
-            raw: ['transaction_id' => $reference],
+            raw: ['transaction_id' => $reference, 'simulated' => true],
         );
     }
 
-    public function verifySignature(string $payload, array $headers, GatewayConfig $config): bool
+    public function refund(Transaction $transaction, ?int $amount = null): RefundResult
+    {
+        return new RefundResult(
+            providerRefundId: 'opref_' . Str::random(16),
+            status: PaymentStatus::Refunded,
+            amount: $amount ?? $transaction->amount,
+            raw: ['simulated' => true],
+        );
+    }
+
+    protected function verifySignature(string $payload, array $headers): bool
     {
         $given = $headers['openpay-signature'] ?? '';
-        $expected = $this->hmac($payload, $config->webhookSecret());
+        $expected = $this->hmac($payload, $this->config()->webhookSecret());
 
         return $this->secureEquals($expected, (string) $given);
     }
 
-    public function parseWebhook(string $payload): WebhookEvent
+    protected function parseWebhook(string $payload): WebhookEvent
     {
         $data = $this->decode($payload);
         $type = (string) ($data['type'] ?? '');
@@ -60,6 +72,12 @@ class OpenPayGateway extends AbstractGateway
             default => $this->mapStatus((string) ($data['transaction']['status'] ?? '')),
         };
 
-        return new WebhookEvent($reference, $status, $type ?: 'charge', $data);
+        return new WebhookEvent(
+            providerEventId: (string) ($data['event_id'] ?? '') ?: $this->fallbackEventId($payload),
+            reference: $reference,
+            status: $status,
+            eventType: $type ?: 'charge',
+            raw: $data,
+        );
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Administration\Domain\Enums\AdminRole;
 use App\Modules\Administration\Presentation\Http\Controllers\AccessControlController;
 use App\Modules\Administration\Presentation\Http\Controllers\AdminAuthController;
+use App\Modules\Administration\Presentation\Http\Controllers\AdminProfileController;
 use App\Modules\Administration\Presentation\Http\Controllers\AuditLogController;
 use App\Modules\Administration\Presentation\Http\Controllers\DashboardController;
 use App\Modules\Administration\Presentation\Http\Controllers\HealthController;
@@ -31,6 +32,17 @@ Route::prefix('admin')->group(function (): void {
     Route::middleware(['auth:sanctum', 'admin'])->group(function (): void {
         Route::get('me', [AdminAuthController::class, 'me']);
         Route::post('logout', [AdminAuthController::class, 'logout']);
+
+        // Self-service profile: personal data, avatar (MinIO), password,
+        // notification preferences and active devices (Sanctum sessions).
+        Route::put('profile', [AdminProfileController::class, 'update']);
+        Route::post('profile/avatar', [AdminProfileController::class, 'uploadAvatar']);
+        Route::delete('profile/avatar', [AdminProfileController::class, 'deleteAvatar']);
+        Route::put('profile/password', [AdminProfileController::class, 'updatePassword']);
+        Route::put('profile/notifications', [AdminProfileController::class, 'updateNotificationSettings']);
+        Route::get('profile/sessions', [AdminProfileController::class, 'sessions']);
+        Route::delete('profile/sessions/{token}', [AdminProfileController::class, 'revokeSession'])->whereNumber('token');
+        Route::post('profile/sessions/revoke-others', [AdminProfileController::class, 'revokeOtherSessions']);
 
         // Two-factor authentication enrolment.
         Route::post('2fa/enable', [TwoFactorController::class, 'enable']);
@@ -61,6 +73,7 @@ Route::prefix('admin')->group(function (): void {
             Route::post('users/{user}/impersonate', [UserManagementController::class, 'impersonate']);
             Route::post('users/{user}/revoke-sessions', [UserManagementController::class, 'revokeSessions']);
             Route::post('users/{user}/send-password-reset', [UserManagementController::class, 'sendPasswordReset']);
+            Route::get('users/{user}/sessions', [UserManagementController::class, 'sessions']);
         });
 
         // Access control: roles + administrators (Super Admin / Administrador).

@@ -149,7 +149,7 @@ El `AdminLayout.vue` define las secciones del menú lateral:
 | `ProductGeneralForm.vue` | Nombre, slug, descripción con editor rico |
 | `ProductMediaGallery.vue` | Upload de imagen principal y galería drag-drop |
 | `ProductPricing.vue` | Gestión de precios base |
-| `ProductOptionsManager.vue` | Vinculación de opciones de producto con leyendas |
+| `ProductOptionsManager.vue` | Vinculación de opciones con leyendas y exclusión de valores por producto |
 | `UserTable.vue` | Tabla de usuarios con acciones |
 | `UserFormModal.vue` | Modal de creación/edición de usuario |
 | `SuspendUserModal.vue` | Modal de suspensión de usuario |
@@ -162,8 +162,8 @@ El `AdminLayout.vue` define las secciones del menú lateral:
 | `useProductForm.ts` | Estado del formulario de producto, validación, submit |
 | `useRichTextEditor.ts` | Setup del editor de texto enriquecido (PrimeVue Editor) |
 | `useMediaGallery.ts` | Upload de imágenes, drag-drop para thumbnail y galería |
-| `useProductOptions.ts` | Links de opciones, leyendas, toggle de valores |
-| `useProductPreview.ts` | Estado del modal de preview del producto |
+| `useProductOptions.ts` | Links de opciones, leyendas, exclusión de valores por producto |
+| `useProductPreview.ts` | Genera token temporal y abre la vista previa del storefront en pestaña nueva |
 
 ### 5.5 Tipos principales (`adminPanelService.ts`)
 
@@ -209,9 +209,9 @@ app.use(ToastService)
 
 | Categoría | Componentes |
 |---|---|
-| Layout | `Sidebar`, `Menubar`, `PanelMenu`, `Card`, `Panel`, `Divider` |
-| Data | `DataTable`, `Column`, `Paginator`, `Tag` |
-| Form | `InputText`, `Textarea`, `Select` (ex-Dropdown), `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `Editor` |
+| Layout | `Sidebar`, `Menubar`, `PanelMenu`, `Card`, `Panel`, `Divider`, `Tabs` (TabList/Tab/TabPanels/TabPanel), `Accordion` (AccordionPanel/Header/Content) |
+| Data | `DataTable`, `TreeTable`, `Column`, `Paginator`, `Tag` |
+| Form | `InputText`, `Textarea`, `Select` (ex-Dropdown), `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `Editor`, `Password`, `DatePicker` |
 | Button | `Button` |
 | Overlay | `Dialog`, `ConfirmDialog`, `Toast`, `OverlayPanel` |
 | Media | `Image`, `FileUpload` |
@@ -348,8 +348,8 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 
 **Decisión (2026-07):** todas las llaves primarias del sistema usan **BIGINT autoincremental nativo de PostgreSQL 16** (`$table->id()` → identity/bigserial). Queda **prohibido** generar UUIDs como PK desde la aplicación (ni `HasUuids` en modelos, ni `Str::uuid()` para llaves). Los UUIDs solo se admiten en valores no-clave (ej. nombres de archivo en MinIO).
 
-- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration) y **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes).
-- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Payments, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo), por lo que pueden migrarse en una fase posterior sin romper integridad.
+- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes) y **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21).
+- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
 - **Cómo se aplicó:** las migraciones se editaron **en sitio** (el proyecto está en desarrollo, sin datos productivos) → requiere `php artisan migrate:fresh --seed`. Las columnas JSON de los módulos convertidos pasaron a **JSONB**.
 - **Frontend:** las interfaces TS de los módulos convertidos usan `id: number` (cms/types, catalog/types, adminPanelService). Los módulos aún en UUID conservan `id: string`.
 
@@ -384,3 +384,82 @@ Convención para la columna de "Acciones" de todos los `DataTable` del admin:
 - Estilo uniforme: `size="small"`, `text`, `rounded`. Variantes de `severity` semánticas: `secondary`/`info` para navegación/edición, `warn` para publicar/despublicar, `danger` para eliminar.
 - **Registro de la directiva `Tooltip`:** se registra **globalmente** en `main.ts` con `app.directive('tooltip', Tooltip)` (import de `primevue/tooltip`), habilitando `v-tooltip` en toda la app sin re-declararla por componente. Alternativa local por componente: `import Tooltip from 'primevue/tooltip'` + `const vTooltip = Tooltip` en `<script setup>`.
 - Implementación de referencia: columna "Acciones" de `AdminCmsPage.vue`.
+
+## 18. Exclusión de Valores en Opciones de Producto (Product Builder)
+
+**Estrategia de BD (2026-07):** el pivote `pb_product_option_links` (producto ↔ plantilla de opción global) guarda las exclusiones en la columna **`excluded_value_ids` (JSONB, nullable)** — un array de IDs de `pb_option_template_values` que ese producto **oculta**. Se eligió **semántica de exclusión** (antes existía `enabled_value_ids`, lista de inclusión, ya eliminada por migración con conversión de datos):
+
+- `null` o `[]` ⇒ el producto **hereda todos** los valores de la plantilla, **incluidos los que se agreguen a la plantilla en el futuro** (ventaja clave frente a la lista de inclusión, que congelaba el set).
+- No se usó tabla relacional intermedia adicional: la cardinalidad es baja (decenas de valores por opción), el array JSONB vive junto al vínculo que califica y nunca se consulta por valor individual desde SQL. *(Nota: el módulo ProductBuilder sigue en UUIDs — pendiente de la conversión a IDs autoincrementales de la regla §13; los IDs dentro del array son UUIDs de valores de plantilla.)*
+- **Validación (Form Requests dedicados):** `StoreProductOptionLinkRequest` / `UpdateProductOptionLinkRequest` exigen que cada ID excluido **pertenezca a la plantilla vinculada** (`Rule::exists(...)->where('template_id', …)`) ⇒ 422 si no.
+- **Contrato del API (`ProductOptionLinkResource`):** devuelve **ambas vistas**: `excluded_value_ids` + `template.values` completo (para que el admin pinte los toggles) y `values` = **valores efectivos ya filtrados** vía `ProductOptionLink::effectiveValues()` (lo que consume el storefront). Helpers de dominio: `isValueExcluded()`, `effectiveValues()`.
+- **Frontend:** en `ProductOptionsManager.vue` cada opción vinculada es desplegable y cada valor tiene un **`ToggleSwitch`** con `v-tooltip` (encendido = heredado, apagado = excluido, con `Tag` "Excluido"). El guardado es inmediato por valor (PUT del link con el array recalculado; array vacío se normaliza a `null`).
+
+## 19. Vista Previa Real del Producto (Tokenized Storefront View)
+
+**Flujo de seguridad (2026-07):** la vista previa "Ver como usuario" abandonó la modal del admin y abre una **pestaña nueva con el layout público real** (`/builder/preview/:token`, ruta `builder.preview`, misma `ConfiguratorPage.vue` del storefront). Autorización por **token opaco temporal**, no por sesión:
+
+- **Minteo (admin-only):** `POST /api/admin/product-builder/products/{id}/preview-token` → `PreviewTokenService::mint()` genera `Str::random(64)` y lo guarda en **Cache con TTL de 30 min** (`product_preview:{token}` → product id). Se eligió token opaco en cache sobre `URL::temporarySignedRoute` porque la URL que se comparte es una ruta del **SPA** (no del API) y el token debe poder viajar como parámetro de ruta del frontend y usarse en **varios** endpoints (show + quote); la caducidad y revocación quedan del lado del servidor.
+- **Consumo (público, sin sesión):** `GET /api/product-builder/preview/{token}` — el token es la **única credencial**; devuelve la configuración completa aunque el producto esté en **borrador** (403 si expiró/es inválido). `POST products/{slug}/quote` acepta `preview_token` opcional: si resuelve al mismo producto, permite cotizar borradores.
+- **Frontend:** `useProductPreview.openPreview()` abre `window.open('', '_blank')` **antes** del `await` (evita el popup-blocker), pide el token y redirige la pestaña a `builder.preview`. En modo preview la página muestra un banner de advertencia y el carrito queda deshabilitado.
+
+## 20. Estándar absoluto de UI para jerarquías y menús: `TreeTable` + iconos con tooltips
+
+- Toda vista del admin que represente **estructuras jerárquicas** (menús de navegación padre/hijo, árboles de categorías, etc.) usa **`TreeTable` de PrimeVue** (o `DataTable` con `rowGroupMode` cuando la agrupación es plana) — nunca listas `<ul>` anidadas a mano ni tarjetas apiladas.
+- Las **acciones por fila** siguen la regla de §17 sin excepción: botones **solo-icono** (`pi-pencil` editar, `pi-trash` eliminar, `pi-plus` agregar hijo/submenú) con `size="small"`, `text`, `rounded`, `severity` semántico, texto explicativo **solo** vía `v-tooltip` + `aria-label`.
+- Implementación de referencia: `AdminMenusPage.vue` — nodos raíz = menús (con `Tag` de ubicación), nivel 1 = enlaces, nivel 2 = subenlaces; CRUD de enlaces contra `POST/PUT/DELETE /admin/menus/{menu}/items/…` (expuesto en `adminPanelService` como `createMenuItem` / `updateMenuItem` / `deleteMenuItem`).
+
+## 21. Módulo de Pasarelas de Pago (Payments) — Arquitectura y Seguridad
+
+Refactor completo del módulo Payments (2026-07): multi-tenant por `brand_id`, PKs identity (§13) y cuatro tablas: `payment_gateways` (instancia configurada por marca: `driver_name`, `name`, `environment` sandbox/production, `is_active`, `credentials` JSONB, soft deletes), `transactions` (histórico con `provider_transaction_id`, `raw_response` JSONB, `idempotency_key` única por gateway), `transaction_events` (audit trail por transacción) y `gateway_webhook_events` (ledger de idempotencia).
+
+### 21.1 Patrón Strategy para pasarelas (estándar absoluto)
+
+- **Contrato:** `PaymentGatewayInterface` (`initialize`, `processPayment`, `handleWebhook`, `refund`) en `Payments/Domain/Contracts`. Las estrategias (`StripeGateway`, `MercadoPagoGateway`, `PayPalGateway`, `OpenPayGateway`) extienden `AbstractGateway`, que aporta HTTP resiliente (`callProvider()`: timeout/connect-timeout/retries desde `config/payments.php`, mapeo tipado a `GatewayTimeoutException` 504, `GatewayRateLimitException` 429 + Retry-After, `GatewayException` 502 — cada excepción trae su propio `render()`).
+- **Resolución dinámica:** `PaymentGatewayManager::forGateway($gateway)` resuelve la clase desde el mapa `config('payments.drivers')` usando `driver_name` y la inicializa con credenciales+entorno. **Prohibido** el `if/else`/`match` por proveedor en controladores o servicios: agregar una pasarela = 1 entrada en config + 1 clase. `GET /admin/payments/drivers` expone labels y definición de campos de credenciales para que el frontend pinte formularios dinámicos sin hardcodear proveedores.
+- Los drivers en sandbox **simulan** el cargo/refund (sin red); en producción llaman al API real vía `callProvider()` (fakeable con `Http::fake`).
+
+### 21.2 Encriptación "At rest" de credenciales (política innegociable)
+
+- Campo `credentials` JSONB con cast custom **`EncryptedCredentials`**: encripta **cada valor individualmente** (`Crypt` AES-256 con `APP_KEY`) dejando las claves en claro — el documento JSONB sigue siendo inspeccionable ({"secret_key": "eyJpdiI6…"}) pero ningún secreto es legible sin la llave de la app. Transparente para el consumidor del modelo.
+- **El API jamás devuelve secretos en claro:** `PaymentGatewayResource` expone solo hints enmascarados (`••••••••1234`); el modelo además lleva `credentials` en `$hidden` (defensa en profundidad ante serializaciones ingenuas). Updates con **semántica de merge**: el frontend envía solo los campos re-escritos; valor no-vacío sobreescribe, `null` elimina la clave, clave omitida se conserva.
+- El middleware de auditoría (`LogAdminActivity`) ya redacta `credentials`/`secret_key`/`webhook_secret` en `audit_logs`.
+
+### 21.3 Estándar de webhooks: firma criptográfica + idempotencia obligatorias
+
+- **Endpoint genérico** `POST /api/payments/webhooks/{driver}/{gateway_id}` (público): cada instancia configurada tiene su propia URL, así siempre aplica el secreto correcto de esa marca. El body crudo se pasa byte a byte para que el HMAC cuadre.
+- **Autenticidad primero:** `AbstractGateway::handleWebhook()` es un template method que **verifica la firma antes de parsear**; firma inválida ⇒ `InvalidWebhookSignatureException` (400) **sin ningún write** en BD.
+- **Idempotencia a nivel BD:** todo evento se inserta en `gateway_webhook_events` bajo el unique `(payment_gateway_id, provider_event_id)`; un duplicado (incluso concurrente) dispara `UniqueConstraintViolationException` y responde `{handled:false, status:"duplicate"}` sin reprocesar. Si el proveedor no manda event id, se usa `sha256(body)` como fallback. Además `transactions.idempotency_key` es única por gateway (una re-iniciación nunca duplica un cargo).
+- **Nota transversal:** el callback `$exceptions->respond()` de `bootstrap/app.php` ahora respeta respuestas JSON ya renderizadas con status < 500 (excepciones con `render()` propio, 401/403/404 del framework) y solo sanitiza 5xx; `phpunit.xml` define `APP_KEY` (necesario para los casts encriptados en tests).
+
+### 21.4 Frontend (AdminPaymentsPage + Pinia)
+
+- Store `usePaymentGatewayStore` (`modules/administration/stores/paymentGateways.ts`): drivers, gateways, transacciones paginadas y filtros; todas las llamadas vía `adminPanelService` (tipos estrictos `PaymentGateway`, `Transaction`, `GatewayDriver`, enums de estado/entorno).
+- UI con `Tabs` (Transacciones / Pasarelas). Pasarelas: `Accordion` por instancia, formularios de credenciales **generados desde `GET /drivers`** (`Password` con `toggleMask` para secretos, placeholder = hint enmascarado), `ToggleSwitch` para activación y entorno (cambio a Producción pide confirmación). Transacciones: `DataTable` lazy paginado con filtros por estado (`Select`), pasarela y rango de fechas (`DatePicker` range); `Tag` con severidad semántica; acciones solo-icono con `v-tooltip` (§17): `pi-eye` detalle+auditoría, `pi-refresh` reintento de conciliación (pending/processing), `pi-undo` reembolso (solo paid, con confirmación).
+
+## 22. Identidad: Perfil Self-Service, Sesiones Sanctum Avanzadas y Gestión de Usuarios
+
+### 22.1 RBAC (estrategia vigente)
+
+- **Doble modelo de identidad** (§4): `admins` (panel) y `users` (clientes), ambos con PK identity.
+- **Admins → Spatie Laravel-Permission** con IDs numéricos (tablas `2026_06_01_011617_create_permission_tables`), `guard_name = 'admin'` fijado en el modelo `Admin`. Roles canónicos en `AdminRole` (Super Admin, Administrador, etc.) sembrados por `RolesAndPermissionsSeeder`; autorización por ruta con los middlewares `permission:` / `role:` de Spatie (ej. `permission:manage users`) y en frontend con `adminAuth.can(permission)`. Los **permisos explícitos por admin** se gestionan vía `PUT /admin/admins/{admin}/roles` (AccessControlController).
+- **Clientes → rol simple** (`users.role`: customer/staff/admin como enum de columna): los clientes no necesitan permisos granulares; se decide en el propio modelo (`isStaff()`, `isAdmin()`).
+- **Multi-tenant:** `users.brand_id` (FK nullable → `brands`, null = cuenta global/legacy) con índice `(brand_id, is_suspended)`; el listado admin filtra con `?brand_id=`, misma convención del CMS (§ PageController).
+
+### 22.2 Sesiones avanzadas con Sanctum (rastreo de dispositivos)
+
+- **Modelo extendido:** `App\Shared\Domain\Models\PersonalAccessToken` (registrado con `Sanctum::usePersonalAccessTokenModel()` en `AppServiceProvider`) agrega `ip_address`, `user_agent` y `device_name` (label derivado del UA: "Chrome · Windows") a `personal_access_tokens`. **Cada token = una sesión/dispositivo revocable.**
+- **Captura:** `recordClientContext($request)` se invoca al emitir tokens en los 3 puntos: login de cliente (`AuthService`), login de admin (`AdminAuthService`) y tokens de impersonación (`UserManagementController`).
+- **Self-service (`/admin/profile/sessions` y `/auth/profile/sessions`):** listar sesiones (`SessionResource` con `is_current`), revocar una específica (la actual se protege ⇒ 422; token ajeno ⇒ 404) y "cerrar las demás". El **cambio de contraseña revoca todas las sesiones menos la actual**.
+- **Admin-side:** `GET /admin/users/{user}/sessions` (auditoría de dispositivos recientes en el detalle de usuario) + `POST /admin/users/{user}/revoke-sessions` (cierre total). El middleware `LogAdminActivity` ahora sanitiza payloads no serializables (archivos subidos ⇒ `[file: nombre]`).
+
+### 22.3 Política de avatares y MinIO
+
+- **`AvatarService` (Shared):** disco desde `config('filesystems.avatar_disk')` (`AVATAR_DISK`; `public` en local, `s3` = MinIO en despliegue vía las vars `AWS_*` apuntando al endpoint MinIO). La BD guarda el **path de storage, nunca URLs absolutas** (el bucket/endpoint puede cambiar sin migrar datos); URLs de social login (http…) pasan intactas.
+- **Nombres aleatorios** (`avatars/{Y}/{m}/{uuid}.ext` — UUID permitido en valores no-clave §13); el filename del cliente jamás llega al storage. **Validación estricta** en FormRequest: `image` + allow-list `jpg,jpeg,png,webp` + 2 MB (sniffing real de contenido, no extensión). Reemplazo atómico: sube el nuevo → borra el anterior. Aplica igual a admins (`/admin/profile/avatar`) y clientes (`/auth/profile/avatar`).
+
+### 22.4 UI ("Mi Cuenta" + Gestión de Usuarios)
+
+- `AdminProfilePage.vue` con `Tabs`: **General** (datos + avatar con `FileUpload` mode basic/customUpload), **Seguridad** (cambio de contraseña con `Password` + activación TOTP reutilizando los endpoints `/admin/2fa/*` existentes), **Dispositivos** (`DataTable` de sesiones con icono por tipo, IP, última conexión, `Tag` "Este dispositivo"/"Impersonación" y `pi-sign-out` por fila) y **Notificaciones** (`ToggleSwitch` por canal → JSONB `notification_settings`; canales desconocidos se descartan en backend).
+- `UserTable.vue` alineado a §17: acciones solo-icono con `v-tooltip` (`pi-pencil`, `pi-ban`/`pi-check-circle`, `pi-key` reset, `pi-sign-out` cerrar sesiones, `pi-eye` impersonar, `pi-trash`), `Tag` verde/rojo para Activo/Suspendido. `UserFormModal` muestra la auditoría de **sesiones recientes** al editar.
+- Fix de modelo: los casts de suspensión de `User` vivían por error dentro de `$hidden`; se movieron a `casts()`.

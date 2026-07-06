@@ -6,6 +6,8 @@ namespace App\Modules\Authentication\Application\Services;
 
 use App\Modules\Authentication\Application\DTO\LoginData;
 use App\Modules\Authentication\Domain\Models\User;
+use App\Shared\Domain\Models\PersonalAccessToken;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -20,7 +22,7 @@ final class AuthService
      *
      * @throws ValidationException
      */
-    public function login(LoginData $data): array
+    public function login(LoginData $data, ?Request $request = null): array
     {
         /** @var User|null $user */
         $user = User::query()->where('email', $data->email)->first();
@@ -31,9 +33,13 @@ final class AuthService
             ]);
         }
 
-        $token = $user->createToken('api')->plainTextToken;
+        $newToken = $user->createToken('api');
 
-        return ['user' => $user, 'token' => $token];
+        if ($request !== null && $newToken->accessToken instanceof PersonalAccessToken) {
+            $newToken->accessToken->recordClientContext($request);
+        }
+
+        return ['user' => $user, 'token' => $newToken->plainTextToken];
     }
 
     public function logout(User $user): void

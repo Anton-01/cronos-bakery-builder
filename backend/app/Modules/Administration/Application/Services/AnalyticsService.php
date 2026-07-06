@@ -9,7 +9,7 @@ use App\Modules\Orders\Domain\Enums\OrderStatus;
 use App\Modules\Orders\Domain\Models\Cart;
 use App\Modules\Orders\Domain\Models\Order;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Support\Carbon;
 
 /**
@@ -41,7 +41,7 @@ final class AnalyticsService
      */
     private function sales(Carbon $from, Carbon $to): array
     {
-        $paid = Payment::query()
+        $paid = Transaction::query()
             ->where('status', PaymentStatus::Paid->value)
             ->whereBetween('paid_at', [$from, $to]);
 

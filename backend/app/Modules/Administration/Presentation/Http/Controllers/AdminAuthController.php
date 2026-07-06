@@ -26,6 +26,7 @@ class AdminAuthController extends Controller
             $request->validated('email'),
             $request->validated('password'),
             $request->validated('code'),
+            $request,
         );
 
         return response()->json([

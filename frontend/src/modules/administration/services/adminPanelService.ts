@@ -27,6 +27,8 @@ export interface AdminUser {
   email: string
   phone: string | null
   avatar: string | null
+  brand_id?: number | null
+  notification_settings?: Record<string, boolean>
   roles: string[]
   is_suspended: boolean
   suspended_at: string | null
@@ -46,13 +48,56 @@ export interface TwoFactorSetup {
   otpauth_url: string
 }
 
+// --- Perfil y sesiones (Sanctum avanzado) ---
+export interface AdminProfile {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  avatar: string | null
+  notification_settings: Record<string, boolean>
+  two_factor_enabled: boolean
+  is_active: boolean
+  roles: string[]
+  permissions: string[]
+}
+
+/** Un token Sanctum presentado como sesión/dispositivo revocable. */
+export interface AdminSession {
+  id: number
+  name: string
+  device_name: string
+  ip_address: string | null
+  user_agent: string | null
+  last_used_at: string | null
+  created_at: string | null
+  is_current: boolean
+}
+
 // --- CMS types ---
 // Page/block types live in `@/modules/cms/types` (brand-aware page builder).
 
 // --- Theme types ---
 export interface Theme { id: number; name: string; is_active: boolean; settings: Record<string, unknown> }
-export interface CmsMenu { id: number; name: string; location: string; items: CmsMenuItem[] }
-export interface CmsMenuItem { id: number; label: string; url: string; position: number; children: CmsMenuItem[] }
+export interface CmsMenu { id: number; name: string; location: string; is_active?: boolean; items: CmsMenuItem[] }
+export interface CmsMenuItem {
+  id: number
+  label: string
+  url: string | null
+  target?: '_self' | '_blank' | null
+  position: number
+  is_active?: boolean
+  parent_id?: number | null
+  children: CmsMenuItem[]
+}
+export interface CmsMenuItemPayload {
+  label: string
+  url?: string | null
+  target?: '_self' | '_blank' | null
+  parent_id?: number | null
+  position?: number
+  is_active?: boolean
+}
 export interface CmsBanner { id: number; placement: string; title: string; image: string | null; url: string | null; is_active: boolean }
 
 // --- Catalog types ---
@@ -146,9 +191,12 @@ export interface ProductOptionLink {
   product_id: string
   template_id: string
   legend: string | null
-  enabled_value_ids: string[] | null
+  /** IDs de valores de la plantilla EXCLUIDOS para este producto (null/[] = hereda todos). */
+  excluded_value_ids: string[] | null
   position: number
   template?: OptionTemplate
+  /** Valores efectivos (con exclusiones aplicadas) — lo que ve el storefront. */
+  values?: OptionTemplateValue[]
 }
 
 // --- Orders types ---
@@ -162,8 +210,67 @@ export interface AdminOrder {
 }
 
 // --- Payments types ---
-export interface PaymentGateway { id: string; name: string; driver: string; is_active: boolean; settings: Record<string, unknown> }
-export interface AdminPayment { id: string; order_id: string; order_number?: string; gateway: string; status: string; amount: number; currency: string; created_at: string }
+export type GatewayEnvironment = 'sandbox' | 'production'
+export type TransactionStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded' | 'cancelled'
+
+export interface GatewayDriverField { key: string; label: string; secret: boolean }
+export interface GatewayDriver { driver_name: string; label: string; fields: GatewayDriverField[] }
+
+export interface PaymentGateway {
+  id: number
+  brand_id: number | null
+  driver_name: string
+  driver_label: string
+  name: string
+  environment: GatewayEnvironment
+  is_active: boolean
+  /** Solo hints enmascarados ("••••••••1234") — el API jamás devuelve secretos en claro. */
+  credentials: Record<string, string | null>
+  has_webhook_secret: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PaymentGatewayPayload {
+  brand_id?: number | null
+  driver_name?: string
+  name?: string
+  environment?: GatewayEnvironment
+  is_active?: boolean
+  /** Solo campos re-escritos por el usuario; null elimina la clave. */
+  credentials?: Record<string, string | null>
+}
+
+export interface TransactionEvent { id: number; type: string; status: string | null; signature_valid: boolean | null; at: string | null }
+
+export interface Transaction {
+  id: number
+  brand_id: number | null
+  order_id: string
+  order_number?: string
+  payment_gateway_id: number
+  gateway_name?: string
+  driver_name?: string
+  environment?: GatewayEnvironment
+  provider_transaction_id: string | null
+  status: TransactionStatus
+  status_label: string
+  amount: number
+  currency: string
+  attempts: number
+  paid_at: string | null
+  created_at: string
+  events?: TransactionEvent[]
+}
+
+export interface TransactionFilters {
+  status?: TransactionStatus | ''
+  gateway_id?: number | null
+  date_from?: string
+  date_to?: string
+  brand_id?: number | null
+  page?: number
+}
 
 // --- Calendar types ---
 export interface CalendarSchedule { id: string; day_of_week: number; opens_at: string; closes_at: string; is_active: boolean }
@@ -200,6 +307,46 @@ export const adminPanelService = {
 
   disableTwoFactor(): Promise<{ message: string }> {
     return request<{ message: string }>({ url: '/admin/2fa/disable', method: 'POST' })
+  },
+
+  // --- Mi Perfil (self-service del admin autenticado) ---
+  updateAdminProfile(data: { name?: string; email?: string; phone?: string | null }): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile', method: 'PUT', data }).then((r) => r.data)
+  },
+
+  uploadAdminAvatar(file: File): Promise<AdminProfile> {
+    const form = new FormData()
+    form.append('avatar', file)
+    return request<Wrapped<AdminProfile>>({
+      url: '/admin/profile/avatar',
+      method: 'POST',
+      data: form,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+
+  deleteAdminAvatar(): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile/avatar', method: 'DELETE' }).then((r) => r.data)
+  },
+
+  changeAdminPassword(data: { current_password: string; password: string; password_confirmation: string }): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/profile/password', method: 'PUT', data })
+  },
+
+  updateAdminNotifications(settings: Record<string, boolean>): Promise<AdminProfile> {
+    return request<Wrapped<AdminProfile>>({ url: '/admin/profile/notifications', method: 'PUT', data: { settings } }).then((r) => r.data)
+  },
+
+  adminSessions(): Promise<AdminSession[]> {
+    return request<Wrapped<AdminSession[]>>({ url: '/admin/profile/sessions', method: 'GET' }).then((r) => r.data)
+  },
+
+  revokeAdminSession(tokenId: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/profile/sessions/${tokenId}`, method: 'DELETE' })
+  },
+
+  revokeOtherAdminSessions(): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: '/admin/profile/sessions/revoke-others', method: 'POST' })
   },
 
   // --- Users & Roles ---
@@ -243,6 +390,10 @@ export const adminPanelService = {
     return request<{ message: string }>({ url: `/admin/users/${id}/revoke-sessions`, method: 'POST' })
   },
 
+  userSessions(id: number): Promise<AdminSession[]> {
+    return request<Wrapped<AdminSession[]>>({ url: `/admin/users/${id}/sessions`, method: 'GET' }).then((r) => r.data)
+  },
+
   sendPasswordReset(id: number): Promise<{ message: string }> {
     return request<{ message: string }>({ url: `/admin/users/${id}/send-password-reset`, method: 'POST' })
   },
@@ -279,6 +430,18 @@ export const adminPanelService = {
 
   deleteMenu(id: number): Promise<void> {
     return request({ url: `/admin/menus/${id}`, method: 'DELETE' })
+  },
+
+  createMenuItem(menuId: number, data: CmsMenuItemPayload): Promise<CmsMenuItem> {
+    return request<Wrapped<CmsMenuItem>>({ url: `/admin/menus/${menuId}/items`, method: 'POST', data }).then((r) => r.data)
+  },
+
+  updateMenuItem(menuId: number, itemId: number, data: CmsMenuItemPayload): Promise<CmsMenuItem> {
+    return request<Wrapped<CmsMenuItem>>({ url: `/admin/menus/${menuId}/items/${itemId}`, method: 'PUT', data }).then((r) => r.data)
+  },
+
+  deleteMenuItem(menuId: number, itemId: number): Promise<void> {
+    return request({ url: `/admin/menus/${menuId}/items/${itemId}`, method: 'DELETE' })
   },
 
   // --- Banners ---
@@ -408,11 +571,11 @@ export const adminPanelService = {
     return request<Wrapped<ProductOptionLink[]>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'GET' }).then((r) => r.data)
   },
 
-  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; enabled_value_ids?: string[] }): Promise<ProductOptionLink> {
+  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; excluded_value_ids?: string[] }): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateProductOptionLink(productId: string, linkId: string, data: Partial<ProductOptionLink>): Promise<ProductOptionLink> {
+  updateProductOptionLink(productId: string, linkId: string, data: Partial<Pick<ProductOptionLink, 'legend' | 'excluded_value_ids' | 'position'>>): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
@@ -420,12 +583,8 @@ export const adminPanelService = {
     return request({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'DELETE' })
   },
 
-  generatePreviewToken(productId: string): Promise<{ token: string }> {
-    return request<Wrapped<{ token: string }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
-  },
-
-  getPreview(token: string): Promise<Record<string, unknown>> {
-    return request<Wrapped<Record<string, unknown>>>({ url: `/admin/product-builder/preview/${token}`, method: 'GET' }).then((r) => r.data)
+  generatePreviewToken(productId: string): Promise<{ token: string; expires_in_minutes: number }> {
+    return request<Wrapped<{ token: string; expires_in_minutes: number }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
   },
 
   // --- Orders ---
@@ -438,20 +597,51 @@ export const adminPanelService = {
   },
 
   // --- Payments ---
-  gateways(): Promise<PaymentGateway[]> {
-    return request<Wrapped<PaymentGateway[]>>({ url: '/admin/payments/gateways', method: 'GET' }).then((r) => r.data)
+  paymentDrivers(): Promise<GatewayDriver[]> {
+    return request<Wrapped<GatewayDriver[]>>({ url: '/admin/payments/drivers', method: 'GET' }).then((r) => r.data)
   },
 
-  updateGateway(id: string, data: Partial<PaymentGateway>): Promise<PaymentGateway> {
+  paymentGateways(brandId?: number | null): Promise<PaymentGateway[]> {
+    return request<Wrapped<PaymentGateway[]>>({
+      url: '/admin/payments/gateways',
+      method: 'GET',
+      params: brandId != null ? { brand_id: brandId } : undefined,
+    }).then((r) => r.data)
+  },
+
+  createPaymentGateway(data: PaymentGatewayPayload): Promise<PaymentGateway> {
+    return request<Wrapped<PaymentGateway>>({ url: '/admin/payments/gateways', method: 'POST', data }).then((r) => r.data)
+  },
+
+  updatePaymentGateway(id: number, data: PaymentGatewayPayload): Promise<PaymentGateway> {
     return request<Wrapped<PaymentGateway>>({ url: `/admin/payments/gateways/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  payments(): Promise<Paginated<AdminPayment>> {
-    return request<Paginated<AdminPayment>>({ url: '/admin/payments', method: 'GET' })
+  deletePaymentGateway(id: number): Promise<void> {
+    return request({ url: `/admin/payments/gateways/${id}`, method: 'DELETE' })
   },
 
-  retryPayment(id: string): Promise<AdminPayment> {
-    return request<Wrapped<AdminPayment>>({ url: `/admin/payments/${id}/retry`, method: 'POST' }).then((r) => r.data)
+  transactions(filters: TransactionFilters = {}): Promise<Paginated<Transaction>> {
+    const params: Record<string, string | number> = {}
+    if (filters.status) params.status = filters.status
+    if (filters.gateway_id != null) params.gateway_id = filters.gateway_id
+    if (filters.date_from) params.date_from = filters.date_from
+    if (filters.date_to) params.date_to = filters.date_to
+    if (filters.brand_id != null) params.brand_id = filters.brand_id
+    if (filters.page) params.page = filters.page
+    return request<Paginated<Transaction>>({ url: '/admin/payments/transactions', method: 'GET', params })
+  },
+
+  transaction(id: number): Promise<Transaction> {
+    return request<Wrapped<Transaction>>({ url: `/admin/payments/transactions/${id}`, method: 'GET' }).then((r) => r.data)
+  },
+
+  refundTransaction(id: number): Promise<Transaction> {
+    return request<Wrapped<Transaction>>({ url: `/admin/payments/transactions/${id}/refund`, method: 'POST' }).then((r) => r.data)
+  },
+
+  retryTransaction(id: number): Promise<{ message: string }> {
+    return request<{ message: string }>({ url: `/admin/payments/transactions/${id}/retry`, method: 'POST' })
   },
 
   // --- Calendar ---

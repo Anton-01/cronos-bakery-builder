@@ -67,9 +67,16 @@ class LogAdminActivity
      */
     private function sanitize(array $data): array
     {
-        foreach (self::REDACT as $key) {
-            if (array_key_exists($key, $data)) {
+        foreach ($data as $key => $value) {
+            if (in_array($key, self::REDACT, true)) {
                 $data[$key] = '[redacted]';
+            } elseif ($value instanceof \Symfony\Component\HttpFoundation\File\UploadedFile) {
+                // Uploaded binaries are not JSON-encodable; keep a trace only.
+                $data[$key] = '[file: ' . $value->getClientOriginalName() . ']';
+            } elseif (is_array($value)) {
+                $data[$key] = $this->sanitize($value);
+            } elseif (is_object($value)) {
+                $data[$key] = '[object: ' . $value::class . ']';
             }
         }
 

@@ -5,30 +5,29 @@ declare(strict_types=1);
 namespace App\Modules\Payments\Infrastructure\Database\Factories;
 
 use App\Modules\Orders\Domain\Models\Order;
-use App\Modules\Payments\Domain\Enums\GatewayType;
-use App\Modules\Payments\Domain\Enums\PaymentMode;
 use App\Modules\Payments\Domain\Enums\PaymentStatus;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\PaymentGateway;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends Factory<Payment>
+ * @extends Factory<Transaction>
  */
-class PaymentFactory extends Factory
+class TransactionFactory extends Factory
 {
-    protected $model = Payment::class;
+    protected $model = Transaction::class;
 
     public function definition(): array
     {
         return [
+            'brand_id' => null,
             'order_id' => Order::factory(),
-            'gateway' => GatewayType::Stripe->value,
-            'mode' => PaymentMode::Sandbox->value,
+            'payment_gateway_id' => PaymentGateway::factory(),
             'status' => PaymentStatus::Pending->value,
             'amount' => 5000,
             'currency' => 'USD',
-            'reference' => 'ref_' . Str::random(10),
+            'provider_transaction_id' => 'ref_' . Str::random(10),
             'idempotency_key' => (string) Str::uuid(),
             'attempts' => 0,
         ];

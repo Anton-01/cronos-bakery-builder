@@ -6,15 +6,15 @@ namespace App\Modules\Payments\Application\Services;
 
 use App\Modules\Orders\Domain\Models\Order;
 use App\Modules\Payments\Application\DTO\ChargeRequest;
-use App\Modules\Payments\Domain\Enums\GatewayType;
-use App\Modules\Payments\Domain\Models\GatewayConfig;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\PaymentGateway;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Initiates payments through the configured gateway (Strategy), persisting a
- * pending Payment plus a traceable "created" event.
+ * pending Transaction plus a traceable "created" event. The idempotency key
+ * is unique per gateway, so a retried initiation can never double-charge.
  */
 final class PaymentService
 {
@@ -23,53 +23,57 @@ final class PaymentService
     }
 
     /**
-     * @return array{payment: Payment, checkout: array<string, mixed>}
+     * @return array{transaction: Transaction, checkout: array<string, mixed>}
      *
-     * @throws ValidationException when the gateway is not active.
+     * @throws ValidationException when no active gateway exists for the driver.
      */
-    public function initiate(Order $order, GatewayType $gateway): array
+    public function initiate(Order $order, string $driverName): array
     {
-        $config = GatewayConfig::query()
-            ->where('gateway', $gateway->value)
-            ->where('is_active', true)
+        $gateway = PaymentGateway::query()
+            ->active()
+            ->where('driver_name', $driverName)
+            ->orderBy('brand_id') // deterministic: shared (null) gateway first
             ->first();
 
-        if ($config === null) {
+        if ($gateway === null) {
             throw ValidationException::withMessages([
-                'gateway' => ["The {$gateway->label()} gateway is not available."],
+                'gateway' => ["The {$driverName} gateway is not available."],
             ]);
         }
 
-        $strategy = $this->gateways->for($gateway);
+        $strategy = $this->gateways->forGateway($gateway);
         $idempotencyKey = (string) Str::uuid();
 
-        $result = $strategy->createCharge(new ChargeRequest(
+        // Gateway exceptions (timeout / rate limit / provider error) bubble up
+        // as typed exceptions with their own HTTP renderers (504 / 429 / 502).
+        $result = $strategy->processPayment(new ChargeRequest(
             amount: $order->total_amount,
             currency: $order->currency,
             orderNumber: $order->number,
             idempotencyKey: $idempotencyKey,
             customerEmail: $order->user?->email,
-        ), $config);
+        ));
 
-        $payment = Payment::create([
+        $transaction = Transaction::create([
+            'brand_id' => $gateway->brand_id,
             'order_id' => $order->id,
             'user_id' => $order->user_id,
-            'gateway' => $gateway->value,
-            'mode' => $config->mode->value,
-            'status' => $result->status->value,
+            'payment_gateway_id' => $gateway->id,
+            'provider_transaction_id' => $result->reference,
             'amount' => $order->total_amount,
             'currency' => $order->currency,
-            'reference' => $result->reference,
+            'status' => $result->status->value,
+            'raw_response' => $result->raw,
+            'checkout' => $result->checkout,
             'idempotency_key' => $idempotencyKey,
-            'metadata' => $result->checkout,
         ]);
 
-        $payment->events()->create([
+        $transaction->events()->create([
             'type' => 'created',
             'status' => $result->status->value,
             'payload' => $result->raw,
         ]);
 
-        return ['payment' => $payment, 'checkout' => $result->checkout];
+        return ['transaction' => $transaction, 'checkout' => $result->checkout];
     }
 }

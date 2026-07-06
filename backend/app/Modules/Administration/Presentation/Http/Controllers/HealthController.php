@@ -6,7 +6,7 @@ namespace App\Modules\Administration\Presentation\Http\Controllers;
 
 use App\Modules\Notifications\Domain\Models\NotificationLog;
 use App\Modules\Orders\Domain\Models\Order;
-use App\Modules\Payments\Domain\Models\Payment;
+use App\Modules\Payments\Domain\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Cache;
@@ -58,8 +58,8 @@ class HealthController extends Controller
                     'total' => Order::query()->count(),
                 ],
                 'payments' => [
-                    'total' => Payment::query()->count(),
-                    'paid' => Payment::query()->where('status', 'paid')->count(),
+                    'total' => Transaction::query()->count(),
+                    'paid' => Transaction::query()->where('status', 'paid')->count(),
                 ],
                 'notifications' => [
                     'sent' => NotificationLog::query()->where('status', 'sent')->count(),

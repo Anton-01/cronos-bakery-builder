@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Application\Services;
 
-use App\Modules\Payments\Domain\Models\GatewayConfig;
-use App\Modules\Payments\Domain\Models\Payment;
-use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use App\Modules\Payments\Domain\Exceptions\InvalidWebhookSignatureException;
+use App\Modules\Payments\Domain\Models\GatewayWebhookEvent;
+use App\Modules\Payments\Domain\Models\PaymentGateway;
+use App\Modules\Payments\Domain\Models\Transaction;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Handles inbound gateway webhooks: verifies the signature, records the event
- * for traceability and reconciles the payment + order.
+ * Handles inbound gateway webhooks with two enterprise guarantees:
+ *
+ * 1. AUTHENTICITY — the strategy verifies the payload's cryptographic
+ *    signature BEFORE any state change (invalid signature ⇒ 400, no writes).
+ * 2. IDEMPOTENCY — every provider event id is recorded in
+ *    gateway_webhook_events under a unique constraint; duplicate deliveries
+ *    are acknowledged but never reprocessed, even under concurrency.
  */
 final class WebhookService
 {
@@ -25,50 +32,54 @@ final class WebhookService
      * @param  array<string, string>  $headers
      * @return array{handled: bool, status: string}
      *
-     * @throws RuntimeException on invalid signature.
+     * @throws InvalidWebhookSignatureException
      */
-    public function handle(string $gateway, string $payload, array $headers): array
+    public function handle(PaymentGateway $gateway, string $payload, array $headers): array
     {
-        $strategy = $this->gateways->fromString($gateway);
+        $strategy = $this->gateways->forGateway($gateway);
 
-        $config = GatewayConfig::query()->where('gateway', $gateway)->first();
-        if ($config === null) {
-            throw new NotFoundHttpException('Gateway not configured.');
+        // Throws InvalidWebhookSignatureException (→ 400) before touching state.
+        $event = $strategy->handleWebhook($payload, $headers);
+
+        // Idempotency gate: the unique constraint makes concurrent duplicates lose.
+        try {
+            $ledger = GatewayWebhookEvent::query()->create([
+                'payment_gateway_id' => $gateway->id,
+                'provider_event_id' => $event->providerEventId,
+                'event_type' => $event->eventType,
+                'payload' => $event->raw,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            Log::info('payments.webhook.duplicate', [
+                'gateway_id' => $gateway->id,
+                'event_id' => $event->providerEventId,
+            ]);
+
+            return ['handled' => false, 'status' => 'duplicate'];
         }
 
-        $event = $strategy->parseWebhook($payload);
-
-        $payment = Payment::query()
-            ->where('gateway', $gateway)
-            ->where('reference', $event->reference)
+        $transaction = Transaction::query()
+            ->where('payment_gateway_id', $gateway->id)
+            ->where('provider_transaction_id', $event->reference)
             ->first();
 
         // Unknown reference — acknowledge without processing (no record to trace).
-        if ($payment === null) {
+        if ($transaction === null) {
+            $ledger->update(['processed_at' => now()]);
+
             return ['handled' => false, 'status' => 'ignored'];
         }
 
-        $valid = $strategy->verifySignature($payload, $headers, $config);
-
-        if (! $valid) {
-            $payment->events()->create([
-                'type' => 'webhook',
-                'status' => $event->status->value,
-                'signature_valid' => false,
-                'payload' => $event->raw,
-            ]);
-
-            throw new RuntimeException('Invalid webhook signature.');
-        }
-
-        $payment->events()->create([
+        $transaction->events()->create([
             'type' => 'webhook',
             'status' => $event->status->value,
             'signature_valid' => true,
             'payload' => $event->raw,
         ]);
 
-        $this->reconciliation->applyStatus($payment, $event->status, 'reconciled', $event->raw);
+        $this->reconciliation->applyStatus($transaction, $event->status, 'reconciled', $event->raw);
+
+        $ledger->update(['processed_at' => now()]);
 
         return ['handled' => true, 'status' => $event->status->value];
     }

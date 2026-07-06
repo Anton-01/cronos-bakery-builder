@@ -6,9 +6,10 @@ namespace App\Modules\ProductBuilder\Presentation\Http\Controllers\Admin;
 
 use App\Modules\ProductBuilder\Domain\Models\Product;
 use App\Modules\ProductBuilder\Domain\Models\ProductOptionLink;
+use App\Modules\ProductBuilder\Presentation\Http\Requests\StoreProductOptionLinkRequest;
+use App\Modules\ProductBuilder\Presentation\Http\Requests\UpdateProductOptionLinkRequest;
 use App\Modules\ProductBuilder\Presentation\Http\Resources\ProductOptionLinkResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 
@@ -24,15 +25,9 @@ class ProductOptionLinkController extends Controller
         return ProductOptionLinkResource::collection($links);
     }
 
-    public function store(Request $request, Product $product): JsonResponse
+    public function store(StoreProductOptionLinkRequest $request, Product $product): JsonResponse
     {
-        $data = $request->validate([
-            'template_id' => ['required', 'uuid', 'exists:pb_option_templates,id'],
-            'legend' => ['nullable', 'string'],
-            'enabled_value_ids' => ['nullable', 'array'],
-            'enabled_value_ids.*' => ['uuid'],
-            'position' => ['integer'],
-        ]);
+        $data = $request->validated();
 
         // Prevent duplicate links.
         $exists = $product->optionLinks()
@@ -52,16 +47,9 @@ class ProductOptionLinkController extends Controller
         return (new ProductOptionLinkResource($link))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(Request $request, Product $product, ProductOptionLink $link): ProductOptionLinkResource
+    public function update(UpdateProductOptionLinkRequest $request, Product $product, ProductOptionLink $link): ProductOptionLinkResource
     {
-        $data = $request->validate([
-            'legend' => ['nullable', 'string'],
-            'enabled_value_ids' => ['nullable', 'array'],
-            'enabled_value_ids.*' => ['uuid'],
-            'position' => ['integer'],
-        ]);
-
-        $link->update($data);
+        $link->update($request->validated());
         $link->load('template.values');
 
         return new ProductOptionLinkResource($link);
