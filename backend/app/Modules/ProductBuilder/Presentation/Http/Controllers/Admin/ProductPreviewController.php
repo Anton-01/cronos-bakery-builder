@@ -22,7 +22,7 @@ class ProductPreviewController extends Controller
      * Admin-only: mints a short-lived token so the product can be viewed on
      * the public storefront (new tab) even while in draft.
      */
-    public function generateToken(string $product): JsonResponse
+    public function generateToken(int $product): JsonResponse
     {
         $this->service->get($product); // 404 if the product does not exist
 

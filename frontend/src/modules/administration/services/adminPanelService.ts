@@ -78,7 +78,36 @@ export interface AdminSession {
 // Page/block types live in `@/modules/cms/types` (brand-aware page builder).
 
 // --- Theme types ---
-export interface Theme { id: number; name: string; is_active: boolean; settings: Record<string, unknown> }
+export interface ThemeColorPalette {
+  primary?: string; secondary?: string; accent?: string
+  background?: string; surface?: string; text?: string
+}
+export interface ThemeTypography {
+  heading_font?: string; body_font?: string
+  heading_weight?: string; body_weight?: string
+  base_font_size?: number
+}
+export interface ThemeLayoutConfig {
+  header_sticky?: boolean; footer_expanded?: boolean
+  container_width?: 'boxed' | 'wide' | 'full'
+  show_breadcrumbs?: boolean; product_grid_columns?: number
+}
+export interface ThemeCustomScripts { head?: string; body_start?: string; body_end?: string }
+export interface Theme {
+  id: number
+  name: string
+  is_active: boolean
+  logo?: string | null
+  favicon?: string | null
+  colors?: Record<string, string>
+  fonts?: Record<string, string>
+  color_palette?: ThemeColorPalette | null
+  typography_settings?: ThemeTypography | null
+  layout_config?: ThemeLayoutConfig | null
+  custom_scripts?: ThemeCustomScripts | null
+  footer?: Record<string, unknown> | null
+  settings: Record<string, unknown> | null
+}
 export interface CmsMenu { id: number; name: string; location: string; is_active?: boolean; items: CmsMenuItem[] }
 export interface CmsMenuItem {
   id: number
@@ -108,7 +137,7 @@ export interface AdminAttributeValue { id: number; label: string; value: string;
 
 // --- Product Builder types ---
 export interface ProductImage {
-  id: string
+  id: number
   path: string
   name: string | null
   alt_text: string | null
@@ -116,7 +145,7 @@ export interface ProductImage {
 }
 
 export interface AdminProduct {
-  id: string
+  id: number
   name: string
   slug: string
   description: string | null
@@ -137,7 +166,7 @@ export interface AdminProductDetail extends AdminProduct {
 export type PbOptionType = 'select' | 'radio' | 'checkbox' | 'color' | 'image' | 'text' | 'textarea'
 
 export interface PbOptionValue {
-  id: string
+  id: number
   label: string
   value: string
   price_modifier_type: 'none' | 'add' | 'subtract' | 'set'
@@ -148,8 +177,8 @@ export interface PbOptionValue {
 }
 
 export interface PbOption {
-  id: string
-  product_id: string
+  id: number
+  product_id: number
   key: string
   label: string
   type: PbOptionType
@@ -162,8 +191,8 @@ export interface PbOption {
 
 // --- Option Templates (global, independent of products) ---
 export interface OptionTemplateValue {
-  id: string
-  template_id: string
+  id: number
+  template_id: number
   label: string
   value: string
   price_modifier_type: 'none' | 'add' | 'subtract' | 'set'
@@ -174,7 +203,7 @@ export interface OptionTemplateValue {
 }
 
 export interface OptionTemplate {
-  id: string
+  id: number
   key: string
   label: string
   type: PbOptionType
@@ -187,12 +216,12 @@ export interface OptionTemplate {
 
 // --- Product-Option Links ---
 export interface ProductOptionLink {
-  id: string
-  product_id: string
-  template_id: string
+  id: number
+  product_id: number
+  template_id: number
   legend: string | null
   /** IDs de valores de la plantilla EXCLUIDOS para este producto (null/[] = hereda todos). */
-  excluded_value_ids: string[] | null
+  excluded_value_ids: number[] | null
   position: number
   template?: OptionTemplate
   /** Valores efectivos (con exclusiones aplicadas) — lo que ve el storefront. */
@@ -415,6 +444,10 @@ export const adminPanelService = {
     return request<Wrapped<Theme>>({ url: `/admin/themes/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
+  activateTheme(id: number): Promise<Theme> {
+    return request<Wrapped<Theme>>({ url: `/admin/themes/${id}/activate`, method: 'PUT' }).then((r) => r.data)
+  },
+
   // --- Menus ---
   menus(): Promise<CmsMenu[]> {
     return request<Wrapped<CmsMenu[]>>({ url: '/admin/menus', method: 'GET' }).then((r) => r.data)
@@ -485,55 +518,55 @@ export const adminPanelService = {
     return request<Wrapped<AdminProduct>>({ url: '/admin/product-builder/products', method: 'POST', data }).then((r) => r.data)
   },
 
-  updateProduct(id: string, data: Partial<AdminProduct>): Promise<AdminProduct> {
+  updateProduct(id: number | string, data: Partial<AdminProduct>): Promise<AdminProduct> {
     return request<Wrapped<AdminProduct>>({ url: `/admin/product-builder/products/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  showProduct(id: string): Promise<AdminProductDetail> {
+  showProduct(id: number | string): Promise<AdminProductDetail> {
     return request<Wrapped<AdminProductDetail>>({ url: `/admin/product-builder/products/${id}`, method: 'GET' }).then((r) => r.data)
   },
 
-  deleteProduct(id: string): Promise<void> {
+  deleteProduct(id: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${id}`, method: 'DELETE' })
   },
 
-  uploadProductImage(productId: string, file: File, field: 'image' | 'gallery' = 'image'): Promise<AdminProductDetail> {
+  uploadProductImage(productId: number | string, file: File, field: 'image' | 'gallery' = 'image'): Promise<AdminProductDetail> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('field', field)
     return request<Wrapped<AdminProductDetail>>({ url: `/admin/product-builder/products/${productId}/images`, method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data)
   },
 
-  updateProductImage(productId: string, imageId: string, data: { name?: string; alt_text?: string }): Promise<ProductImage> {
+  updateProductImage(productId: number | string, imageId: number | string, data: { name?: string; alt_text?: string }): Promise<ProductImage> {
     return request<Wrapped<ProductImage>>({ url: `/admin/product-builder/products/${productId}/images/${imageId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteProductImage(productId: string, imageId: string): Promise<void> {
+  deleteProductImage(productId: number | string, imageId: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/images/${imageId}`, method: 'DELETE' })
   },
 
   // --- Options (per product) ---
-  createOption(productId: string, data: Partial<PbOption>): Promise<PbOption> {
+  createOption(productId: number | string, data: Partial<PbOption>): Promise<PbOption> {
     return request<Wrapped<PbOption>>({ url: `/admin/product-builder/products/${productId}/options`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateOption(productId: string, optionId: string, data: Partial<PbOption>): Promise<PbOption> {
+  updateOption(productId: number | string, optionId: number | string, data: Partial<PbOption>): Promise<PbOption> {
     return request<Wrapped<PbOption>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteOption(productId: string, optionId: string): Promise<void> {
+  deleteOption(productId: number | string, optionId: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/options/${optionId}`, method: 'DELETE' })
   },
 
-  createOptionValue(productId: string, optionId: string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
+  createOptionValue(productId: number | string, optionId: number | string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
     return request<Wrapped<PbOptionValue>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateOptionValue(productId: string, optionId: string, valueId: string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
+  updateOptionValue(productId: number | string, optionId: number | string, valueId: number | string, data: Partial<PbOptionValue>): Promise<PbOptionValue> {
     return request<Wrapped<PbOptionValue>>({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values/${valueId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteOptionValue(productId: string, optionId: string, valueId: string): Promise<void> {
+  deleteOptionValue(productId: number | string, optionId: number | string, valueId: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/options/${optionId}/values/${valueId}`, method: 'DELETE' })
   },
 
@@ -546,44 +579,44 @@ export const adminPanelService = {
     return request<Wrapped<OptionTemplate>>({ url: '/admin/product-builder/option-templates', method: 'POST', data }).then((r) => r.data)
   },
 
-  updateOptionTemplate(id: string, data: Partial<OptionTemplate>): Promise<OptionTemplate> {
+  updateOptionTemplate(id: number | string, data: Partial<OptionTemplate>): Promise<OptionTemplate> {
     return request<Wrapped<OptionTemplate>>({ url: `/admin/product-builder/option-templates/${id}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteOptionTemplate(id: string): Promise<void> {
+  deleteOptionTemplate(id: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/option-templates/${id}`, method: 'DELETE' })
   },
 
-  createTemplateValue(templateId: string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
+  createTemplateValue(templateId: number | string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
     return request<Wrapped<OptionTemplateValue>>({ url: `/admin/product-builder/option-templates/${templateId}/values`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateTemplateValue(templateId: string, valueId: string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
+  updateTemplateValue(templateId: number | string, valueId: number | string, data: Partial<OptionTemplateValue>): Promise<OptionTemplateValue> {
     return request<Wrapped<OptionTemplateValue>>({ url: `/admin/product-builder/option-templates/${templateId}/values/${valueId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteTemplateValue(templateId: string, valueId: string): Promise<void> {
+  deleteTemplateValue(templateId: number | string, valueId: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/option-templates/${templateId}/values/${valueId}`, method: 'DELETE' })
   },
 
   // --- Product-Option Links ---
-  productOptionLinks(productId: string): Promise<ProductOptionLink[]> {
+  productOptionLinks(productId: number | string): Promise<ProductOptionLink[]> {
     return request<Wrapped<ProductOptionLink[]>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'GET' }).then((r) => r.data)
   },
 
-  createProductOptionLink(productId: string, data: { template_id: string; legend?: string; excluded_value_ids?: string[] }): Promise<ProductOptionLink> {
+  createProductOptionLink(productId: number | string, data: { template_id: number; legend?: string; excluded_value_ids?: number[] }): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links`, method: 'POST', data }).then((r) => r.data)
   },
 
-  updateProductOptionLink(productId: string, linkId: string, data: Partial<Pick<ProductOptionLink, 'legend' | 'excluded_value_ids' | 'position'>>): Promise<ProductOptionLink> {
+  updateProductOptionLink(productId: number | string, linkId: number | string, data: Partial<Pick<ProductOptionLink, 'legend' | 'excluded_value_ids' | 'position'>>): Promise<ProductOptionLink> {
     return request<Wrapped<ProductOptionLink>>({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'PUT', data }).then((r) => r.data)
   },
 
-  deleteProductOptionLink(productId: string, linkId: string): Promise<void> {
+  deleteProductOptionLink(productId: number | string, linkId: number | string): Promise<void> {
     return request({ url: `/admin/product-builder/products/${productId}/option-links/${linkId}`, method: 'DELETE' })
   },
 
-  generatePreviewToken(productId: string): Promise<{ token: string; expires_in_minutes: number }> {
+  generatePreviewToken(productId: number | string): Promise<{ token: string; expires_in_minutes: number }> {
     return request<Wrapped<{ token: string; expires_in_minutes: number }>>({ url: `/admin/product-builder/products/${productId}/preview-token`, method: 'POST' }).then((r) => r.data)
   },
 

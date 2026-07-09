@@ -42,6 +42,8 @@ const navSections = [
       { label: 'CMS', to: '/admin/cms', icon: 'pi pi-file-edit' },
       { label: 'Menus', to: '/admin/menus', icon: 'pi pi-bars' },
       { label: 'Theme Builder', to: '/admin/theme', icon: 'pi pi-palette' },
+      { label: 'Medios', to: '/admin/media', icon: 'pi pi-images' },
+      { label: 'Tipos de Archivo', to: '/admin/file-types', icon: 'pi pi-file-check' },
     ],
   },
   {

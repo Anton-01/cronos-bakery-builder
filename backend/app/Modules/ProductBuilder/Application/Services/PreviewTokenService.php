@@ -19,7 +19,7 @@ final class PreviewTokenService
 
     public const TTL_MINUTES = 30;
 
-    public function mint(string $productId): string
+    public function mint(int $productId): string
     {
         $token = Str::random(64);
         Cache::put(self::CACHE_PREFIX.$token, $productId, now()->addMinutes(self::TTL_MINUTES));
@@ -28,7 +28,7 @@ final class PreviewTokenService
     }
 
     /** Product id the token grants access to, or null if expired/invalid. */
-    public function resolve(?string $token): ?string
+    public function resolve(?string $token): ?int
     {
         if ($token === null || $token === '') {
             return null;
@@ -36,6 +36,6 @@ final class PreviewTokenService
 
         $productId = Cache::get(self::CACHE_PREFIX.$token);
 
-        return is_string($productId) ? $productId : null;
+        return is_numeric($productId) ? (int) $productId : null;
     }
 }

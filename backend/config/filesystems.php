@@ -20,6 +20,10 @@ return [
     // Disk for user/admin avatars: "public" locally, "s3" (MinIO) in prod.
     'avatar_disk' => env('AVATAR_DISK', 'public'),
 
+    // Disco de la Media Library (mismo criterio que avatar_disk:
+    // "public" en local, "s3" = MinIO en despliegue).
+    'media_disk' => env('MEDIA_DISK', 'public'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

@@ -15,19 +15,40 @@ class StoreProductOptionLinkRequest extends FormRequest
     }
 
     /**
+     * Normalize incoming IDs to integers before validation so the exists
+     * checks compare against the identity PKs consistently.
+     */
+    protected function prepareForValidation(): void
+    {
+        $excluded = $this->input('excluded_value_ids');
+
+        $this->merge([
+            'template_id' => is_numeric($this->input('template_id'))
+                ? (int) $this->input('template_id')
+                : $this->input('template_id'),
+            'excluded_value_ids' => is_array($excluded)
+                ? array_values(array_map(
+                    static fn ($id) => is_numeric($id) ? (int) $id : $id,
+                    $excluded,
+                ))
+                : $excluded,
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'template_id' => ['required', 'uuid', 'exists:pb_option_templates,id'],
+            'template_id' => ['required', 'integer', 'exists:pb_option_templates,id'],
             'legend' => ['nullable', 'string'],
             'excluded_value_ids' => ['nullable', 'array'],
             'excluded_value_ids.*' => [
-                'uuid',
+                'integer',
                 // Each excluded value must belong to the template being linked.
                 Rule::exists('pb_option_template_values', 'id')
-                    ->where('template_id', $this->input('template_id')),
+                    ->where('template_id', (int) $this->input('template_id')),
             ],
             'position' => ['integer'],
         ];

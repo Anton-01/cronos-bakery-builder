@@ -10,6 +10,7 @@ use App\Modules\Administration\Infrastructure\Database\Seeders\RolesAndPermissio
 use App\Modules\Authentication\Domain\Models\User;
 use App\Modules\Calendar\Infrastructure\Database\Seeders\CalendarSeeder;
 use App\Modules\Catalog\Infrastructure\Database\Seeders\CatalogTaxonomySeeder;
+use App\Modules\CMS\Infrastructure\Database\Seeders\AllowedFileTypesSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\CmsContentSeeder;
 use App\Modules\CMS\Infrastructure\Database\Seeders\ThemeBuilderSeeder;
 use App\Modules\Notifications\Infrastructure\Database\Seeders\NotificationSeeder;
@@ -30,6 +31,7 @@ class DatabaseSeeder extends Seeder
         $this->command->comment('Loading Roles and Permissions ...');
         $this->call(RolesAndPermissionsSeeder::class);
 
+        $this->call(AllowedFileTypesSeeder::class);
         $this->call(CmsContentSeeder::class);
         $this->call(ThemeBuilderSeeder::class);
         $this->call(ProductBuilderSeeder::class);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\ProductBuilder\Domain\Models;
 
 use App\Modules\ProductBuilder\Domain\Enums\PriceModifierType;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A selectable value belonging to a global option template, optionally
  * carrying a price modifier (add / subtract / set) and presentation metadata.
  *
- * @property string $id
- * @property string $template_id
+ * @property int $id
+ * @property int $template_id
  * @property string $label
  * @property string $value
  * @property PriceModifierType $price_modifier_type
@@ -25,8 +24,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OptionTemplateValue extends Model
 {
-    use HasUuids;
-
     protected $table = 'pb_option_template_values';
 
     protected $fillable = [

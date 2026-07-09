@@ -1,7 +1,9 @@
 import { onBeforeUnmount, ref } from 'vue'
 import type { ProductImage } from '../services/adminPanelService'
 
-export interface GalleryImage extends ProductImage {
+export interface GalleryImage extends Omit<ProductImage, 'id'> {
+    /** number = imagen persistida; string "new-*" = pendiente de subir. */
+    id: number | string
     _file?: File
     _preview?: string
 }

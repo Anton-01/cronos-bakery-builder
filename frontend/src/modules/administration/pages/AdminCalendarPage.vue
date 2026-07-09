@@ -468,7 +468,7 @@ onMounted(() => {
           </div>
           <div class="add-form__field">
             <label>Max</label>
-            <InputNumber v-model="newSlot.max_orders" :min="1" style="width:80px;" inputStyle="width:80px;" size="small" />
+            <InputNumber v-model="newSlot.max_orders" :min="1" style="width:80px;" :inputStyle="{ width: '80px' }" size="small" />
           </div>
           <Button label="Agregar" icon="pi pi-plus" size="small" style="align-self:flex-end;" @click="createSlot" />
         </div>

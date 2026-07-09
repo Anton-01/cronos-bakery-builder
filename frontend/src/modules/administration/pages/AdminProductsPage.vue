@@ -8,7 +8,6 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
-import Image from 'primevue/image'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 
@@ -216,7 +215,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown) })
     </Card>
 
     <!-- Lightbox dialog -->
-    <Dialog v-model:visible="lightboxImage" modal :showHeader="false" :style="{ background: 'transparent', boxShadow: 'none' }" contentStyle="background:rgba(0,0,0,0.88); padding:2rem; border-radius:12px; position:relative;" @hide="closeLightbox">
+    <Dialog :visible="!!lightboxImage" modal :showHeader="false" @update:visible="(v: boolean) => { if (!v) closeLightbox() }" :style="{ background: 'transparent', boxShadow: 'none' }" contentStyle="background:rgba(0,0,0,0.88); padding:2rem; border-radius:12px; position:relative;" @hide="closeLightbox">
       <Button icon="pi pi-times" rounded text :style="{ position:'absolute', top:'1rem', right:'1rem', color:'#fff', background:'rgba(255,255,255,0.15)' }" @click="closeLightbox" />
       <div style="display:flex; flex-direction:column; align-items:center;">
         <img :src="lightboxImage!" :alt="lightboxProduct?.name" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:10px;" />

@@ -12,7 +12,7 @@ export type RuleOperator = 'equals' | 'not_equals' | 'in'
 export type RuleAction = 'show' | 'hide'
 
 export interface OptionValue {
-  id: string
+  id: number
   label: string
   value: string
   price_modifier: { type: PriceModifierType; amount: number }
@@ -22,7 +22,7 @@ export interface OptionValue {
 }
 
 export interface ConfigOption {
-  id: string
+  id: number
   key: string
   label: string
   type: OptionType
@@ -34,9 +34,9 @@ export interface ConfigOption {
 }
 
 export interface OptionRule {
-  id: string
-  option_id: string
-  depends_on_option_id: string
+  id: number
+  option_id: number
+  depends_on_option_id: number
   operator: RuleOperator
   value: string
   action: RuleAction
@@ -44,7 +44,7 @@ export interface OptionRule {
 }
 
 export interface ConfigurableProduct {
-  id: string
+  id: number
   name: string
   slug: string
   description: string | null

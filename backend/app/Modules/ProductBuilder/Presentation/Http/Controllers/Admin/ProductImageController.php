@@ -14,7 +14,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ProductImageController extends Controller
 {
-    public function store(Request $request, string $product): JsonResponse
+    public function store(Request $request, int $product): JsonResponse
     {
         $request->validate([
             'file' => ['required', 'image', 'max:5120'],
@@ -55,7 +55,7 @@ class ProductImageController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $product, string $image): JsonResponse
+    public function update(Request $request, int $product, int $image): JsonResponse
     {
         $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
@@ -71,7 +71,7 @@ class ProductImageController extends Controller
         return response()->json(['data' => $img->refresh()]);
     }
 
-    public function destroy(string $product, string $image): JsonResponse
+    public function destroy(int $product, int $image): JsonResponse
     {
         $img = ProductImage::query()
             ->where('product_id', $product)

@@ -8,11 +8,12 @@ import { ordersRoutes } from '@/modules/orders/routes'
 import { paymentsRoutes } from '@/modules/payments/routes'
 import { calendarRoutes } from '@/modules/calendar/routes'
 import { notificationsRoutes } from '@/modules/notifications/routes'
-import { administrationRoutes } from '@/modules/administration/routes'
 
 /**
- * Each feature module owns and exports its own route table. The router simply
- * composes them, keeping navigation concerns decoupled from the shell.
+ * Router EXCLUSIVO del Storefront (entry `src/entries/storefront.ts`).
+ * No conoce ninguna ruta del panel admin: el admin vive en un entry point
+ * físicamente separado (`admin.html`) con su propio router, de modo que ni
+ * el CSS ni el JS de una interfaz se inyectan en la otra.
  */
 const routes: RouteRecordRaw[] = [
   {
@@ -28,7 +29,6 @@ const routes: RouteRecordRaw[] = [
   ...paymentsRoutes,
   ...calendarRoutes,
   ...notificationsRoutes,
-  ...administrationRoutes,
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
@@ -41,15 +41,10 @@ const router = createRouter({
   routes,
 })
 
-// Auth guard — routes flag protection via `meta.requiresAuth` (customers) or
-// `meta.requiresAdmin` (independent admin guard).
+// Guard del cliente — el admin tiene su propio guard en router/admin.ts.
 router.beforeEach((to) => {
   if (to.meta.requiresAuth && !localStorage.getItem('auth_token')) {
     return { name: 'auth.login', query: { redirect: to.fullPath } }
-  }
-
-  if (to.meta.requiresAdmin && !localStorage.getItem('admin_token')) {
-    return { name: 'admin.login', query: { redirect: to.fullPath } }
   }
 })
 

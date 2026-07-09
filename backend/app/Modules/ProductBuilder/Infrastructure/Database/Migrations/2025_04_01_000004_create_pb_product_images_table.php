@@ -10,15 +10,14 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('pb_product_images', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('product_id');
+            $table->id();
+            $table->foreignId('product_id')->constrained('pb_products')->cascadeOnDelete();
             $table->string('path');
             $table->string('name')->nullable();
             $table->string('alt_text')->nullable();
             $table->unsignedInteger('position')->default(0);
             $table->timestamps();
 
-            $table->foreign('product_id')->references('id')->on('pb_products')->cascadeOnDelete();
             $table->index(['product_id', 'position']);
         });
     }

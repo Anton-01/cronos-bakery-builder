@@ -25,7 +25,12 @@ class ThemeResource extends JsonResource
             'favicon' => $this->favicon_path,
             'colors' => $this->colors,
             'fonts' => $this->fonts,
+            'color_palette' => $this->color_palette,
+            'typography_settings' => $this->typography_settings,
+            'layout_config' => $this->layout_config,
+            'custom_scripts' => $this->custom_scripts,
             'footer' => $this->footer,
+            'settings' => $this->settings,
             'is_active' => $this->is_active,
         ];
     }

@@ -13,20 +13,20 @@ const props = defineProps<{
   isEdit: boolean
   optionLinks: MappedOptionLink[]
   showAddOption: boolean
-  addOptionTemplateId: string
+  addOptionTemplateId: number | null
   availableTemplates: OptionTemplate[]
-  expandedLinks: Set<string>
+  expandedLinks: Set<number>
   getOptionTypeLabel: (type: string) => string
-  isValueEnabled: (link: MappedOptionLink, valueId: string) => boolean
+  isValueEnabled: (link: MappedOptionLink, valueId: number) => boolean
 }>()
 
 defineEmits<{
   'update:showAddOption': [val: boolean]
-  'update:addOptionTemplateId': [val: string]
-  'toggle-expand': [id: string]
+  'update:addOptionTemplateId': [val: number | null]
+  'toggle-expand': [id: number]
   'open-legend': [link: MappedOptionLink]
   'remove-link': [link: MappedOptionLink]
-  'toggle-value': [link: MappedOptionLink, valueId: string]
+  'toggle-value': [link: MappedOptionLink, valueId: number]
   'add-link': []
 }>()
 
@@ -63,7 +63,7 @@ const templateOptions = computed(() =>
         <div v-if="showAddOption" class="option-link-add">
           <Select
             :modelValue="addOptionTemplateId"
-            :options="[{ label: 'Selecciona una opción...', value: '' }, ...templateOptions]"
+            :options="[{ label: 'Selecciona una opción...', value: null }, ...templateOptions]"
             optionLabel="label"
             optionValue="value"
             fluid
@@ -81,7 +81,7 @@ const templateOptions = computed(() =>
               size="small"
               severity="secondary"
               outlined
-              @click="$emit('update:showAddOption', false); $emit('update:addOptionTemplateId', '')"
+              @click="$emit('update:showAddOption', false); $emit('update:addOptionTemplateId', null)"
             />
           </div>
         </div>

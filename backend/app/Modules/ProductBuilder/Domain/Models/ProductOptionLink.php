@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\ProductBuilder\Domain\Models;
 
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,17 +16,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * product hides. null / [] means the product inherits every template value,
  * including values added to the template after the link was created.
  *
- * @property string $id
- * @property string $product_id
- * @property string $template_id
+ * @property int $id
+ * @property int $product_id
+ * @property int $template_id
  * @property string|null $legend
- * @property array<int, string>|null $excluded_value_ids
+ * @property array<int, int>|null $excluded_value_ids
  * @property int $position
  */
 class ProductOptionLink extends Model
 {
-    use HasUuids;
-
     protected $table = 'pb_product_option_links';
 
     protected $fillable = [
@@ -59,9 +56,11 @@ class ProductOptionLink extends Model
         return $this->belongsTo(OptionTemplate::class, 'template_id');
     }
 
-    public function isValueExcluded(string $valueId): bool
+    public function isValueExcluded(int $valueId): bool
     {
-        return in_array($valueId, $this->excluded_value_ids ?? [], true);
+        $excluded = array_map(intval(...), $this->excluded_value_ids ?? []);
+
+        return in_array($valueId, $excluded, true);
     }
 
     /**
@@ -74,7 +73,7 @@ class ProductOptionLink extends Model
         $values = $this->template?->values ?? new Collection();
 
         return $values
-            ->reject(fn (OptionTemplateValue $value): bool => $this->isValueExcluded((string) $value->id))
+            ->reject(fn (OptionTemplateValue $value): bool => $this->isValueExcluded((int) $value->id))
             ->values();
     }
 }

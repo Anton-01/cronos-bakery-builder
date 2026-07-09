@@ -96,7 +96,7 @@ async function toggleEnvironment(gateway: PaymentGateway): Promise<void> {
     const ok = await confirm({
       title: 'Cambiar a Producción',
       message: `"${gateway.name}" empezará a operar con dinero real usando las credenciales configuradas. ¿Continuar?`,
-      action: 'confirm',
+      action: 'warning',
       confirmText: 'Cambiar a Producción',
     })
     if (!ok) return

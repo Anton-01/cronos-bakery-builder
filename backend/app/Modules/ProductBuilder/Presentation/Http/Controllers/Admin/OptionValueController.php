@@ -16,7 +16,7 @@ class OptionValueController extends Controller
     {
     }
 
-    public function store(StoreOptionValueRequest $request, string $product, string $option): JsonResponse
+    public function store(StoreOptionValueRequest $request, int $product, int $option): JsonResponse
     {
         $value = $this->service->addValue($product, $option, $request->validated());
 
@@ -25,14 +25,14 @@ class OptionValueController extends Controller
 
     public function update(
         StoreOptionValueRequest $request,
-        string $product,
-        string $option,
-        string $value,
+        int $product,
+        int $option,
+        int $value,
     ): OptionValueResource {
         return new OptionValueResource($this->service->updateValue($product, $option, $value, $request->validated()));
     }
 
-    public function destroy(string $product, string $option, string $value): JsonResponse
+    public function destroy(int $product, int $option, int $value): JsonResponse
     {
         $this->service->deleteValue($product, $option, $value);
 

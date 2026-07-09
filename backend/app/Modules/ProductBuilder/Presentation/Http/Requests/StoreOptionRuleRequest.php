@@ -22,12 +22,13 @@ class StoreOptionRuleRequest extends FormRequest
     public function rules(): array
     {
         $product = $this->route('product');
+        $productId = is_numeric($product) ? (int) $product : $product?->id;
 
-        $belongsToProduct = Rule::exists('pb_options', 'id')->where('product_id', $product);
+        $belongsToProduct = Rule::exists('pb_options', 'id')->where('product_id', $productId);
 
         return [
-            'option_id' => ['required', 'uuid', $belongsToProduct],
-            'depends_on_option_id' => ['required', 'uuid', 'different:option_id', $belongsToProduct],
+            'option_id' => ['required', 'integer', $belongsToProduct],
+            'depends_on_option_id' => ['required', 'integer', 'different:option_id', $belongsToProduct],
             'operator' => ['required', Rule::enum(RuleOperator::class)],
             'value' => ['required', 'string', 'max:255'],
             'action' => ['required', Rule::enum(RuleAction::class)],

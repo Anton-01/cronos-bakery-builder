@@ -40,6 +40,34 @@ class ThemeBuilderSeeder extends Seeder
                 'heading' => 'Playfair Display',
                 'body' => 'Inter',
             ],
+            // --- Theme Builder PRO (JSONB) ---------------------------------
+            'color_palette' => [
+                'primary' => '#b8693d',
+                'secondary' => '#2c2420',
+                'accent' => '#e0a458',
+                'background' => '#ffffff',
+                'surface' => '#fdf5f0',
+                'text' => '#4a4a4a',
+            ],
+            'typography_settings' => [
+                'heading_font' => 'Playfair Display',
+                'body_font' => 'Inter',
+                'heading_weight' => '600',
+                'body_weight' => '400',
+                'base_font_size' => 14,
+            ],
+            'layout_config' => [
+                'header_sticky' => true,
+                'footer_expanded' => true,
+                'container_width' => 'boxed',
+                'show_breadcrumbs' => true,
+                'product_grid_columns' => 3,
+            ],
+            'custom_scripts' => [
+                'head' => '',
+                'body_start' => '',
+                'body_end' => '',
+            ],
             'footer' => [
                 'columns' => [
                     ['title' => 'Cronos Bakery', 'links' => [

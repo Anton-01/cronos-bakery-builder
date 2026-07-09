@@ -1,16 +1,17 @@
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { adminPanelService } from '../services/adminPanelService'
 
 /**
  * "Ver como usuario": solicita un token temporal al API y abre el storefront
- * público (`builder.preview`) en una pestaña nueva. La pestaña no necesita
- * sesión de admin — el token es la única credencial y expira solo.
+ * público (`/builder/preview/:token`) en una pestaña nueva. La pestaña no
+ * necesita sesión de admin — el token es la única credencial y expira solo.
+ *
+ * La URL se construye a mano: el storefront vive en un entry point separado
+ * (index.html) y su ruta `builder.preview` NO existe en el router del admin.
  */
 export function useProductPreview(productId: () => string | undefined) {
     const { error } = useToast()
-    const router = useRouter()
 
     const previewLoading = ref(false)
 
@@ -24,7 +25,7 @@ export function useProductPreview(productId: () => string | undefined) {
         previewLoading.value = true
         try {
             const { token } = await adminPanelService.generatePreviewToken(pid)
-            const url = router.resolve({ name: 'builder.preview', params: { token } }).href
+            const url = `${import.meta.env.BASE_URL}builder/preview/${encodeURIComponent(token)}`
             if (win) {
                 win.location.href = url
             } else {

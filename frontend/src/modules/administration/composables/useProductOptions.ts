@@ -48,11 +48,11 @@ export function useProductOptions(
     const optionLinks = ref<MappedOptionLink[]>([])
     const allTemplates = ref<OptionTemplate[]>([])
     const showAddOption = ref(false)
-    const addOptionTemplateId = ref('')
-    const expandedLinks = ref<Set<string>>(new Set())
+    const addOptionTemplateId = ref<number | null>(null)
+    const expandedLinks = ref<Set<number>>(new Set())
 
     const legendModal = ref(false)
-    const legendLinkId = ref<string | null>(null)
+    const legendLinkId = ref<number | null>(null)
     const legendOriginal = ref<string | null>(null)
 
     const availableTemplates = computed(() => {
@@ -79,11 +79,11 @@ export function useProductOptions(
         return map[type] ?? type
     }
 
-    function isValueEnabled(link: ProductOptionLink, valueId: string): boolean {
+    function isValueEnabled(link: ProductOptionLink, valueId: number): boolean {
         return !(link.excluded_value_ids ?? []).includes(valueId)
     }
 
-    function toggleLinkExpand(linkId: string) {
+    function toggleLinkExpand(linkId: number) {
         if (expandedLinks.value.has(linkId)) {
             expandedLinks.value.delete(linkId)
         } else {
@@ -103,10 +103,16 @@ export function useProductOptions(
         legendLinkId.value = null
     }
 
-    function resolveTemplateId(link: MappedOptionLink): string | null {
-        if (!link._mapped) return link.template_id
-        const tpl = allTemplates.value.find((t) => t.key === link.template?.key)
-        return tpl?.id ?? null
+    /**
+     * Un link `_mapped` proviene de las opciones legacy embebidas en el
+     * producto (`pb_options`), no de un vínculo real con plantilla. La
+     * plantilla global equivalente se resuelve por `key`.
+     */
+    function resolveTemplate(link: MappedOptionLink): OptionTemplate | null {
+        if (!link._mapped) {
+            return allTemplates.value.find((t) => t.id === link.template_id) ?? link.template ?? null
+        }
+        return allTemplates.value.find((t) => t.key === link.template?.key) ?? null
     }
 
     async function saveLegend() {
@@ -123,13 +129,13 @@ export function useProductOptions(
             const link = idx !== -1 ? optionLinks.value[idx] : null
             let updated: ProductOptionLink
             if (link?._mapped) {
-                const templateId = resolveTemplateId(link)
-                if (!templateId) {
+                const template = resolveTemplate(link)
+                if (!template) {
                     error('No se encontró la plantilla de opción correspondiente')
                     return
                 }
                 updated = await adminPanelService.createProductOptionLink(pid, {
-                    template_id: templateId,
+                    template_id: template.id,
                     legend: content ?? undefined,
                 })
             } else {
@@ -143,33 +149,50 @@ export function useProductOptions(
         }
     }
 
-    async function toggleValue(link: MappedOptionLink, valueId: string) {
+    async function toggleValue(link: MappedOptionLink, valueId: number) {
         const pid = productId()
         if (!pid || !link.template) return
-        let excluded = [...(link.excluded_value_ids ?? [])]
-
-        if (excluded.includes(valueId)) {
-            excluded = excluded.filter((id) => id !== valueId)
-        } else {
-            excluded.push(valueId)
-        }
-
-        // null = sin exclusiones (hereda todos los valores de la plantilla).
-        const excludedIds = excluded.length === 0 ? null : excluded
 
         try {
             let updated: ProductOptionLink
             if (link._mapped) {
-                const templateId = resolveTemplateId(link)
-                if (!templateId) {
+                // Los valores del link mapeado son `pb_option_values` (legacy),
+                // pero el backend valida `excluded_value_ids` contra los valores
+                // DE LA PLANTILLA. Se traduce cada ID legacy a su valor de
+                // plantilla equivalente (mismo `value`) antes de enviar.
+                const template = resolveTemplate(link)
+                if (!template) {
                     error('No se encontró la plantilla de opción correspondiente')
                     return
                 }
+                const toTemplateValueId = (legacyId: number): number | null => {
+                    const legacy = link.template?.values.find((v) => v.id === legacyId)
+                    return template.values.find((v) => v.value === legacy?.value)?.id ?? null
+                }
+                const target = toTemplateValueId(valueId)
+                if (target === null) {
+                    error('El valor no existe en la plantilla de opción vinculada')
+                    return
+                }
+                let excluded = (link.excluded_value_ids ?? [])
+                    .map(toTemplateValueId)
+                    .filter((id): id is number => id !== null)
+                excluded = excluded.includes(target)
+                    ? excluded.filter((id) => id !== target)
+                    : [...excluded, target]
+
                 updated = await adminPanelService.createProductOptionLink(pid, {
-                    template_id: templateId,
-                    excluded_value_ids: excludedIds ?? undefined,
+                    template_id: template.id,
+                    excluded_value_ids: excluded.length > 0 ? excluded : undefined,
                 })
             } else {
+                let excluded = [...(link.excluded_value_ids ?? [])]
+                excluded = excluded.includes(valueId)
+                    ? excluded.filter((id) => id !== valueId)
+                    : [...excluded, valueId]
+
+                // null = sin exclusiones (hereda todos los valores de la plantilla).
+                const excludedIds = excluded.length === 0 ? null : excluded
                 updated = await adminPanelService.updateProductOptionLink(pid, link.id, { excluded_value_ids: excludedIds })
             }
             const idx = optionLinks.value.findIndex((l) => l.id === link.id)
@@ -181,13 +204,13 @@ export function useProductOptions(
 
     async function addOptionLink() {
         const pid = productId()
-        if (!pid || !addOptionTemplateId.value) return
+        if (!pid || addOptionTemplateId.value === null) return
         try {
             const link = await adminPanelService.createProductOptionLink(pid, {
                 template_id: addOptionTemplateId.value,
             })
             optionLinks.value.push(link)
-            addOptionTemplateId.value = ''
+            addOptionTemplateId.value = null
             showAddOption.value = false
             success('Opción vinculada al producto')
         } catch {
