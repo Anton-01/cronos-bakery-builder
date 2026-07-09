@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property string $id
  * @property string $cart_id
- * @property string $product_id
+ * @property int $product_id
  * @property string $product_name
  * @property string $product_slug
  * @property array<string, mixed> $configuration

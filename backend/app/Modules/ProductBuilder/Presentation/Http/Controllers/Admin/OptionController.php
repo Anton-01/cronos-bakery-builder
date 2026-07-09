@@ -16,19 +16,19 @@ class OptionController extends Controller
     {
     }
 
-    public function store(StoreOptionRequest $request, string $product): JsonResponse
+    public function store(StoreOptionRequest $request, int $product): JsonResponse
     {
         $option = $this->service->addOption($product, $request->validated());
 
         return (new OptionResource($option))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreOptionRequest $request, string $product, string $option): OptionResource
+    public function update(StoreOptionRequest $request, int $product, int $option): OptionResource
     {
         return new OptionResource($this->service->updateOption($product, $option, $request->validated()));
     }
 
-    public function destroy(string $product, string $option): JsonResponse
+    public function destroy(int $product, int $option): JsonResponse
     {
         $this->service->deleteOption($product, $option);
 

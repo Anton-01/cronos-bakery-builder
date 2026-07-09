@@ -6,6 +6,7 @@ namespace App\Modules\CMS\Presentation\Http\Controllers\Admin;
 
 use App\Modules\CMS\Application\Services\ThemeService;
 use App\Modules\CMS\Presentation\Http\Requests\StoreThemeRequest;
+use App\Modules\CMS\Presentation\Http\Requests\UpdateThemeRequest;
 use App\Modules\CMS\Presentation\Http\Resources\ThemeResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -29,7 +30,7 @@ class ThemeController extends Controller
         return (new ThemeResource($theme))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreThemeRequest $request, int $theme): ThemeResource
+    public function update(UpdateThemeRequest $request, int $theme): ThemeResource
     {
         return new ThemeResource($this->themes->update($theme, $request->toAttributes()));
     }

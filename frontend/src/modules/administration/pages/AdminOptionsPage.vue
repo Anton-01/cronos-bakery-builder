@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
-import Checkbox from 'primevue/checkbox'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
@@ -26,7 +25,7 @@ const { confirm } = useConfirm()
 
 const templates = ref<OptionTemplate[]>([])
 const loading = ref(true)
-const expandedId = ref<string | null>(null)
+const expandedId = ref<number | null>(null)
 
 const optionTypes: { value: PbOptionType; label: string; desc: string }[] = [
   { value: 'select', label: 'Selector', desc: 'Desplegable con opciones' },
@@ -52,13 +51,13 @@ const hasValues = (type: PbOptionType) => ['select', 'radio', 'checkbox', 'color
 
 // Template form
 const showTemplateForm = ref(false)
-const editingTemplateId = ref<string | null>(null)
+const editingTemplateId = ref<number | null>(null)
 const tplForm = reactive({ key: '', label: '', type: 'select' as PbOptionType, is_required: false })
 
 // Value form
 const showValueForm = ref(false)
-const editingValueId = ref<string | null>(null)
-const valueTemplateId = ref('')
+const editingValueId = ref<number | null>(null)
+const valueTemplateId = ref<number | null>(null)
 const valueTemplateType = ref<PbOptionType>('select')
 const valForm = reactive({
   label: '', value: '',
@@ -77,7 +76,7 @@ async function load() {
   try { templates.value = await adminPanelService.optionTemplates() } finally { loading.value = false }
 }
 
-function toggle(id: string) { expandedId.value = expandedId.value === id ? null : id }
+function toggle(id: number) { expandedId.value = expandedId.value === id ? null : id }
 
 function openNewTemplate() {
   editingTemplateId.value = null
@@ -119,14 +118,14 @@ async function deleteTemplate(t: OptionTemplate) {
   catch { error('Error al eliminar la opción') }
 }
 
-function openNewValue(tplId: string, tplType: PbOptionType) {
+function openNewValue(tplId: number, tplType: PbOptionType) {
   editingValueId.value = null; valueTemplateId.value = tplId; valueTemplateType.value = tplType
   valForm.label = ''; valForm.value = ''; valForm.price_modifier_type = 'none'; valForm.price_modifier_amount = 0
   valForm.is_default = false; valForm.colorHex = '#000000'; valForm.metadata = tplType === 'color' ? { hex: '#000000' } : null
   showValueForm.value = true
 }
 
-function openEditValue(tplId: string, tplType: PbOptionType, v: OptionTemplateValue) {
+function openEditValue(tplId: number, tplType: PbOptionType, v: OptionTemplateValue) {
   editingValueId.value = v.id; valueTemplateId.value = tplId; valueTemplateType.value = tplType
   valForm.label = v.label; valForm.value = v.value
   valForm.price_modifier_type = v.price_modifier_type; valForm.price_modifier_amount = v.price_modifier_amount
@@ -138,6 +137,7 @@ function openEditValue(tplId: string, tplType: PbOptionType, v: OptionTemplateVa
 function onColorChange() { valForm.metadata = { hex: valForm.colorHex } }
 
 async function submitValue() {
+  if (valueTemplateId.value === null) return
   const tpl = templates.value.find(t => t.id === valueTemplateId.value)
   if (tpl && !editingValueId.value) {
     const exists = tpl.values.some(v => v.value === valForm.value)
@@ -160,7 +160,7 @@ async function submitValue() {
   } catch { error('Error al guardar el valor') }
 }
 
-async function deleteValue(tplId: string, v: OptionTemplateValue) {
+async function deleteValue(tplId: number, v: OptionTemplateValue) {
   const ok = await confirm({
     title: 'Eliminar valor',
     message: `Se eliminará "${v.label}". Si algún producto tiene seleccionado este valor, ya no será visible para el usuario.`,

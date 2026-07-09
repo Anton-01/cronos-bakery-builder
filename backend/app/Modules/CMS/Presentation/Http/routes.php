@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\CMS\Presentation\Http\Controllers\Admin\AllowedFileTypeController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\BannerController as AdminBannerController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\BrandController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\ContentWorkflowController;
+use App\Modules\CMS\Presentation\Http\Controllers\Admin\MediaController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuController as AdminMenuController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\MenuItemController;
 use App\Modules\CMS\Presentation\Http\Controllers\Admin\PageBlockController;
@@ -65,6 +67,20 @@ Route::prefix('admin/cms')
         Route::get('pages/{page}/versions', [ContentWorkflowController::class, 'versions']);
         Route::post('pages/{page}/rollback', [ContentWorkflowController::class, 'rollback']);
         Route::get('pages/{page}/workflows', [ContentWorkflowController::class, 'workflows']);
+    });
+
+// --- Admin: Media Library + tipos de archivo (manage cms) -------------------
+Route::prefix('admin')
+    ->middleware(['auth:sanctum', 'admin', 'permission:manage cms'])
+    ->group(function (): void {
+        // Media Library centralizada (galería, subida drag & drop, borrado).
+        Route::get('media', [MediaController::class, 'index']);
+        Route::post('media', [MediaController::class, 'store']);
+        Route::delete('media/{media}', [MediaController::class, 'destroy'])->whereNumber('media');
+
+        // Catálogo de tipos de archivo permitidos (el admin prende/apaga).
+        Route::get('file-types', [AllowedFileTypeController::class, 'index']);
+        Route::put('file-types/{fileType}', [AllowedFileTypeController::class, 'update'])->whereNumber('fileType');
     });
 
 // --- Admin: Theme Builder (manage theme) -----------------------------------

@@ -54,7 +54,7 @@ class AdminProductBuilderTest extends TestCase
         $this->postJson("/api/admin/product-builder/products/{$productId}/options/{$optionId}/values", [
             'label' => 'Domo', 'value' => 'domo',
             'price_modifier_type' => PriceModifierType::Set->value, 'price_modifier_amount' => 5500,
-        ])->assertCreated()->assertJsonPath('data.price_modifier.amount', 5500);
+        ])->assertCreated()->assertJsonPath('data.price_modifier_amount', 5500);
 
         $this->assertDatabaseHas('pb_options', ['product_id' => $productId, 'key' => 'forma']);
         $this->assertDatabaseHas('pb_option_values', ['value' => 'domo', 'price_modifier_amount' => 5500]);

@@ -1,6 +1,6 @@
 # Cronos Bakery Builder — Context.md
 
-Fecha de última actualización: 2026-07-04
+Fecha de última actualización: 2026-07-09
 
 ---
 
@@ -68,11 +68,17 @@ frontend/
 │   │   ├── calendar/            # Calendario de entregas
 │   │   ├── cms/                 # CMS y temas del sitio
 │   │   └── notifications/       # Centro de notificaciones
+│   ├── entries/
+│   │   ├── admin.ts             # Entry point del panel (PrimeVue + admin.css)
+│   │   └── storefront.ts        # Entry point del sitio público (style.css)
+│   ├── AdminApp.vue             # Shell del admin (layouts admin/blank)
+│   ├── StorefrontApp.vue        # Shell del storefront (default/auth/blank)
 │   ├── pages/
 │   │   ├── HomePage.vue
 │   │   └── NotFoundPage.vue
 │   ├── router/
-│   │   └── index.ts             # Composición de rutas + guards de auth
+│   │   ├── admin.ts             # Rutas del admin + guard requiresAdmin
+│   │   └── storefront.ts        # Rutas públicas + guard requiresAuth
 │   ├── services/
 │   │   └── http.ts              # Instancia Axios con interceptores de auth
 │   ├── stores/
@@ -80,8 +86,10 @@ frontend/
 │   │   └── auth.ts              # Auth del cliente (store Pinia)
 │   └── styles/
 │       └── admin.css            # Variables CSS del admin (tokens de color)
+├── index.html                   # HTML del storefront
+├── admin.html                   # HTML del admin (URLs /admin*)
 ├── package.json
-└── vite.config.ts
+└── vite.config.ts               # MPA: 2 inputs + fallback /admin → admin.html
 ```
 
 ---
@@ -191,7 +199,7 @@ DeliverySlot         // Slot de entrega con max_orders
 
 ## 6. Setup de PrimeVue (Panel Admin)
 
-### 6.1 Registro en `main.ts`
+### 6.1 Registro en `src/entries/admin.ts` (solo el entry del admin — ver §24)
 
 ```typescript
 import PrimeVue from 'primevue/config'
@@ -348,8 +356,8 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 
 **Decisión (2026-07):** todas las llaves primarias del sistema usan **BIGINT autoincremental nativo de PostgreSQL 16** (`$table->id()` → identity/bigserial). Queda **prohibido** generar UUIDs como PK desde la aplicación (ni `HasUuids` en modelos, ni `Str::uuid()` para llaves). Los UUIDs solo se admiten en valores no-clave (ej. nombres de archivo en MinIO).
 
-- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes) y **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21).
-- **Módulos pendientes (aún UUID):** ProductBuilder (`pb_*`), Orders, Calendar, Notifications. Sus PKs no cruzan FKs con los módulos ya convertidos (`cart_items.product_id` y `order_items.product_id` referencian `pb_products`, no el catálogo). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
+- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes), **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21) y **todo el módulo ProductBuilder** (`pb_products`, `pb_options`, `pb_option_values`, `pb_option_rules`, `pb_product_images`, `pb_option_templates`, `pb_option_template_values`, `pb_product_option_links` — 2026-07-09, ver §23).
+- **Módulos pendientes (aún UUID):** Orders, Calendar, Notifications. Las columnas snapshot `cart_items.product_id` y `order_items.product_id` (sin FK) pasaron a `unsignedBigInteger` porque referencian `pb_products` (ya identity). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
 - **Cómo se aplicó:** las migraciones se editaron **en sitio** (el proyecto está en desarrollo, sin datos productivos) → requiere `php artisan migrate:fresh --seed`. Las columnas JSON de los módulos convertidos pasaron a **JSONB**.
 - **Frontend:** las interfaces TS de los módulos convertidos usan `id: number` (cms/types, catalog/types, adminPanelService). Los módulos aún en UUID conservan `id: string`.
 
@@ -390,7 +398,7 @@ Convención para la columna de "Acciones" de todos los `DataTable` del admin:
 **Estrategia de BD (2026-07):** el pivote `pb_product_option_links` (producto ↔ plantilla de opción global) guarda las exclusiones en la columna **`excluded_value_ids` (JSONB, nullable)** — un array de IDs de `pb_option_template_values` que ese producto **oculta**. Se eligió **semántica de exclusión** (antes existía `enabled_value_ids`, lista de inclusión, ya eliminada por migración con conversión de datos):
 
 - `null` o `[]` ⇒ el producto **hereda todos** los valores de la plantilla, **incluidos los que se agreguen a la plantilla en el futuro** (ventaja clave frente a la lista de inclusión, que congelaba el set).
-- No se usó tabla relacional intermedia adicional: la cardinalidad es baja (decenas de valores por opción), el array JSONB vive junto al vínculo que califica y nunca se consulta por valor individual desde SQL. *(Nota: el módulo ProductBuilder sigue en UUIDs — pendiente de la conversión a IDs autoincrementales de la regla §13; los IDs dentro del array son UUIDs de valores de plantilla.)*
+- No se usó tabla relacional intermedia adicional: la cardinalidad es baja (decenas de valores por opción), el array JSONB vive junto al vínculo que califica y nunca se consulta por valor individual desde SQL. *(Actualización 2026-07-09: ProductBuilder ya migró a identity — los IDs dentro del array son **enteros** de `pb_option_template_values`; ver §23.)*
 - **Validación (Form Requests dedicados):** `StoreProductOptionLinkRequest` / `UpdateProductOptionLinkRequest` exigen que cada ID excluido **pertenezca a la plantilla vinculada** (`Rule::exists(...)->where('template_id', …)`) ⇒ 422 si no.
 - **Contrato del API (`ProductOptionLinkResource`):** devuelve **ambas vistas**: `excluded_value_ids` + `template.values` completo (para que el admin pinte los toggles) y `values` = **valores efectivos ya filtrados** vía `ProductOptionLink::effectiveValues()` (lo que consume el storefront). Helpers de dominio: `isValueExcluded()`, `effectiveValues()`.
 - **Frontend:** en `ProductOptionsManager.vue` cada opción vinculada es desplegable y cada valor tiene un **`ToggleSwitch`** con `v-tooltip` (encendido = heredado, apagado = excluido, con `Tag` "Excluido"). El guardado es inmediato por valor (PUT del link con el array recalculado; array vacío se normaliza a `null`).
@@ -463,3 +471,31 @@ Refactor completo del módulo Payments (2026-07): multi-tenant por `brand_id`, P
 - `AdminProfilePage.vue` con `Tabs`: **General** (datos + avatar con `FileUpload` mode basic/customUpload), **Seguridad** (cambio de contraseña con `Password` + activación TOTP reutilizando los endpoints `/admin/2fa/*` existentes), **Dispositivos** (`DataTable` de sesiones con icono por tipo, IP, última conexión, `Tag` "Este dispositivo"/"Impersonación" y `pi-sign-out` por fila) y **Notificaciones** (`ToggleSwitch` por canal → JSONB `notification_settings`; canales desconocidos se descartan en backend).
 - `UserTable.vue` alineado a §17: acciones solo-icono con `v-tooltip` (`pi-pencil`, `pi-ban`/`pi-check-circle`, `pi-key` reset, `pi-sign-out` cerrar sesiones, `pi-eye` impersonar, `pi-trash`), `Tag` verde/rojo para Activo/Suspendido. `UserFormModal` muestra la auditoría de **sesiones recientes** al editar.
 - Fix de modelo: los casts de suspensión de `User` vivían por error dentro de `$hidden`; se movieron a `casts()`.
+
+## 23. Auditoría UUID → Identity del Product Builder + fix de validación de exclusiones
+
+**Conversión completa (2026-07-09) del módulo ProductBuilder a PKs identity** (regla §13): las 8 migraciones `pb_*` se editaron **en sitio** (`$table->id()` / `foreignId()`), se quitó `HasUuids` de los 8 modelos, columnas JSON → **JSONB**, y firmas de servicios/repositorio/controladores pasaron de `string` a `int` (`ProductAdminService`, `PreviewTokenService::mint(int)/resolve(): ?int`, `ProductRepositoryInterface::findConfiguration(int)`). Las rutas del módulo llevan **`whereNumber()`** en todos los parámetros de ID (un ID no numérico ⇒ 404, nunca error de cast de PostgreSQL). Requiere `php artisan migrate:fresh --seed`. Frontend: todos los tipos del Product Builder (admin y storefront) usan `id: number`; los métodos del service aceptan `number | string` porque los params de ruta de vue-router llegan como string.
+
+**Bug del 422 "Cada valor excluido debe pertenecer a la opción vinculada" — causa raíz y fix:** cuando un producto tenía opciones legacy embebidas (`pb_options`), `useProductOptions.mapOptionsToLinks()` construía pseudo-links cuyos `template.values` eran **valores de `pb_option_values`**, y `toggleValue` enviaba esos IDs como `excluded_value_ids` — que el backend valida (correctamente) contra `pb_option_template_values`. El fix del composable **traduce cada ID legacy a su valor de plantilla equivalente** (match por `value` dentro de la plantilla resuelta por `key`) antes del POST. En backend, `Store/UpdateProductOptionLinkRequest` normalizan los IDs a `int` en `prepareForValidation()`, validan `integer` + `Rule::exists(...)->where('template_id', …)`, y el Update resuelve el `template_id` defensivamente (modelo enlazado o ID crudo de la ruta).
+
+## 24. Aislamiento total Admin/Storefront: entry points separados de Vite (MPA)
+
+El frontend dejó de ser un SPA único: **dos entry points físicamente separados** eliminan el sangrado de CSS entre interfaces (F5 en `/admin` ya no carga estilos del sitio público y viceversa):
+
+- `index.html` → `src/entries/storefront.ts` → `StorefrontApp.vue` + `router/storefront.ts` (layouts default/auth/blank, `stores/theme`, **solo `style.css`** — el storefront NO carga PrimeVue ni primeicons ni admin.css).
+- `admin.html` → `src/entries/admin.ts` → `AdminApp.vue` + `router/admin.ts` (layouts admin/blank, PrimeVue + preset Aura + Toast/Confirm/Tooltip, **solo `admin.css` + primeicons**).
+- `vite.config.ts`: `build.rollupOptions.input = { storefront, admin }` + plugin **`admin-html-fallback`** que en dev/preview sirve toda URL `/admin*` desde `admin.html` (history fallback por interfaz). **En producción el servidor debe replicar esa regla** (location `/admin` → `admin.html`; resto → `index.html`).
+- Se eliminaron `src/main.ts`, `src/App.vue` y `src/router/index.ts`. Cada router solo compone las rutas de su interfaz y lleva su propio guard (`requiresAuth` → `auth.login`; `requiresAdmin` → `admin.login`). **Nunca hay navegación SPA entre interfaces**: cruzar de una a otra es recarga completa. Consecuencia práctica: desde el admin no se puede `router.resolve()` una ruta del storefront — `useProductPreview` construye la URL `/builder/preview/{token}` a mano.
+
+## 25. Media Library centralizada + tipos de archivo gobernados por BD
+
+- **Catálogo `allowed_file_types`** (id identity, `name`, `category`, `description`, `mime_types` JSONB, `extensions` JSONB, `icon_reference` PrimeIcons, `is_active`): un **Seeder Maestro** (`AllowedFileTypesSeeder`, idempotente por `updateOrCreate`) puebla ~25 formatos agrupados (Imágenes, Documentos, Video, Audio, Comprimidos, Fuentes, Datos); el admin **solo prende/apaga** desde `/admin/file-types` (`DataTable` con `rowGroupMode="subheader"` por categoría, `ToggleSwitch` por fila y acciones solo-icono §17). SVG viene **apagado por defecto** (puede embeber scripts).
+- **Validación dinámica por BD (estándar absoluto):** la subida de medios NO usa allow-lists hardcodeadas. `MediaLibraryService::upload()` exige que el **MIME real (sniffing de contenido)** Y la extensión pertenezcan a un mismo tipo **activo** ⇒ 422 con las extensiones activas en el mensaje. Nombres aleatorios `media/{Y}/{m}/{uuid}.ext` (UUID en valor no-clave, §13), disco `config('filesystems.media_disk')` (`MEDIA_DISK`, `public` local / MinIO en despliegue), límite 20 MB.
+- **Endpoints** (`auth:sanctum + admin + permission:manage cms`): `GET/POST /admin/media`, `DELETE /admin/media/{id}` (borra archivo + registro), `GET /admin/file-types` (`?only_active=1`), `PUT /admin/file-types/{id}`. `media_assets.uploaded_by` ahora referencia **`admins`** (nullable, nullOnDelete). `MediaAssetResource` expone `url` pública calculada del disco.
+- **Frontend:** servicio compartido `src/services/mediaLibrary.ts` + componente global **`src/components/MediaLibrary.vue`** (galería grid con preview, **drag & drop** + input múltiple, filtro por tipo del catálogo, búsqueda con debounce, paginación, borrado con confirmación). Props: `selectable` (emite `select(asset)` al padre — se embebe en un `Dialog`) y `accept` (prefijo MIME, ej. `"image/"`, que restringe galería y subida). Página standalone en `/admin/media`.
+
+## 26. Theme Builder PRO: personalización dinámica en JSONB
+
+- **Esquema:** `themes` ganó 4 columnas **JSONB** independientes — `color_palette` (primary/secondary/accent/background/surface/text), `typography_settings` (heading_font/body_font/pesos/base_font_size), `layout_config` (header_sticky, footer_expanded, container_width boxed|wide|full, show_breadcrumbs, product_grid_columns) y `custom_scripts` (head/body_start/body_end para GA/Pixels). **Escalar la personalización = agregar claves al documento, jamás columnas relacionales.** Las columnas legadas `colors`/`fonts` se conservan por compatibilidad con el storefront actual.
+- **API:** nuevo **`UpdateThemeRequest`** con semántica **parcial** (`sometimes` + `toAttributes()` que solo persiste las claves enviadas — el builder guarda por pestaña); `StoreThemeRequest` acepta los 4 documentos al crear. `ThemeResource` (mismo resource del endpoint público `GET /theme`) expone los 4 campos + `settings`, así el storefront puede consumirlos sin cambios de contrato. Activación por el endpoint dedicado `PUT /admin/themes/{id}/activate` (expuesto como `adminPanelService.activateTheme`).
+- **UI (`AdminThemePage.vue`):** selector de tema + `Tabs` de PrimeVue — **Branding** (6 `ColorPicker` con input hex sincronizado y swatch; logo/favicon seleccionados desde **`MediaLibrary.vue`** embebido en `Dialog` con `accept="image/"`), **Tipografía** (Selects de fuentes/pesos + vista previa en vivo), **Layout** (`ToggleSwitch`/Selects por opción visual), **Código** (Textareas monoespaciados para los 3 slots de scripts), **Tienda** (moneda/locale/impuestos/zona horaria → JSONB `settings`) y **Banners**. Un solo "Guardar cambios" hace el PUT parcial con los 4 documentos.

@@ -38,7 +38,7 @@ return new class () extends Migration {
         Schema::create('order_items', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->foreignUuid('order_id')->constrained('orders')->cascadeOnDelete();
-            $table->uuid('product_id');
+            $table->unsignedBigInteger('product_id');
             $table->string('product_name');
             $table->string('product_slug');
             $table->json('configuration');

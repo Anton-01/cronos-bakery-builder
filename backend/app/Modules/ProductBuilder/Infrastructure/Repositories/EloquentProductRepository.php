@@ -27,7 +27,7 @@ class EloquentProductRepository extends AbstractEloquentRepository implements Pr
             ->first();
     }
 
-    public function findConfiguration(string $id): ?Product
+    public function findConfiguration(int $id): ?Product
     {
         return $this->configurationQuery()->whereKey($id)->first();
     }

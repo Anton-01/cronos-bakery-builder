@@ -35,45 +35,47 @@ Route::prefix('product-builder')->group(function (): void {
 Route::prefix('admin/product-builder')
     ->middleware(['auth:sanctum', 'admin', 'permission:manage products'])
     ->group(function (): void {
-        Route::apiResource('products', ProductController::class)->parameters(['products' => 'product']);
+        Route::apiResource('products', ProductController::class)
+            ->parameters(['products' => 'product'])
+            ->whereNumber('product');
 
         // Options.
-        Route::post('products/{product}/options', [OptionController::class, 'store']);
-        Route::put('products/{product}/options/{option}', [OptionController::class, 'update']);
-        Route::delete('products/{product}/options/{option}', [OptionController::class, 'destroy']);
+        Route::post('products/{product}/options', [OptionController::class, 'store'])->whereNumber('product');
+        Route::put('products/{product}/options/{option}', [OptionController::class, 'update'])->whereNumber(['product', 'option']);
+        Route::delete('products/{product}/options/{option}', [OptionController::class, 'destroy'])->whereNumber(['product', 'option']);
 
         // Option values.
-        Route::post('products/{product}/options/{option}/values', [OptionValueController::class, 'store']);
-        Route::put('products/{product}/options/{option}/values/{value}', [OptionValueController::class, 'update']);
-        Route::delete('products/{product}/options/{option}/values/{value}', [OptionValueController::class, 'destroy']);
+        Route::post('products/{product}/options/{option}/values', [OptionValueController::class, 'store'])->whereNumber(['product', 'option']);
+        Route::put('products/{product}/options/{option}/values/{value}', [OptionValueController::class, 'update'])->whereNumber(['product', 'option', 'value']);
+        Route::delete('products/{product}/options/{option}/values/{value}', [OptionValueController::class, 'destroy'])->whereNumber(['product', 'option', 'value']);
 
         // Conditional rules.
-        Route::post('products/{product}/rules', [OptionRuleController::class, 'store']);
-        Route::delete('products/{product}/rules/{rule}', [OptionRuleController::class, 'destroy']);
+        Route::post('products/{product}/rules', [OptionRuleController::class, 'store'])->whereNumber('product');
+        Route::delete('products/{product}/rules/{rule}', [OptionRuleController::class, 'destroy'])->whereNumber(['product', 'rule']);
 
         // Option Templates (global, independent of products).
         Route::get('option-templates', [OptionTemplateController::class, 'index']);
         Route::post('option-templates', [OptionTemplateController::class, 'store']);
-        Route::put('option-templates/{template}', [OptionTemplateController::class, 'update']);
-        Route::delete('option-templates/{template}', [OptionTemplateController::class, 'destroy']);
+        Route::put('option-templates/{template}', [OptionTemplateController::class, 'update'])->whereNumber('template');
+        Route::delete('option-templates/{template}', [OptionTemplateController::class, 'destroy'])->whereNumber('template');
 
         // Option Template Values.
-        Route::post('option-templates/{template}/values', [OptionTemplateValueController::class, 'store']);
-        Route::put('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'update']);
-        Route::delete('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'destroy']);
+        Route::post('option-templates/{template}/values', [OptionTemplateValueController::class, 'store'])->whereNumber('template');
+        Route::put('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'update'])->whereNumber(['template', 'value']);
+        Route::delete('option-templates/{template}/values/{value}', [OptionTemplateValueController::class, 'destroy'])->whereNumber(['template', 'value']);
 
         // Product-Option Links.
-        Route::get('products/{product}/option-links', [ProductOptionLinkController::class, 'index']);
-        Route::post('products/{product}/option-links', [ProductOptionLinkController::class, 'store']);
-        Route::put('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'update']);
-        Route::delete('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'destroy']);
+        Route::get('products/{product}/option-links', [ProductOptionLinkController::class, 'index'])->whereNumber('product');
+        Route::post('products/{product}/option-links', [ProductOptionLinkController::class, 'store'])->whereNumber('product');
+        Route::put('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'update'])->whereNumber(['product', 'link']);
+        Route::delete('products/{product}/option-links/{link}', [ProductOptionLinkController::class, 'destroy'])->whereNumber(['product', 'link']);
 
 
         // Product Images.
-        Route::post('products/{product}/images', [ProductImageController::class, 'store']);
-        Route::put('products/{product}/images/{image}', [ProductImageController::class, 'update']);
-        Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
+        Route::post('products/{product}/images', [ProductImageController::class, 'store'])->whereNumber('product');
+        Route::put('products/{product}/images/{image}', [ProductImageController::class, 'update'])->whereNumber(['product', 'image']);
+        Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy'])->whereNumber(['product', 'image']);
 
         // Product Preview (token minting stays admin-only).
-        Route::post('products/{product}/preview-token', [ProductPreviewController::class, 'generateToken']);
+        Route::post('products/{product}/preview-token', [ProductPreviewController::class, 'generateToken'])->whereNumber('product');
     });

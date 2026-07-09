@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\ProductBuilder\Domain\Models;
 
 use App\Modules\ProductBuilder\Domain\Enums\OptionType;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A global, reusable option template independent of any specific product.
  * Templates can be linked to products via ProductOptionLink.
  *
- * @property string $id
+ * @property int $id
  * @property string $key
  * @property string $label
  * @property OptionType $type
@@ -24,8 +23,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class OptionTemplate extends Model
 {
-    use HasUuids;
-
     protected $table = 'pb_option_templates';
 
     protected $fillable = [

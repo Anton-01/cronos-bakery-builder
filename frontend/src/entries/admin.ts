@@ -8,10 +8,12 @@ import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
 
-import App from './App.vue'
-import router from './router'
-import './style.css'
-import './styles/admin.css'
+import AdminApp from '@/AdminApp.vue'
+import adminRouter from '@/router/admin'
+
+// Estilos EXCLUSIVOS del panel admin. El CSS global del storefront
+// (style.css) jamás se importa aquí: cada interfaz tiene su entry point.
+import '@/styles/admin.css'
 
 const AdminPreset = definePreset(Aura, {
   semantic: {
@@ -31,10 +33,10 @@ const AdminPreset = definePreset(Aura, {
   },
 })
 
-const app = createApp(App)
+const app = createApp(AdminApp)
 
 app.use(createPinia())
-app.use(router)
+app.use(adminRouter)
 app.use(PrimeVue, {
   theme: {
     preset: AdminPreset,
@@ -46,7 +48,7 @@ app.use(PrimeVue, {
 app.use(ConfirmationService)
 app.use(ToastService)
 
-// Registro global de la directiva Tooltip → habilita `v-tooltip` en toda la app.
+// Registro global de la directiva Tooltip → habilita `v-tooltip` en todo el admin.
 app.directive('tooltip', Tooltip)
 
 app.mount('#app')

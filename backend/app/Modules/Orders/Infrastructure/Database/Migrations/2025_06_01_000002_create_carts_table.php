@@ -20,7 +20,7 @@ return new class () extends Migration {
             $table->uuid('id')->primary();
             $table->foreignUuid('cart_id')->constrained('carts')->cascadeOnDelete();
             // Snapshot of the configured Product Builder product.
-            $table->uuid('product_id');
+            $table->unsignedBigInteger('product_id');
             $table->string('product_name');
             $table->string('product_slug');
             // Full cake configuration: selections + priced breakdown.

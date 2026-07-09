@@ -6,7 +6,6 @@ namespace App\Modules\ProductBuilder\Domain\Models;
 
 use App\Modules\ProductBuilder\Infrastructure\Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Product Builder aggregate root: a configurable product (e.g. Muse Blanc,
  * Studio Cake) composed of options, their values and conditional rules.
  *
- * @property string $id
+ * @property int $id
  * @property string $name
  * @property string $slug
  * @property string|null $description
@@ -26,7 +25,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'pb_products';
 

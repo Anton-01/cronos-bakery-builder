@@ -10,14 +10,14 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('pb_option_templates', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('key')->unique();
             $table->string('label');
             $table->string('type'); // OptionType enum values
             $table->string('help_text')->nullable();
             $table->boolean('is_required')->default(false);
             $table->unsignedInteger('position')->default(0);
-            $table->json('config')->nullable();
+            $table->jsonb('config')->nullable();
             $table->timestamps();
 
             $table->index('position');

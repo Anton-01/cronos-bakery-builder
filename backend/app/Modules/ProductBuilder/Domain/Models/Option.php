@@ -6,7 +6,6 @@ namespace App\Modules\ProductBuilder\Domain\Models;
 
 use App\Modules\ProductBuilder\Domain\Enums\OptionType;
 use App\Modules\ProductBuilder\Infrastructure\Database\Factories\OptionFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A single configurable option of a product (e.g. Forma, Color, Decoraciones).
  *
- * @property string $id
- * @property string $product_id
+ * @property int $id
+ * @property int $product_id
  * @property string $key
  * @property string $label
  * @property OptionType $type
@@ -28,7 +27,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Option extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'pb_options';
 

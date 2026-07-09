@@ -22,7 +22,7 @@ class ProductController extends Controller
         return ProductResource::collection($this->service->all());
     }
 
-    public function show(string $product): ProductResource
+    public function show(int $product): ProductResource
     {
         return new ProductResource($this->service->get($product));
     }
@@ -34,12 +34,12 @@ class ProductController extends Controller
         return (new ProductResource($product))->response()->setStatusCode(JsonResponse::HTTP_CREATED);
     }
 
-    public function update(StoreProductRequest $request, string $product): ProductResource
+    public function update(StoreProductRequest $request, int $product): ProductResource
     {
         return new ProductResource($this->service->updateProduct($product, $request->toAttributes()));
     }
 
-    public function destroy(string $product): JsonResponse
+    public function destroy(int $product): JsonResponse
     {
         $this->service->deleteProduct($product);
 

@@ -21,7 +21,7 @@ interface ProductRepositoryInterface extends RepositoryInterface
     /**
      * Any product by id with its full configuration graph eager-loaded.
      */
-    public function findConfiguration(string $id): ?Product;
+    public function findConfiguration(int $id): ?Product;
 
     /**
      * Any product (active or draft) by slug with its full configuration

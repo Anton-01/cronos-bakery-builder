@@ -49,7 +49,7 @@ interface UseProductFormDeps {
     gallery: { value: GalleryImage[] }
     galleryDirty: { value: boolean }
     setThumbnailFromUrl: (url: string | null) => void
-    setGalleryFromImages: (images: { id: string; path: string; name: string | null; alt_text: string | null; position: number }[]) => void
+    setGalleryFromImages: (images: { id: number; path: string; name: string | null; alt_text: string | null; position: number }[]) => void
     setLinksFromOptions: (options: PbOption[]) => void
     loadOptionLinks: () => Promise<void>
 }
@@ -141,7 +141,7 @@ export function useProductForm(deps: UseProductFormDeps) {
         }
     }
 
-    async function uploadImages(id: string) {
+    async function uploadImages(id: number | string) {
         if (deps.thumbnailFile.value) {
             await adminPanelService.uploadProductImage(id, deps.thumbnailFile.value, 'image')
             deps.thumbnailFile.value = null
@@ -151,7 +151,7 @@ export function useProductForm(deps: UseProductFormDeps) {
                 await adminPanelService.uploadProductImage(id, img._file, 'gallery')
             }
         }
-        const existingGallery = deps.gallery.value.filter((img) => !img.id.startsWith('new-'))
+        const existingGallery = deps.gallery.value.filter((img) => typeof img.id === 'number')
         for (const img of existingGallery) {
             await adminPanelService.updateProductImage(id, img.id, {
                 name: img.name ?? undefined,

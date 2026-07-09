@@ -80,6 +80,18 @@ export const administrationRoutes: RouteRecordRaw[] = [
     meta: { layout: 'admin', requiresAdmin: true },
   },
   {
+    path: '/admin/media',
+    name: 'admin.media',
+    component: () => import('./pages/AdminMediaPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
+    path: '/admin/file-types',
+    name: 'admin.fileTypes',
+    component: () => import('./pages/AdminFileTypesPage.vue'),
+    meta: { layout: 'admin', requiresAdmin: true },
+  },
+  {
     path: '/admin/payments',
     name: 'admin.payments',
     component: () => import('./pages/AdminPaymentsPage.vue'),

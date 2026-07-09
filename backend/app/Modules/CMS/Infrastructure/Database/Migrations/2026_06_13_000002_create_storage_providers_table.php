@@ -32,7 +32,8 @@ return new class () extends Migration {
             $table->jsonb('transformations')->nullable();
             $table->string('processing_status')->default('pending')->index(); // pending, processing, completed, failed
             $table->unsignedBigInteger('storage_provider_id')->nullable();
-            $table->foreignId('uploaded_by')->constrained('users')->cascadeOnDelete();
+            // Los medios los sube el panel: el actor es un Admin (guard admin).
+            $table->foreignId('uploaded_by')->nullable()->constrained('admins')->nullOnDelete();
             $table->timestamps();
 
             $table->foreign('storage_provider_id')->references('id')->on('storage_providers')->nullOnDelete();

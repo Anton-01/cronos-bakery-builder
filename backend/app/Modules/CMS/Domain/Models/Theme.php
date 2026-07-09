@@ -19,6 +19,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $favicon_path
  * @property array<string, string> $colors
  * @property array<string, mixed> $fonts
+ * @property array<string, string>|null $color_palette
+ * @property array<string, mixed>|null $typography_settings
+ * @property array<string, mixed>|null $layout_config
+ * @property array<string, string>|null $custom_scripts
  * @property array<string, mixed>|null $footer
  * @property array<string, mixed>|null $settings
  * @property bool $is_active
@@ -36,6 +40,10 @@ class Theme extends Model
         'favicon_path',
         'colors',
         'fonts',
+        'color_palette',
+        'typography_settings',
+        'layout_config',
+        'custom_scripts',
         'footer',
         'settings',
         'is_active',
@@ -44,6 +52,10 @@ class Theme extends Model
     protected $casts = [
         'colors' => 'array',
         'fonts' => 'array',
+        'color_palette' => 'array',
+        'typography_settings' => 'array',
+        'layout_config' => 'array',
+        'custom_scripts' => 'array',
         'footer' => 'array',
         'settings' => 'array',
         'is_active' => 'boolean',

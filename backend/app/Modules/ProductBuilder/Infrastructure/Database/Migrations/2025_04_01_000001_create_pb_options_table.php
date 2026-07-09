@@ -10,8 +10,8 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::create('pb_options', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('product_id')->constrained('pb_products')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('product_id')->constrained('pb_products')->cascadeOnDelete();
             $table->string('key');
             $table->string('label');
             $table->string('type');
@@ -19,7 +19,7 @@ return new class () extends Migration {
             $table->boolean('is_required')->default(false);
             $table->unsignedInteger('position')->default(0);
             // Type-specific config (e.g. min/max selections, max text length).
-            $table->json('config')->nullable();
+            $table->jsonb('config')->nullable();
             $table->timestamps();
 
             $table->unique(['product_id', 'key']);

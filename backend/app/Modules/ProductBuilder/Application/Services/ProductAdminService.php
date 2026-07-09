@@ -31,7 +31,7 @@ final class ProductAdminService
             ->get();
     }
 
-    public function get(string $id): Product
+    public function get(int $id): Product
     {
         return $this->products->findConfiguration($id)
             ?? throw new NotFoundHttpException('Product not found.');
@@ -44,12 +44,12 @@ final class ProductAdminService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateProduct(string $id, array $attributes): Product
+    public function updateProduct(int $id, array $attributes): Product
     {
         return $this->products->update($id, $attributes);
     }
 
-    public function deleteProduct(string $id): void
+    public function deleteProduct(int $id): void
     {
         $this->products->delete($id);
     }
@@ -57,7 +57,7 @@ final class ProductAdminService
     // --- Options ------------------------------------------------------------
 
     /** @param array<string, mixed> $attributes */
-    public function addOption(string $productId, array $attributes): Option
+    public function addOption(int $productId, array $attributes): Option
     {
         $product = $this->get($productId);
         $attributes['position'] = $attributes['position'] ?? (int) $product->options()->max('position') + 1;
@@ -66,7 +66,7 @@ final class ProductAdminService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateOption(string $productId, string $optionId, array $attributes): Option
+    public function updateOption(int $productId, int $optionId, array $attributes): Option
     {
         $option = $this->findOption($productId, $optionId);
         $option->update($attributes);
@@ -74,7 +74,7 @@ final class ProductAdminService
         return $option->refresh();
     }
 
-    public function deleteOption(string $productId, string $optionId): void
+    public function deleteOption(int $productId, int $optionId): void
     {
         $this->findOption($productId, $optionId)->delete();
     }
@@ -82,7 +82,7 @@ final class ProductAdminService
     // --- Option values ------------------------------------------------------
 
     /** @param array<string, mixed> $attributes */
-    public function addValue(string $productId, string $optionId, array $attributes): OptionValue
+    public function addValue(int $productId, int $optionId, array $attributes): OptionValue
     {
         $option = $this->findOption($productId, $optionId);
         $attributes['position'] = $attributes['position'] ?? (int) $option->values()->max('position') + 1;
@@ -91,7 +91,7 @@ final class ProductAdminService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateValue(string $productId, string $optionId, string $valueId, array $attributes): OptionValue
+    public function updateValue(int $productId, int $optionId, int $valueId, array $attributes): OptionValue
     {
         $value = OptionValue::query()
             ->where('option_id', $optionId)
@@ -104,7 +104,7 @@ final class ProductAdminService
         return $value->refresh();
     }
 
-    public function deleteValue(string $productId, string $optionId, string $valueId): void
+    public function deleteValue(int $productId, int $optionId, int $valueId): void
     {
         $this->findOption($productId, $optionId);
         OptionValue::query()->where('option_id', $optionId)->whereKey($valueId)->delete();
@@ -113,19 +113,19 @@ final class ProductAdminService
     // --- Rules --------------------------------------------------------------
 
     /** @param array<string, mixed> $attributes */
-    public function addRule(string $productId, array $attributes): OptionRule
+    public function addRule(int $productId, array $attributes): OptionRule
     {
         $product = $this->get($productId);
 
         return $product->rules()->create($attributes);
     }
 
-    public function deleteRule(string $productId, string $ruleId): void
+    public function deleteRule(int $productId, int $ruleId): void
     {
         OptionRule::query()->where('product_id', $productId)->whereKey($ruleId)->delete();
     }
 
-    private function findOption(string $productId, string $optionId): Option
+    private function findOption(int $productId, int $optionId): Option
     {
         return Option::query()
             ->where('product_id', $productId)

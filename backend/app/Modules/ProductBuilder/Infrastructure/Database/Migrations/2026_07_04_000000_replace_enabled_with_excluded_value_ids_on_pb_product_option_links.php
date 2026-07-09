@@ -30,7 +30,7 @@ return new class () extends Migration {
                 $all = DB::table('pb_option_template_values')
                     ->where('template_id', $link->template_id)
                     ->pluck('id')
-                    ->map(static fn ($id): string => (string) $id)
+                    ->map(static fn ($id): int => (int) $id)
                     ->all();
 
                 $excluded = array_values(array_diff($all, $enabled));
@@ -48,7 +48,7 @@ return new class () extends Migration {
     public function down(): void
     {
         Schema::table('pb_product_option_links', function (Blueprint $table): void {
-            $table->json('enabled_value_ids')->nullable()->after('legend');
+            $table->jsonb('enabled_value_ids')->nullable()->after('legend');
         });
 
         DB::table('pb_product_option_links')
@@ -59,7 +59,7 @@ return new class () extends Migration {
                 $all = DB::table('pb_option_template_values')
                     ->where('template_id', $link->template_id)
                     ->pluck('id')
-                    ->map(static fn ($id): string => (string) $id)
+                    ->map(static fn ($id): int => (int) $id)
                     ->all();
 
                 $enabled = array_values(array_diff($all, $excluded));

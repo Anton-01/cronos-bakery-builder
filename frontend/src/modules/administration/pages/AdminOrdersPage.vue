@@ -266,7 +266,7 @@ onMounted(load)
     </template>
 
     <!-- Order detail dialog -->
-    <Dialog v-model:visible="selectedOrder" modal :header="`Pedido #${selectedOrder?.number}`" :style="{ width: '600px' }" @hide="selectedOrder = null">
+    <Dialog :visible="!!selectedOrder" modal :header="`Pedido #${selectedOrder?.number}`" :style="{ width: '600px' }" @update:visible="(v: boolean) => { if (!v) selectedOrder = null }">
       <template v-if="selectedOrder">
         <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
           <Tag :value="selectedOrder.status_label" :severity="statusSeverity(selectedOrder.status)" />

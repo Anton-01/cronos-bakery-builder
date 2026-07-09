@@ -11,12 +11,12 @@ return new class () extends Migration {
     {
         // Conditional dependency rules, e.g. "if Forma = Domo, show Perlas".
         Schema::create('pb_option_rules', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('product_id')->constrained('pb_products')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('product_id')->constrained('pb_products')->cascadeOnDelete();
             // The option whose visibility is affected.
-            $table->foreignUuid('option_id')->constrained('pb_options')->cascadeOnDelete();
+            $table->foreignId('option_id')->constrained('pb_options')->cascadeOnDelete();
             // The source option whose selected value triggers the rule.
-            $table->foreignUuid('depends_on_option_id')->constrained('pb_options')->cascadeOnDelete();
+            $table->foreignId('depends_on_option_id')->constrained('pb_options')->cascadeOnDelete();
             $table->string('operator')->default('equals');
             $table->string('value');
             $table->string('action')->default('show');

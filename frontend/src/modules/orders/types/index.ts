@@ -5,7 +5,7 @@ export interface Money {
 
 export interface CartItem {
   id: string
-  product_id: string
+  product_id: number
   product_name: string
   product_slug: string
   configuration: { selections: Record<string, string | string[]>; price: { items: unknown[] } }

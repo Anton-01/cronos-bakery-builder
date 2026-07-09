@@ -40,6 +40,13 @@ class StoreThemeRequest extends FormRequest
 
             'footer' => ['nullable', 'array'],
             'is_active' => ['boolean'],
+
+            // --- Theme Builder PRO (JSONB) ---------------------------------
+            'color_palette' => ['nullable', 'array'],
+            'typography_settings' => ['nullable', 'array'],
+            'layout_config' => ['nullable', 'array'],
+            'custom_scripts' => ['nullable', 'array'],
+            'settings' => ['nullable', 'array'],
         ];
     }
 
@@ -59,6 +66,11 @@ class StoreThemeRequest extends FormRequest
             'colors' => $data['colors'],
             'fonts' => $data['fonts'],
             'footer' => $data['footer'] ?? null,
+            'color_palette' => $data['color_palette'] ?? null,
+            'typography_settings' => $data['typography_settings'] ?? null,
+            'layout_config' => $data['layout_config'] ?? null,
+            'custom_scripts' => $data['custom_scripts'] ?? null,
+            'settings' => $data['settings'] ?? null,
             'is_active' => (bool) ($data['is_active'] ?? false),
         ];
     }
