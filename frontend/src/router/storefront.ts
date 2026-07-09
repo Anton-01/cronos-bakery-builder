@@ -41,10 +41,24 @@ const router = createRouter({
   routes,
 })
 
-// Guard del cliente — el admin tiene su propio guard en router/admin.ts.
+/**
+ * Guard del cliente — el admin tiene su propio guard en router/admin.ts.
+ *
+ * SÍNCRONO por diseño (anti-FOUC): lee localStorage (misma fuente que
+ * hidrata el store de Pinia) y redirige ANTES de que el router confirme la
+ * navegación. La validez real del token la vigila el interceptor (§28).
+ */
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !localStorage.getItem('auth_token')) {
+  const hasSession = localStorage.getItem('auth_token') !== null
+
+  if (to.meta.requiresAuth && !hasSession) {
     return { name: 'auth.login', query: { redirect: to.fullPath } }
+  }
+
+  // Con sesión activa, login/registro no se visitan: al destino o al home.
+  if ((to.name === 'auth.login' || to.name === 'auth.register') && hasSession) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : null
+    return redirect ?? { name: 'home' }
   }
 })
 
