@@ -11,9 +11,9 @@ return new class () extends Migration {
     {
         // Reservations consumed against day/slot capacity by placed orders.
         Schema::create('calendar_bookings', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->date('date');
-            $table->foreignUuid('time_slot_id')->nullable()
+            $table->foreignId('time_slot_id')->nullable()
                 ->constrained('calendar_time_slots')->nullOnDelete();
             $table->unsignedInteger('quantity')->default(1);
             $table->string('reference')->nullable(); // e.g. order number

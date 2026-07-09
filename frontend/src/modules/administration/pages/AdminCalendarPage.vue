@@ -233,7 +233,7 @@ async function createSlot(): Promise<void> {
   }
 }
 
-async function deleteSlot(id: string): Promise<void> {
+async function deleteSlot(id: number): Promise<void> {
   try {
     await adminPanelService.deleteSlot(id)
     slots.value = slots.value.filter((s) => s.id !== id)
@@ -270,7 +270,7 @@ async function createHoliday(): Promise<void> {
   }
 }
 
-async function deleteHoliday(id: string): Promise<void> {
+async function deleteHoliday(id: number): Promise<void> {
   try {
     await adminPanelService.deleteHoliday(id)
     holidays.value = holidays.value.filter((h) => h.id !== id)

@@ -24,15 +24,15 @@ Route::prefix('admin/calendar')
 
         Route::get('slots', [AdminCalendarController::class, 'slots']);
         Route::post('slots', [AdminCalendarController::class, 'storeSlot']);
-        Route::put('slots/{slot}', [AdminCalendarController::class, 'updateSlot']);
-        Route::delete('slots/{slot}', [AdminCalendarController::class, 'destroySlot']);
+        Route::put('slots/{slot}', [AdminCalendarController::class, 'updateSlot'])->whereNumber('slot');
+        Route::delete('slots/{slot}', [AdminCalendarController::class, 'destroySlot'])->whereNumber('slot');
 
         Route::get('holidays', [AdminCalendarController::class, 'holidays']);
         Route::post('holidays', [AdminCalendarController::class, 'storeHoliday']);
-        Route::delete('holidays/{holiday}', [AdminCalendarController::class, 'destroyHoliday']);
+        Route::delete('holidays/{holiday}', [AdminCalendarController::class, 'destroyHoliday'])->whereNumber('holiday');
 
         Route::post('blackouts', [AdminCalendarController::class, 'storeBlackout']);
-        Route::delete('blackouts/{blackout}', [AdminCalendarController::class, 'destroyBlackout']);
+        Route::delete('blackouts/{blackout}', [AdminCalendarController::class, 'destroyBlackout'])->whereNumber('blackout');
 
         Route::put('production-rules', [AdminCalendarController::class, 'setProductionRule']);
     });

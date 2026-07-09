@@ -19,7 +19,7 @@ class SetProductionRuleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => ['nullable', 'uuid'],
+            'product_id' => ['nullable', 'integer', 'exists:pb_products,id'],
             'lead_time_hours' => ['required', 'integer', 'min:0', 'max:8760'],
         ];
     }

@@ -11,7 +11,7 @@ return new class () extends Migration {
     {
         // Festivos: full-day closures. Recurring holidays match month/day yearly.
         Schema::create('calendar_holidays', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->date('date');
             $table->string('name');
             $table->boolean('is_recurring')->default(false);

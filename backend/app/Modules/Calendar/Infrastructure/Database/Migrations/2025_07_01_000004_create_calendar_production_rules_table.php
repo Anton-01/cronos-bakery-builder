@@ -12,12 +12,12 @@ return new class () extends Migration {
         // Per-product production lead time. A null product_id is the global
         // default applied when a product has no specific rule.
         Schema::create('calendar_production_rules', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('product_id')->nullable()->unique();
+            $table->id();
+            // FK real hacia pb_products (identity, §13). null = regla global.
+            $table->foreignId('product_id')->nullable()->unique()
+                ->constrained('pb_products')->cascadeOnDelete();
             $table->unsignedInteger('lead_time_hours')->default(48);
             $table->timestamps();
-
-            $table->index('product_id');
         });
     }
 

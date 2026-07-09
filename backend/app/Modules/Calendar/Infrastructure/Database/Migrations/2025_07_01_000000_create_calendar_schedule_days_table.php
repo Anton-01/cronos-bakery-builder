@@ -11,7 +11,7 @@ return new class () extends Migration {
     {
         // Weekly opening schedule + per-day capacity (0 = unlimited).
         Schema::create('calendar_schedule_days', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->unsignedTinyInteger('weekday')->unique(); // 0=Sunday .. 6=Saturday
             $table->boolean('is_open')->default(true);
             $table->unsignedInteger('capacity')->default(0);

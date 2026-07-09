@@ -10,6 +10,7 @@ use App\Modules\Calendar\Domain\Models\Holiday;
 use App\Modules\Calendar\Domain\Models\ProductionRule;
 use App\Modules\Calendar\Domain\Models\ScheduleDay;
 use App\Modules\Calendar\Domain\Models\TimeSlot;
+use App\Modules\ProductBuilder\Domain\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -134,11 +135,12 @@ class AvailabilityEngineTest extends TestCase
     {
         $this->openEveryDay();
         TimeSlot::factory()->create(['start_time' => '10:00', 'capacity' => 5]);
+        $product = Product::factory()->create();
         ProductionRule::factory()->create(['product_id' => null, 'lead_time_hours' => 24]);
-        ProductionRule::factory()->create(['product_id' => 'prod-123', 'lead_time_hours' => 168]);
+        ProductionRule::factory()->create(['product_id' => $product->id, 'lead_time_hours' => 168]);
 
         // Default → Tue; product with 7-day lead → next Monday 2025-09-08.
         $this->assertSame('2025-09-02', $this->service()->minimumDate(null)['date']);
-        $this->assertSame('2025-09-08', $this->service()->minimumDate('prod-123')['date']);
+        $this->assertSame('2025-09-08', $this->service()->minimumDate($product->id)['date']);
     }
 }

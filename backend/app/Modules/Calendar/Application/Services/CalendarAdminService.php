@@ -44,7 +44,7 @@ final class CalendarAdminService
     }
 
     /** @param array<string, mixed> $attributes */
-    public function updateSlot(string $id, array $attributes): TimeSlot
+    public function updateSlot(int $id, array $attributes): TimeSlot
     {
         $slot = TimeSlot::query()->findOrFail($id);
         $slot->update($attributes);
@@ -52,7 +52,7 @@ final class CalendarAdminService
         return $slot->refresh();
     }
 
-    public function deleteSlot(string $id): void
+    public function deleteSlot(int $id): void
     {
         TimeSlot::query()->findOrFail($id)->delete();
     }
@@ -65,7 +65,7 @@ final class CalendarAdminService
         return Holiday::create($attributes);
     }
 
-    public function deleteHoliday(string $id): void
+    public function deleteHoliday(int $id): void
     {
         Holiday::query()->findOrFail($id)->delete();
     }
@@ -78,14 +78,14 @@ final class CalendarAdminService
         return Blackout::create($attributes);
     }
 
-    public function deleteBlackout(string $id): void
+    public function deleteBlackout(int $id): void
     {
         Blackout::query()->findOrFail($id)->delete();
     }
 
     // --- Production rules ----------------------------------------------------
 
-    public function setProductionRule(?string $productId, int $leadTimeHours): ProductionRule
+    public function setProductionRule(?int $productId, int $leadTimeHours): ProductionRule
     {
         return ProductionRule::query()->updateOrCreate(
             ['product_id' => $productId],

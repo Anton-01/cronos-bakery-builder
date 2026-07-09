@@ -31,7 +31,7 @@ final class CalendarService
      * Production lead time (hours) for a product, falling back to the global
      * default rule and finally the hard default.
      */
-    public function leadTimeHours(?string $productId): int
+    public function leadTimeHours(?int $productId): int
     {
         $rule = $productId !== null
             ? ProductionRule::query()->where('product_id', $productId)->first()
@@ -42,14 +42,16 @@ final class CalendarService
         return $rule?->lead_time_hours ?? self::DEFAULT_LEAD_HOURS;
     }
 
-    public function earliestFor(?string $productId, ?Carbon $now = null): Carbon
+    public function earliestFor(?int $productId, ?Carbon $now = null): Carbon
     {
         return ($now ?? Carbon::now())->copy()->addHours($this->leadTimeHours($productId));
     }
 
-    public function resolveProductId(string $slug): ?string
+    public function resolveProductId(string $slug): ?int
     {
-        return Product::query()->where('slug', $slug)->value('id');
+        $id = Product::query()->where('slug', $slug)->value('id');
+
+        return $id === null ? null : (int) $id;
     }
 
     /**
@@ -57,7 +59,7 @@ final class CalendarService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function availability(?string $productId, ?Carbon $from = null, int $days = 30): array
+    public function availability(?int $productId, ?Carbon $from = null, int $days = 30): array
     {
         $earliest = $this->earliestFor($productId);
         $from = $from ?? $earliest;
@@ -71,12 +73,12 @@ final class CalendarService
      *
      * @return array<string, string>|null
      */
-    public function minimumDate(?string $productId): ?array
+    public function minimumDate(?int $productId): ?array
     {
         return $this->engine->firstAvailable($this->earliestFor($productId), $this->buildConfig());
     }
 
-    public function reserve(Carbon $date, ?string $slotId, int $quantity = 1, ?string $reference = null): Booking
+    public function reserve(Carbon $date, ?int $slotId, int $quantity = 1, ?string $reference = null): Booking
     {
         return Booking::create([
             'date' => $date->toDateString(),

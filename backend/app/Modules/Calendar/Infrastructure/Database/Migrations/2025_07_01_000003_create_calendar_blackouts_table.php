@@ -12,9 +12,9 @@ return new class () extends Migration {
         // Bloqueos: ad-hoc blocks. A null time_slot_id blocks the whole day,
         // otherwise only the referenced slot on that date.
         Schema::create('calendar_blackouts', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->date('date');
-            $table->foreignUuid('time_slot_id')->nullable()
+            $table->foreignId('time_slot_id')->nullable()
                 ->constrained('calendar_time_slots')->cascadeOnDelete();
             $table->string('reason')->nullable();
             $table->timestamps();

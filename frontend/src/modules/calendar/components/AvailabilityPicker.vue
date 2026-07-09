@@ -10,14 +10,14 @@ const emit = defineEmits<{ select: [selection: SlotSelection] }>()
 const availability = ref<Availability | null>(null)
 const loading = ref(true)
 const selectedDate = ref<string | null>(null)
-const selectedSlot = ref<string | null>(null)
+const selectedSlot = ref<number | null>(null)
 
 function pickDay(day: AvailableDay): void {
   selectedDate.value = day.date
   selectedSlot.value = null
 }
 
-function pickSlot(day: AvailableDay, slotId: string): void {
+function pickSlot(day: AvailableDay, slotId: number): void {
   const slot = day.slots.find((s) => s.id === slotId)
   if (!slot) return
   selectedSlot.value = slotId
