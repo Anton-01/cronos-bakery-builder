@@ -48,12 +48,12 @@ class CalendarController extends Controller
         );
     }
 
-    public function updateSlot(StoreTimeSlotRequest $request, string $slot): JsonResponse
+    public function updateSlot(StoreTimeSlotRequest $request, int $slot): JsonResponse
     {
         return response()->json(['data' => $this->service->updateSlot($slot, $request->validated())]);
     }
 
-    public function destroySlot(string $slot): JsonResponse
+    public function destroySlot(int $slot): JsonResponse
     {
         $this->service->deleteSlot($slot);
 
@@ -73,7 +73,7 @@ class CalendarController extends Controller
         );
     }
 
-    public function destroyHoliday(string $holiday): JsonResponse
+    public function destroyHoliday(int $holiday): JsonResponse
     {
         $this->service->deleteHoliday($holiday);
 
@@ -88,7 +88,7 @@ class CalendarController extends Controller
         );
     }
 
-    public function destroyBlackout(string $blackout): JsonResponse
+    public function destroyBlackout(int $blackout): JsonResponse
     {
         $this->service->deleteBlackout($blackout);
 
@@ -97,8 +97,10 @@ class CalendarController extends Controller
 
     public function setProductionRule(SetProductionRuleRequest $request): JsonResponse
     {
+        $productId = $request->validated('product_id');
+
         $rule = $this->service->setProductionRule(
-            $request->validated('product_id'),
+            $productId === null ? null : (int) $productId,
             (int) $request->validated('lead_time_hours'),
         );
 

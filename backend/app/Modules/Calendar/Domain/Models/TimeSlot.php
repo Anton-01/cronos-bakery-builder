@@ -6,14 +6,13 @@ namespace App\Modules\Calendar\Domain\Models;
 
 use App\Modules\Calendar\Infrastructure\Database\Factories\TimeSlotFactory;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * A bookable delivery/pickup window with its own capacity.
  *
- * @property string $id
+ * @property int $id
  * @property string $label
  * @property string $start_time
  * @property string|null $end_time
@@ -24,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 class TimeSlot extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'calendar_time_slots';
 

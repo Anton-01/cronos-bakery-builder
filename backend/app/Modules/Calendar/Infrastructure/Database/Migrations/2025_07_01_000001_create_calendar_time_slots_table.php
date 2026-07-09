@@ -11,7 +11,7 @@ return new class () extends Migration {
     {
         // Bookable delivery/pickup windows, each with its own capacity.
         Schema::create('calendar_time_slots', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('label');
             $table->string('start_time'); // HH:MM (24h)
             $table->string('end_time')->nullable();

@@ -10,6 +10,8 @@ import 'primeicons/primeicons.css'
 
 import AdminApp from '@/AdminApp.vue'
 import adminRouter from '@/router/admin'
+import { setSessionInvalidHandler } from '@/services/http'
+import { useAdminAuthStore } from '@/modules/administration/stores/adminAuth'
 
 // Estilos EXCLUSIVOS del panel admin. El CSS global del storefront
 // (style.css) jamás se importa aquí: cada interfaz tiene su entry point.
@@ -47,6 +49,12 @@ app.use(PrimeVue, {
 })
 app.use(ConfirmationService)
 app.use(ToastService)
+
+// Sesión determinista: ante 401/419/caída de red con sesión activa, el
+// interceptor de Axios dispara el cierre forzado LOCAL del panel admin.
+setSessionInvalidHandler('admin', () => {
+  useAdminAuthStore().forceLogout()
+})
 
 // Registro global de la directiva Tooltip → habilita `v-tooltip` en todo el admin.
 app.directive('tooltip', Tooltip)

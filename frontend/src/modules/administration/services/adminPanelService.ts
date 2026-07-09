@@ -302,10 +302,10 @@ export interface TransactionFilters {
 }
 
 // --- Calendar types ---
-export interface CalendarSchedule { id: string; day_of_week: number; opens_at: string; closes_at: string; is_active: boolean }
-export interface DeliverySlot { id: string; label: string; starts_at: string; ends_at: string; max_orders: number }
-export interface Holiday { id: string; date: string; name: string }
-export interface Blackout { id: string; from: string; to: string; reason: string }
+export interface CalendarSchedule { id: number; day_of_week: number; opens_at: string; closes_at: string; is_active: boolean }
+export interface DeliverySlot { id: number; label: string; starts_at: string; ends_at: string; max_orders: number }
+export interface Holiday { id: number; date: string; name: string }
+export interface Blackout { id: number; from: string; to: string; reason: string }
 
 // --- Notifications types ---
 export interface EmailTemplate { id: string; key: string; subject: string; body: string; is_active: boolean }
@@ -694,7 +694,7 @@ export const adminPanelService = {
     return request<Wrapped<DeliverySlot>>({ url: '/admin/calendar/slots', method: 'POST', data }).then((r) => r.data)
   },
 
-  deleteSlot(id: string): Promise<void> {
+  deleteSlot(id: number): Promise<void> {
     return request({ url: `/admin/calendar/slots/${id}`, method: 'DELETE' })
   },
 
@@ -706,7 +706,7 @@ export const adminPanelService = {
     return request<Wrapped<Holiday>>({ url: '/admin/calendar/holidays', method: 'POST', data }).then((r) => r.data)
   },
 
-  deleteHoliday(id: string): Promise<void> {
+  deleteHoliday(id: number): Promise<void> {
     return request({ url: `/admin/calendar/holidays/${id}`, method: 'DELETE' })
   },
 

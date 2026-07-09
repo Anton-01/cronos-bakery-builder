@@ -1,5 +1,5 @@
 export interface AvailableSlot {
-  id: string
+  id: number
   label: string
   start_time: string
   end_time: string | null
@@ -14,7 +14,7 @@ export interface AvailableDay {
 
 export interface MinimumDate {
   date: string
-  slot_id: string
+  slot_id: number
   slot_label: string
   at: string
 }
@@ -29,7 +29,7 @@ export interface Availability {
 /** A chosen date + slot from the picker. */
 export interface SlotSelection {
   date: string
-  slot_id: string
+  slot_id: number
   slot_label: string
   start_time: string
 }

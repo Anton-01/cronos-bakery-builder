@@ -20,7 +20,7 @@ class StoreBlackoutRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date'],
-            'time_slot_id' => ['nullable', 'uuid', 'exists:calendar_time_slots,id'],
+            'time_slot_id' => ['nullable', 'integer', 'exists:calendar_time_slots,id'],
             'reason' => ['nullable', 'string', 'max:255'],
         ];
     }

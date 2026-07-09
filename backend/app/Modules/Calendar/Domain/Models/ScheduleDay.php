@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Calendar\Domain\Models;
 
 use App\Modules\Calendar\Infrastructure\Database\Factories\ScheduleDayFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Opening configuration for a weekday plus its daily capacity (0 = unlimited).
  *
- * @property string $id
+ * @property int $id
  * @property int $weekday
  * @property bool $is_open
  * @property int $capacity
@@ -20,7 +19,6 @@ use Illuminate\Database\Eloquent\Model;
 class ScheduleDay extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'calendar_schedule_days';
 

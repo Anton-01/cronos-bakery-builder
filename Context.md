@@ -1,6 +1,6 @@
 # Cronos Bakery Builder — Context.md
 
-Fecha de última actualización: 2026-07-09
+Fecha de última actualización: 2026-07-09 (v2: purga UUID Calendar + resiliencia de sesión)
 
 ---
 
@@ -249,8 +249,8 @@ El `<ConfirmDialog />` global está en `AdminLayout.vue`.
 
 Instancia Axios con:
 - `baseURL` desde `import.meta.env.VITE_API_URL`
-- Interceptor de request: inyecta `Authorization: Bearer {admin_token}` o `auth_token` según el token disponible
-- Interceptor de response: maneja 401 → logout automático
+- Interceptor de request: decide el scope por URL (`/admin/*` → `admin_token`; resto → `auth_token`)
+- Interceptor de response: 422 → handler de validación; **401/419/caída de red → cierre de sesión forzado local del scope afectado** (ver §28)
 
 Función principal:
 ```typescript
@@ -356,8 +356,8 @@ Estos tokens siguen siendo usados en las páginas para mantener consistencia vis
 
 **Decisión (2026-07):** todas las llaves primarias del sistema usan **BIGINT autoincremental nativo de PostgreSQL 16** (`$table->id()` → identity/bigserial). Queda **prohibido** generar UUIDs como PK desde la aplicación (ni `HasUuids` en modelos, ni `Str::uuid()` para llaves). Los UUIDs solo se admiten en valores no-clave (ej. nombres de archivo en MinIO).
 
-- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes), **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21) y **todo el módulo ProductBuilder** (`pb_products`, `pb_options`, `pb_option_values`, `pb_option_rules`, `pb_product_images`, `pb_option_templates`, `pb_option_template_values`, `pb_product_option_links` — 2026-07-09, ver §23).
-- **Módulos pendientes (aún UUID):** Orders, Calendar, Notifications. Las columnas snapshot `cart_items.product_id` y `order_items.product_id` (sin FK) pasaron a `unsignedBigInteger` porque referencian `pb_products` (ya identity). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
+- **Módulos ya migrados a identity:** `brands`, CMS completo (`cms_pages`, `cms_page_blocks`, `cms_sections`, `themes`, `menus`/`menu_items`, `banners`, `storage_providers`/`media_assets`, `content_versions`, `content_workflows`), `audit_logs` (Administration), **todo el módulo Catalog** (`catalog_products`, `catalog_categories`, `catalog_collections`, `catalog_attributes`/`_values`, `catalog_tags` y sus 4 pivotes), **todo el módulo Payments** (`payment_gateways`, `transactions`, `transaction_events`, `gateway_webhook_events` — ver §21) y **todo el módulo ProductBuilder** (`pb_products`, `pb_options`, `pb_option_values`, `pb_option_rules`, `pb_product_images`, `pb_option_templates`, `pb_option_template_values`, `pb_product_option_links` — 2026-07-09, ver §23) y **todo el módulo Calendar** (`calendar_schedule_days`, `calendar_time_slots`, `calendar_holidays`, `calendar_blackouts`, `calendar_production_rules`, `calendar_bookings` — 2026-07-09, ver §27).
+- **Módulos pendientes (aún UUID):** Orders, Notifications. Las columnas snapshot `cart_items.product_id` y `order_items.product_id` (sin FK) pasaron a `unsignedBigInteger` porque referencian `pb_products` (ya identity). Cuando un módulo identity necesita referenciar uno UUID, la FK vive en una **columna no-clave** del tipo correspondiente (ej. `transactions.order_id` es `uuid` → `orders`), lo cual no viola la regla: la prohibición aplica a las PKs.
 - **Cómo se aplicó:** las migraciones se editaron **en sitio** (el proyecto está en desarrollo, sin datos productivos) → requiere `php artisan migrate:fresh --seed`. Las columnas JSON de los módulos convertidos pasaron a **JSONB**.
 - **Frontend:** las interfaces TS de los módulos convertidos usan `id: number` (cms/types, catalog/types, adminPanelService). Los módulos aún en UUID conservan `id: string`.
 
@@ -499,3 +499,22 @@ El frontend dejó de ser un SPA único: **dos entry points físicamente separado
 - **Esquema:** `themes` ganó 4 columnas **JSONB** independientes — `color_palette` (primary/secondary/accent/background/surface/text), `typography_settings` (heading_font/body_font/pesos/base_font_size), `layout_config` (header_sticky, footer_expanded, container_width boxed|wide|full, show_breadcrumbs, product_grid_columns) y `custom_scripts` (head/body_start/body_end para GA/Pixels). **Escalar la personalización = agregar claves al documento, jamás columnas relacionales.** Las columnas legadas `colors`/`fonts` se conservan por compatibilidad con el storefront actual.
 - **API:** nuevo **`UpdateThemeRequest`** con semántica **parcial** (`sometimes` + `toAttributes()` que solo persiste las claves enviadas — el builder guarda por pestaña); `StoreThemeRequest` acepta los 4 documentos al crear. `ThemeResource` (mismo resource del endpoint público `GET /theme`) expone los 4 campos + `settings`, así el storefront puede consumirlos sin cambios de contrato. Activación por el endpoint dedicado `PUT /admin/themes/{id}/activate` (expuesto como `adminPanelService.activateTheme`).
 - **UI (`AdminThemePage.vue`):** selector de tema + `Tabs` de PrimeVue — **Branding** (6 `ColorPicker` con input hex sincronizado y swatch; logo/favicon seleccionados desde **`MediaLibrary.vue`** embebido en `Dialog` con `accept="image/"`), **Tipografía** (Selects de fuentes/pesos + vista previa en vivo), **Layout** (`ToggleSwitch`/Selects por opción visual), **Código** (Textareas monoespaciados para los 3 slots de scripts), **Tienda** (moneda/locale/impuestos/zona horaria → JSONB `settings`) y **Banners**. Un solo "Guardar cambios" hace el PUT parcial con los 4 documentos.
+
+## 27. Purga final de UUIDs en el módulo Calendar (producción/agenda)
+
+**Bug corregido (2026-07-09):** `migrate --seed` crasheaba con `SQLSTATE[22P02] invalid input syntax for type uuid: "1"` — `CalendarSeeder` consultaba `calendar_production_rules.product_id` (columna `uuid`) con el ID **entero** del Signature Cake, porque `pb_products` ya es identity (§23). Era el último residuo funcional de UUID en el flujo de seeding.
+
+- **Conversión completa del módulo a identity (§13):** las 6 migraciones `calendar_*` se editaron en sitio (`$table->id()`, `foreignId('time_slot_id')`); `calendar_production_rules.product_id` ahora es **`foreignId` nullable único con FK real a `pb_products`** (`cascadeOnDelete`; `null` = regla global). Se quitó `HasUuids` de los 6 modelos (ScheduleDay, TimeSlot, Holiday, Blackout, ProductionRule, Booking).
+- **Firmas y validación:** `CalendarService`/`CalendarAdminService` usan `int` para IDs (`leadTimeHours(?int)`, `resolveProductId(): ?int`, `reserve(..., ?int $slotId)`, `setProductionRule(?int, int)`); `SetProductionRuleRequest` valida `product_id` como `integer + exists:pb_products,id` y `StoreBlackoutRequest` `time_slot_id` como `integer`; los params de ruta llevan `whereNumber()`; el controller castea explícitamente antes de llamar al service.
+- **Frontend:** `CalendarSchedule`/`DeliverySlot`/`Holiday`/`Blackout` (adminPanelService) y `AvailableSlot`/`MinimumDate`/`SlotSelection` (modules/calendar/types) usan `id`/`slot_id`: **number**.
+- **Verificado:** `migrate:fresh --seed` completo en verde; el seeder crea la regla global (`product_id = null`, 48h) y la del Signature Cake (`product_id` entero, 72h). El test `AvailabilityEngineTest` que usaba el ID ficticio `'prod-123'` ahora crea un `Product` real (la FK lo exige).
+
+## 28. Estado determinista de sesión: interceptor Axios + Force Logout local (patrón obligatorio)
+
+**Problema resuelto:** con el backend caído o el token expirado, la UI mantenía "sesiones fantasma" (usuario visualmente logueado) y el botón de cerrar sesión fallaba si el API no respondía (el `logout()` esperaba la respuesta antes de limpiar).
+
+- **Interceptor de response (`services/http.ts`):** clasifica cada error por **scope de sesión** (mismo criterio del request: URL `/admin/*` = admin, resto = cliente) y detecta tres causas de invalidación: `401` (token revocado/expirado), `419` (CSRF expirado) y **error de red** (`!error.response`, excluyendo `ERR_CANCELED` de AbortController). Ante cualquiera de ellas **solo si existía token para ese scope** (un 401 de login fallido o la navegación anónima jamás disparan nada), purga el token rechazado y notifica al handler del scope vía `setSessionInvalidHandler(scope, handler)`.
+- **Registro por entry point (coherente con §24):** `entries/storefront.ts` registra el handler `customer` → `useAuthStore().forceLogout()`; `entries/admin.ts` registra `admin` → `useAdminAuthStore().forceLogout()`. `http.ts` permanece agnóstico de routers y stores (cero acoplamiento entre bundles).
+- **`forceLogout()` (ambos stores):** **síncrono a nivel local y sin red** — limpia el estado Pinia, borra el token de `localStorage` y redirige con el router de SU entry a `auth.login`/`admin.login` (con `?redirect=` a la ruta actual). Idempotente y sin bucles: si ya está en login no vuelve a navegar.
+- **`logout()` voluntario resiliente (ambos stores):** la revocación del token en backend es **best-effort** (`try/catch`); la limpieza local va en `finally` y ocurre SIEMPRE. Ningún flujo de cierre de sesión depende de una respuesta exitosa del API.
+- **Regla para nuevo código:** cualquier estado de sesión adicional (p. ej. carrito ligado al usuario) debe limpiarse dentro de `clearSession()` del store correspondiente, nunca en componentes.
