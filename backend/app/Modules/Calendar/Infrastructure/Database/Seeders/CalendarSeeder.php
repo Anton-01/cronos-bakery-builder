@@ -35,10 +35,14 @@ class CalendarSeeder extends Seeder
             ['16:00 - 18:00', '16:00', '18:00'],
         ];
         foreach ($slots as $position => [$label, $start, $end]) {
-            TimeSlot::factory()->create([
-                'label' => $label, 'start_time' => $start, 'end_time' => $end,
-                'capacity' => 8, 'position' => $position,
-            ]);
+            // Idempotente: re-ejecutar --seed jamás duplica slots.
+            TimeSlot::query()->updateOrCreate(
+                ['label' => $label],
+                [
+                    'start_time' => $start, 'end_time' => $end,
+                    'capacity' => 8, 'position' => $position, 'is_active' => true,
+                ],
+            );
         }
 
         // Default production rule + a slower one for the Signature Cake.
@@ -52,9 +56,9 @@ class CalendarSeeder extends Seeder
             );
         }
 
-        Holiday::factory()->create([
-            'date' => now()->addDays(14)->toDateString(),
-            'name' => 'Día festivo',
-        ]);
+        Holiday::query()->updateOrCreate(
+            ['name' => 'Día festivo'],
+            ['date' => now()->addDays(14)->toDateString(), 'is_recurring' => false],
+        );
     }
 }

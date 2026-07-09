@@ -1,6 +1,6 @@
 # Cronos Bakery Builder — Context.md
 
-Fecha de última actualización: 2026-07-09 (v2: purga UUID Calendar + resiliencia de sesión)
+Fecha de última actualización: 2026-07-09 (v3: reparación de PKs Calendar + anti-FOUC en login)
 
 ---
 
@@ -518,3 +518,22 @@ El frontend dejó de ser un SPA único: **dos entry points físicamente separado
 - **`forceLogout()` (ambos stores):** **síncrono a nivel local y sin red** — limpia el estado Pinia, borra el token de `localStorage` y redirige con el router de SU entry a `auth.login`/`admin.login` (con `?redirect=` a la ruta actual). Idempotente y sin bucles: si ya está en login no vuelve a navegar.
 - **`logout()` voluntario resiliente (ambos stores):** la revocación del token en backend es **best-effort** (`try/catch`); la limpieza local va en `finally` y ocurre SIEMPRE. Ningún flujo de cierre de sesión depende de una respuesta exitosa del API.
 - **Regla para nuevo código:** cualquier estado de sesión adicional (p. ej. carrito ligado al usuario) debe limpiarse dentro de `clearSession()` del store correspondiente, nunca en componentes.
+
+## 29. Llaves primarias del módulo Calendar: identity nativo verificado + migración de reparación
+
+**Bug corregido (2026-07-09):** `migrate --seed` (sin `fresh`) crasheaba con `SQLSTATE[23502] null value in column "id" of relation "calendar_time_slots"`. **El código del repo ya era correcto** (`$table->id()` en las 6 tablas, modelos sin `HasUuids`/`$incrementing = false`/`$keyType`, factories sin `id`): el fallo venía del **estado obsoleto de la BD** — las migraciones `create_calendar_*` se editaron en sitio (§13/§27) y Laravel las salta por estar registradas, así que la BD conservaba las tablas de la era UUID (`id uuid NOT NULL` **sin default**, porque `HasUuids` generaba el ID en la app). Al quitar el trait, el primer INSERT del seeder mandaba `id = null` ⇒ 23502.
+
+- **Auto-reparación:** nueva migración `rebuild_stale_uuid_calendar_tables_with_identity_ids` — **idempotente y con detección de estado**: inspecciona `Schema::getColumnType('calendar_time_slots', 'id')`; si no es entero (era UUID), dropea las 6 tablas en orden inverso de dependencias y las recrea idénticas a las migraciones vigentes (identity + FKs reales). En una BD sana o recién creada es un **no-op**. Con esto, el flujo `docker compose exec php php artisan migrate --seed` se auto-repara sin necesidad de `migrate:fresh` (que sigue siendo la vía canónica tras editar migraciones en sitio).
+- **Seeder idempotente:** `CalendarSeeder` dejó de usar `factory()->create()` a secas para slots y festivo — ahora todo es `updateOrCreate` (slots por `label`, festivo por `name`, reglas por `product_id`). Re-ejecutar `--seed` N veces deja exactamente 3 slots, 1 festivo y 2 reglas.
+- **Verificado:** (1) `migrate:fresh --seed` limpio; (2) doble `db:seed` sin duplicados; (3) simulación de BD obsoleta (tablas recreadas con `id` texto sin default + registro de la reparación borrado) ⇒ `migrate --seed` reconstruye y siembra con `id = 1` autoincremental.
+
+## 30. Anti-FOUC: guards síncronos, layouts por ruta con fallback seguro y arranque diferido (`router.isReady()`)
+
+**Problema resuelto:** al entrar sin sesión a una ruta protegida (o recargar en login) se veía el chrome del Dashboard unos milisegundos antes de la redirección. Causa: `app.mount()` corría **antes** de que Vue Router resolviera la navegación inicial; en esa ventana `route.matched` está vacío y `route.meta.layout` es `undefined`, y el shell del admin caía al fallback `AdminLayout`.
+
+Patrón adoptado (obligatorio para ambos entry points, coherente con §24):
+
+1. **Arranque diferido:** `router.isReady().then(() => app.mount('#app'))` — el primer paint ocurre SOLO cuando los guards ya corrieron y el componente lazy de la ruta final está cargado. Es la pieza que elimina el flash de raíz.
+2. **Guards síncronos (`router.beforeEach`):** leen el token de `localStorage` (la misma fuente que hidrata Pinia) **sin awaits ni llamadas al API** y devuelven la redirección antes de confirmar la navegación — el componente protegido jamás se resuelve ni monta. Doble dirección: ruta protegida sin token → login (`?redirect=` al destino); login/registro **con** token → dashboard/home (u `?redirect=`). La validez real del token no se comprueba aquí: la vigila el interceptor (§28), que fuerza el logout si el backend la rechaza.
+3. **Layouts dinámicos con fallback seguro:** los shells (`AdminApp`/`StorefrontApp`) renderizan `<component :is="layout">` con dos candados: (a) **no renderizan nada** mientras `route.matched.length === 0` (navegación sin resolver); (b) en el admin, el fallback ante `meta.layout` desconocido es **BlankLayout** — el chrome del panel (`AdminLayout`) solo se pinta cuando la ruta lo declara explícitamente, nunca por defecto. El login del admin usa `meta.layout: 'blank'` y el del cliente `meta.layout: 'auth'`: aislados por diseño y, gracias al MPA (§24), sin una sola línea de CSS de la otra interfaz.
+4. **Pinia antes del mount:** cada entry crea la instancia de Pinia, **instancia su store de sesión antes de montar** (estado síncrono desde localStorage), registra ahí el handler del interceptor (§28) y, si hay token, hidrata el perfil en segundo plano (`fetchCurrentUser/Admin`) sin bloquear el primer render.

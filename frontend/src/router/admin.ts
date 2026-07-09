@@ -22,10 +22,28 @@ const router = createRouter({
   routes,
 })
 
-// Guard del admin — sesión independiente de la del cliente (token propio).
+/**
+ * Guard del admin — sesión independiente de la del cliente (token propio).
+ *
+ * SÍNCRONO por diseño (anti-FOUC): la comprobación lee localStorage (misma
+ * fuente que hidrata el store de Pinia) y devuelve la redirección ANTES de
+ * que el router confirme la navegación — jamás se resuelve ni renderiza el
+ * componente protegido. Nada de awaits ni llamadas al API aquí: la validez
+ * real del token la vigila el interceptor de Axios (§28).
+ */
 router.beforeEach((to) => {
-  if (to.meta.requiresAdmin && !localStorage.getItem('admin_token')) {
+  const hasSession = localStorage.getItem('admin_token') !== null
+
+  // Ruta protegida sin sesión → login, recordando el destino original.
+  if (to.meta.requiresAdmin && !hasSession) {
     return { name: 'admin.login', query: { redirect: to.fullPath } }
+  }
+
+  // Con sesión activa, el login no se visita: directo al dashboard
+  // (o al destino que traía ?redirect).
+  if (to.name === 'admin.login' && hasSession) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : null
+    return redirect ?? { name: 'admin.dashboard' }
   }
 })
 
